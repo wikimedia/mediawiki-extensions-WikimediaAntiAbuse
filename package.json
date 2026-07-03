@@ -1,0 +1,22 @@
+{
+	"name": "WikimediaAntiAbuse",
+	"private": true,
+	"scripts": {
+		"test": "npm run test:lint",
+		"test:lint": "npm run test:lint:js && npm run test:lint:styles && npm run test:lint:i18n",
+		"test:lint:js": "eslint --cache .",
+		"test:lint:styles": "stylelint --cache --allow-empty-input \"**/*.{css,less}\"",
+		"test:lint:i18n": "banana-checker i18n/",
+		"fix": "npm run fix:js && npm run fix:styles",
+		"fix:js": "eslint --cache --fix .",
+		"fix:styles": "stylelint --cache --allow-empty-input --fix \"**/*.{css,less}\""
+	},
+	"devDependencies": {
+		"eslint-config-wikimedia": "0.32.4",
+		"grunt-banana-checker": "0.13.0",
+		"stylelint-config-wikimedia": "0.19.2"
+	},
+	"eslintIgnore": [
+		"vendor/**"
+	]
+}

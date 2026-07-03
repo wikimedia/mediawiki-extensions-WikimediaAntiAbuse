@@ -1,0 +1,20 @@
+{
+	"name": "WikimediaAntiAbuse",
+	"author": [
+		"Kosta Harlan",
+		"Dreamy Jazz"
+	],
+	"url": "https://www.mediawiki.org/wiki/Special:MyLanguage/Extension:WikimediaAntiAbuse",
+	"descriptionmsg": "wikimediaantiabuse-desc",
+	"license-name": "GPL-2.0-or-later",
+	"type": "other",
+	"requires": {
+		"MediaWiki": ">= 1.47.0"
+	},
+	"MessagesDirs": {
+		"WikimediaAntiAbuse": [
+			"i18n"
+		]
+	},
+	"manifest_version": 2
+}
