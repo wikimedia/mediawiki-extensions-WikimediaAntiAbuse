@@ -16,5 +16,30 @@
 			"i18n"
 		]
 	},
+	"config": {
+		"WikimediaAntiAbuseEnablePersonalInfoTag": {
+			"value": false,
+			"description": "Enables the mw-private-personal-info tag."
+		}
+	},
+	"HookHandlers": {
+		"ChangeTagsHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\ChangeTagsHandler",
+			"services": [
+				"MainConfig"
+			]
+		}
+	},
+	"Hooks": {
+		"ChangeTagsListActive": "ChangeTagsHandler",
+		"ListDefinedTags": "ChangeTagsHandler",
+		"ListRestrictedTags": "ChangeTagsHandler"
+	},
+	"AutoloadNamespaces": {
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/"
+	},
+	"TestAutoloadNamespaces": {
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
+	},
 	"manifest_version": 2
 }

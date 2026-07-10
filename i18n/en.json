@@ -2,5 +2,8 @@
 	"@metadata": {
 		"authors": []
 	},
-	"wikimediaantiabuse-desc": "Anti-abuse features for Wikimedia wikis"
+	"wikimediaantiabuse-desc": "Anti-abuse features for Wikimedia wikis",
+	"tag-mw-private-personal-info": "Likely contains personal information",
+	"tag-mw-private-personal-info-description": "Edits that were automatically flagged as potentially adding personal information",
+	"tag-mw-private-personal-info-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content"
 }

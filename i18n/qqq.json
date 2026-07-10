@@ -2,5 +2,8 @@
 	"@metadata": {
 		"authors": []
 	},
-	"wikimediaantiabuse-desc": "{{desc|name=WikimediaAntiAbuse|url=https://www.mediawiki.org/wiki/Extension:WikimediaAntiAbuse}}"
+	"wikimediaantiabuse-desc": "{{desc|name=WikimediaAntiAbuse|url=https://www.mediawiki.org/wiki/Extension:WikimediaAntiAbuse}}",
+	"tag-mw-private-personal-info": "Change tag for edits that likely contain personal information",
+	"tag-mw-private-personal-info-description": "Change tag description for edits that likely contain personal information",
+	"tag-mw-private-personal-info-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that likely contain personal information"
 }
