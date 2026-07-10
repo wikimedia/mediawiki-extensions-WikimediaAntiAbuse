@@ -5,5 +5,8 @@
 	"wikimediaantiabuse-desc": "Anti-abuse features for Wikimedia wikis",
 	"tag-mw-private-personal-info": "Likely contains personal information",
 	"tag-mw-private-personal-info-description": "Edits that were automatically flagged as potentially adding personal information",
-	"tag-mw-private-personal-info-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content"
+	"tag-mw-private-personal-info-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content",
+	"tag-mw-private-personal-info-false-positive": "False positive (personal info)",
+	"tag-mw-private-personal-info-false-positive-description": "Edits that were automatically flagged as adding personal information, but marked as a false positive",
+	"tag-mw-private-personal-info-false-positive-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content"
 }

@@ -18,6 +18,7 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public function onListDefinedTags( &$tags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
 			$tags[] = 'mw-private-personal-info';
+			$tags[] = 'mw-private-personal-info-false-positive';
 		}
 	}
 
@@ -25,6 +26,7 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public function onChangeTagsListActive( &$tags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
 			$tags[] = 'mw-private-personal-info';
+			$tags[] = 'mw-private-personal-info-false-positive';
 		}
 	}
 
@@ -32,6 +34,7 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public function onListRestrictedTags( array &$restrictedTags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
 			$restrictedTags['mw-private-personal-info'] = 'viewsuppressed';
+			$restrictedTags['mw-private-personal-info-false-positive'] = 'viewsuppressed';
 		}
 	}
 

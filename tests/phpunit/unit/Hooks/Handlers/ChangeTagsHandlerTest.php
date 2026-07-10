@@ -33,7 +33,12 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 
 		$restrictedTags = [];
 		$changeTagsHandler->onListRestrictedTags( $restrictedTags );
-		$this->assertSame( $expectedRestrictedTags, $restrictedTags );
+		$this->assertArrayEquals(
+			$expectedRestrictedTags,
+			$restrictedTags,
+			false,
+			true
+		);
 	}
 
 	public static function provideChangeTagRegistration(): array {
@@ -45,8 +50,11 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 			],
 			'Tag enabled' => [
 				'tagEnabled' => true,
-				'expectedDefinedTags' => [ 'mw-private-personal-info' ],
-				'expectedRestrictedTags' => [ 'mw-private-personal-info' => 'viewsuppressed' ],
+				'expectedDefinedTags' => [ 'mw-private-personal-info', 'mw-private-personal-info-false-positive' ],
+				'expectedRestrictedTags' => [
+					'mw-private-personal-info' => 'viewsuppressed',
+					'mw-private-personal-info-false-positive' => 'viewsuppressed',
+				],
 			],
 		];
 	}

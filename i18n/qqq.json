@@ -5,5 +5,8 @@
 	"wikimediaantiabuse-desc": "{{desc|name=WikimediaAntiAbuse|url=https://www.mediawiki.org/wiki/Extension:WikimediaAntiAbuse}}",
 	"tag-mw-private-personal-info": "Change tag for edits that likely contain personal information",
 	"tag-mw-private-personal-info-description": "Change tag description for edits that likely contain personal information",
-	"tag-mw-private-personal-info-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that likely contain personal information"
+	"tag-mw-private-personal-info-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that likely contain personal information",
+	"tag-mw-private-personal-info-false-positive": "Change tag for edits that were manually reviewed and considered a false positive for likely containing personal information",
+	"tag-mw-private-personal-info-false-positive-description": "Change tag description for edits that were manually reviewed and considered a false positive for likely containing personal information",
+	"tag-mw-private-personal-info-false-positive-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that were manually reviewed and considered a false positive for likely containing personal information"
 }
