@@ -4,5 +4,9 @@
 			"AhmedG612"
 		]
 	},
-	"wikimediaantiabuse-desc": "Astaamaha ka hortagga xadgudubka ee wikiyada Wikimedia"
+	"wikimediaantiabuse-desc": "Astaamaha ka hortagga xadgudubka ee wikiyada Wikimedia",
+	"tag-mw-private-personal-info": "Waxay u badan tahay inay ka kooban tahay xog shakhsiyeed",
+	"tag-mw-private-personal-info-description": "Tafatirro si otomaatig ah loogu calaamadeeyay inay suurtagal tahay inay ku darayaan xog shakhsiyeed",
+	"tag-mw-private-personal-info-false-positive": "Calaamadayn khaldan (xog shakhsiyeed)",
+	"tag-mw-private-personal-info-false-positive-description": "Tafatirro si toos ah loogu calaamadeeyay inay ku darayaan xog shakhsiyeed, balse loo aqoonsaday calaamadayn khaldan"
 }

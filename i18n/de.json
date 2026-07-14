@@ -2,5 +2,9 @@
 	"@metadata": {
 		"authors": []
 	},
-	"wikimediaantiabuse-desc": "Missbrauchsschutzfunktionen für Wikimedia-Wikis"
+	"wikimediaantiabuse-desc": "Missbrauchsschutzfunktionen für Wikimedia-Wikis",
+	"tag-mw-private-personal-info": "Enthält wahrscheinlich persönliche Informationen",
+	"tag-mw-private-personal-info-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden",
+	"tag-mw-private-personal-info-false-positive": "Falsch positiv (personenbezogene Daten)",
+	"tag-mw-private-personal-info-false-positive-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden, jedoch als Fehlalarm markiert"
 }
