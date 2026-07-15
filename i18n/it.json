@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"Beta16"
+		]
+	},
+	"tag-mw-private-personal-info": "Probabilmente contiene informazioni personali",
+	"tag-mw-private-personal-info-description": "Modifiche segnalate automaticamente come potenzialmente contenenti informazioni personali",
+	"tag-mw-private-personal-info-false-positive": "Falso positivo (informazioni personali)"
+}

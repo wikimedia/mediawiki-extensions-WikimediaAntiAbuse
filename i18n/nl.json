@@ -1,8 +1,13 @@
 {
 	"@metadata": {
 		"authors": [
-			"McDutchie"
+			"McDutchie",
+			"Siebrand"
 		]
 	},
-	"wikimediaantiabuse-desc": "Antimisbruikfuncties voor Wikimedia-wiki’s"
+	"wikimediaantiabuse-desc": "Antimisbruikfuncties voor Wikimedia-wiki’s",
+	"tag-mw-private-personal-info": "Bevat waarschijnlijk persoonlijke gegevens",
+	"tag-mw-private-personal-info-description": "Bewerkingen die automatisch zijn gemarkeerd als voegen mogelijk persoonlijke gegevens toe",
+	"tag-mw-private-personal-info-false-positive": "Foutpositief (persoonlijke gegevens)",
+	"tag-mw-private-personal-info-false-positive-description": "Bewerkingen die automatisch zijn gemarkeerd als voegen mogelijk persoonlijke gegevens toe, maar zo ten onrechte zijn aangemerkt"
 }

@@ -4,5 +4,9 @@
 			"Toliño"
 		]
 	},
-	"wikimediaantiabuse-desc": "Funcionalidades contra o abuso para os wikis da Wikimedia"
+	"wikimediaantiabuse-desc": "Funcionalidades contra o abuso para os wikis da Wikimedia",
+	"tag-mw-private-personal-info": "Probablemente conteña información persoal",
+	"tag-mw-private-personal-info-description": "Edicións que foron marcadas automaticamente como posibles adicións de información persoal",
+	"tag-mw-private-personal-info-false-positive": "Falso positivo (información persoal)",
+	"tag-mw-private-personal-info-false-positive-description": "Edicións que foron marcadas automaticamente como adición de información persoal, pero marcadas como falso positivo"
 }
