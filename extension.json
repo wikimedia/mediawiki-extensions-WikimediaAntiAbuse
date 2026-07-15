@@ -20,6 +20,18 @@
 		"WikimediaAntiAbuseEnablePersonalInfoTag": {
 			"value": false,
 			"description": "Enables the mw-private-personal-info tag."
+		},
+		"WikimediaAntiAbuseCoPEModelConfig": {
+			"value": {
+				"url": "",
+				"host": "",
+				"timeout": ""
+			},
+			"description": "Configuration for the CoPE model used for content policy evaluation. Needs to be filled out with the appropriate URL and host. The timeout is optional and when non-empty will be used as the timeout for requests to the CoPE model."
+		},
+		"WikimediaAntiAbuseDeveloperMode": {
+			"value": false,
+			"description": "If developer mode is enabled. This should be set to false in production. Developer mode can affect whether e.g. SSL certification validation is enabled in HTTP requests"
 		}
 	},
 	"HookHandlers": {
@@ -41,5 +53,8 @@
 	"TestAutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
 	},
+	"ServiceWiringFiles": [
+		"includes/ServiceWiring.php"
+	],
 	"manifest_version": 2
 }
