@@ -32,6 +32,10 @@
 		"WikimediaAntiAbuseDeveloperMode": {
 			"value": false,
 			"description": "If developer mode is enabled. This should be set to false in production. Developer mode can affect whether e.g. SSL certification validation is enabled in HTTP requests"
+		},
+		"WikimediaAntiAbuseEnableModelChecks": {
+			"value": false,
+			"description": "Enables the revision model-check pipeline."
 		}
 	},
 	"HookHandlers": {
@@ -40,12 +44,35 @@
 			"services": [
 				"MainConfig"
 			]
+		},
+		"PageSaveCompleteHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\PageSaveCompleteHandler",
+			"services": [
+				"MainConfig",
+				"JobQueueGroup",
+				"ConnectionProvider"
+			]
 		}
 	},
 	"Hooks": {
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",
-		"ListRestrictedTags": "ChangeTagsHandler"
+		"ListRestrictedTags": "ChangeTagsHandler",
+		"PageSaveComplete": "PageSaveCompleteHandler"
+	},
+	"JobClasses": {
+		"wikimediaAntiAbuseCheckRevision": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Jobs\\CheckRevisionJob",
+			"services": [
+				"MainConfig",
+				"RevisionLookup",
+				"WikimediaAntiAbuseHookRunner",
+				"WikimediaAntiAbuseContentPolicyEvaluator",
+				"ChangeTagsStore",
+				"WikimediaAntiAbuseLogger"
+			],
+			"needsPage": false
+		}
 	},
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/",

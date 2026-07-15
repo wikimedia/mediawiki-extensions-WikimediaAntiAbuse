@@ -23,7 +23,7 @@ class HookRunnerTest extends HookRunnerTestBase {
 	protected function getMockedParamValue( ReflectionParameter $param ) {
 		if ( (string)$param->getType() === ModelToRun::class ) {
 			// Readonly DTO, construct it instead of mocking.
-			return new ModelToRun( 'model', 'policy' );
+			return new ModelToRun( 'model', 'policy', 'content' );
 		}
 
 		return parent::getMockedParamValue( $param );

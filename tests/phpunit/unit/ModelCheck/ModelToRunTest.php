@@ -13,9 +13,10 @@ use MediaWikiUnitTestCase;
 class ModelToRunTest extends MediaWikiUnitTestCase {
 
 	public function testGetters(): void {
-		$modelToRun = new ModelToRun( 'test-model', 'Test policy text' );
+		$modelToRun = new ModelToRun( 'test-model', 'Test policy text', 'test content' );
 
 		$this->assertSame( 'test-model', $modelToRun->getModelName() );
 		$this->assertSame( 'Test policy text', $modelToRun->getPolicyText() );
+		$this->assertSame( 'test content', $modelToRun->getContent() );
 	}
 }
