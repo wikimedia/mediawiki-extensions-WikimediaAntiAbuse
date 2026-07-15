@@ -48,7 +48,8 @@
 		"ListRestrictedTags": "ChangeTagsHandler"
 	},
 	"AutoloadNamespaces": {
-		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/"
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/",
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Maintenance\\": "maintenance/"
 	},
 	"TestAutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
