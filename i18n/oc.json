@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": [
+			"COMISSIONTOPOC"
+		]
+	},
+	"tag-mw-private-personal-info": "Contèn probablament d'informacions personalas",
+	"tag-mw-private-personal-info-false-positive": "Faus positiu (informacions personalas)",
+	"tag-mw-private-personal-info-false-positive-description": "Modificacions qu'èran automaticament marcadas per apondon d'informacions personalas, mai marcadas per error"
+}
