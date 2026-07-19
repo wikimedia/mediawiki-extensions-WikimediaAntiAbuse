@@ -5,6 +5,7 @@ declare( strict_types=1 );
 use MediaWiki\Config\ServiceOptions;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
 
@@ -33,5 +34,12 @@ return [
 	) => new HookRunner( $services->getHookContainer() ),
 
 	'WikimediaAntiAbuseLogger' => static fn () => LoggerFactory::getInstance( 'WikimediaAntiAbuse' ),
+
+	'WikimediaAntiAbuseRevisionSnippetGenerator' => static fn (
+		MediaWikiServices $services
+	) => new RevisionSnippetGenerator(
+		$services->getRevisionLookup(),
+		$services->getTitleFormatter()
+	),
 ];
 // @codeCoverageIgnoreEnd
