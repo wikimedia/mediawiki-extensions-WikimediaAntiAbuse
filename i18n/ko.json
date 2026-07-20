@@ -4,5 +4,9 @@
 			"Tensama0415"
 		]
 	},
-	"wikimediaantiabuse-desc": "위키미디어 위키에 대한 남용 방지 기능"
+	"wikimediaantiabuse-desc": "위키미디어 위키에 대한 남용 방지 기능",
+	"tag-mw-private-personal-info": "개인 정보가 포함되어 있을 가능성이 높음",
+	"tag-mw-private-personal-info-description": "개인 정보 추가 가능성이 있는 것으로 자동 표시된 편집 내용",
+	"tag-mw-private-personal-info-false-positive": "오진 (개인 정보)",
+	"tag-mw-private-personal-info-false-positive-description": "개인 정보 추가로 자동 플래그가 지정되었지만 오진으로 표시된 편집 내역"
 }

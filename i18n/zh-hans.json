@@ -1,0 +1,12 @@
+{
+	"@metadata": {
+		"authors": [
+			"GuoPC"
+		]
+	},
+	"wikimediaantiabuse-desc": "用于维基媒体wiki的防滥用功能",
+	"tag-mw-private-personal-info": "可能包含个人信息",
+	"tag-mw-private-personal-info-description": "被自动标记为可能添加个人信息的编辑",
+	"tag-mw-private-personal-info-false-positive": "误报（个人信息）",
+	"tag-mw-private-personal-info-false-positive-description": "被自动标记为添加个人信息的编辑，但被判定为误报"
+}
