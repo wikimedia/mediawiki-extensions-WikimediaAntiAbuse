@@ -95,6 +95,31 @@ class RevisionSnippetGeneratorTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	public function testGetUnifiedDiffForEmptyDiff(): void {
+		$testPage = $this->getNonexistingTestPage();
+		$editStatus = $this->editPage( $testPage, 'Test' );
+		$this->assertStatusGood( $editStatus );
+		$parentRevision = $editStatus->getNewRevision();
+
+		// Protecting a page should add a revision with no change in content,
+		// making it possible to test when there is an empty diff
+		$cascade = false;
+		$testPage->doUpdateRestrictions(
+			[ 'edit' => 'autoconfirmed' ],
+			[ 'edit' => 'infinity' ],
+			$cascade,
+			'Test',
+			$this->getTestUser()->getUserIdentity()
+		);
+
+		$testPage->clear();
+		$latestRevision = $testPage->getRevisionRecord();
+		$this->assertNotNull( $latestRevision );
+		$this->assertNotSame( $latestRevision->getId(), $parentRevision->getId() );
+
+		$this->assertSame( '', $this->getGenerator()->getUnifiedDiff( $latestRevision ) );
+	}
+
 	public function testParentLookupFallsBackToPrimary(): void {
 		$revisionRecord = $this->makeRevision( [ 'Old line.', 'New line.' ] );
 
