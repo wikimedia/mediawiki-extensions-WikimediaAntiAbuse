@@ -61,6 +61,15 @@
 				"ConnectionProvider"
 			]
 		},
+		"NotificationPreferencesHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\NotificationPreferencesHandler",
+			"services": [
+				"MainConfig",
+				"ChangeTagsStore",
+				"WikimediaAntiAbuseLogger",
+				"ExtensionRegistry"
+			]
+		},
 		"EchoHooksHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
 			"services": [
@@ -73,6 +82,7 @@
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
+		"GetPreferences": "NotificationPreferencesHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler"
 	},
