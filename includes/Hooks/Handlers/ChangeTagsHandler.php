@@ -33,8 +33,8 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	/** @inheritDoc */
 	public function onListRestrictedTags( array &$restrictedTags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
-			$restrictedTags['mw-private-personal-info'] = 'viewsuppressed';
-			$restrictedTags['mw-private-personal-info-false-positive'] = 'viewsuppressed';
+			$restrictedTags['mw-private-personal-info'] = [ 'viewsuppressed', 'suppressrevision' ];
+			$restrictedTags['mw-private-personal-info-false-positive'] = [ 'viewsuppressed', 'suppressrevision' ];
 		}
 	}
 
