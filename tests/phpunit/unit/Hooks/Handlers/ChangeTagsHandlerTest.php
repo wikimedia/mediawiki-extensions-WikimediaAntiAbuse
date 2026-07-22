@@ -52,8 +52,8 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 				'tagEnabled' => true,
 				'expectedDefinedTags' => [ 'mw-private-personal-info', 'mw-private-personal-info-false-positive' ],
 				'expectedRestrictedTags' => [
-					'mw-private-personal-info' => 'viewsuppressed',
-					'mw-private-personal-info-false-positive' => 'viewsuppressed',
+					'mw-private-personal-info' => [ 'viewsuppressed', 'suppressrevision' ],
+					'mw-private-personal-info-false-positive' => [ 'viewsuppressed', 'suppressrevision' ],
 				],
 			],
 		];
