@@ -71,6 +71,14 @@
 				"ExtensionRegistry"
 			]
 		},
+		"RevisionVisibilityHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler::factory",
+			"services": [
+				"MainConfig",
+				"ExtensionRegistry"
+			]
+		},
 		"EchoHooksHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
 			"services": [
@@ -84,6 +92,7 @@
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
 		"GetPreferences": "NotificationPreferencesHandler",
+		"ArticleRevisionVisibilitySet": "RevisionVisibilityHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler"
 	},
