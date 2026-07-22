@@ -19,5 +19,10 @@
 	"tag-mw-private-personal-info-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that likely contain personal information",
 	"tag-mw-private-personal-info-false-positive": "Change tag for edits that were manually reviewed and considered a false positive for likely containing personal information",
 	"tag-mw-private-personal-info-false-positive-description": "Change tag description for edits that were manually reviewed and considered a false positive for likely containing personal information",
-	"tag-mw-private-personal-info-false-positive-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that were manually reviewed and considered a false positive for likely containing personal information"
+	"tag-mw-private-personal-info-false-positive-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that were manually reviewed and considered a false positive for likely containing personal information",
+	"echo-category-title-personal-info": "{{doc-echo-category-title|tooltip=Echo-pref-tooltip-personal-info}}",
+	"echo-pref-tooltip-personal-info": "{{doc-echo-pref-tooltip|title=Echo-category-title-personal-info}}",
+	"notification-header-personal-info-flagged": "Notification header shown when a single edit is flagged as likely containing personal information.\n\nParameters:\n* $1 - the title of the page that was edited",
+	"notification-bundle-header-personal-info-flagged": "Notification header shown when several personal-information flags are bundled together.\n\nParameters:\n* $1 - the number of flagged edits",
+	"notification-link-text-personal-info-flagged": "Label for the notification's primary link, which points to the list of flagged edits on [[Special:RecentChanges]]."
 }

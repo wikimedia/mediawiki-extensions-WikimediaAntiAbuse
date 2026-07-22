@@ -11,30 +11,33 @@ use MediaWiki\Config\Config;
 
 class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, ChangeTagsListActiveHook {
 
+	public const string PERSONAL_INFO_TAG = 'mw-private-personal-info';
+	public const string PERSONAL_INFO_FALSE_POSITIVE_TAG = 'mw-private-personal-info-false-positive';
+
 	public function __construct( private readonly Config $config ) {
 	}
 
 	/** @inheritDoc */
 	public function onListDefinedTags( &$tags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
-			$tags[] = 'mw-private-personal-info';
-			$tags[] = 'mw-private-personal-info-false-positive';
+			$tags[] = self::PERSONAL_INFO_TAG;
+			$tags[] = self::PERSONAL_INFO_FALSE_POSITIVE_TAG;
 		}
 	}
 
 	/** @inheritDoc */
 	public function onChangeTagsListActive( &$tags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
-			$tags[] = 'mw-private-personal-info';
-			$tags[] = 'mw-private-personal-info-false-positive';
+			$tags[] = self::PERSONAL_INFO_TAG;
+			$tags[] = self::PERSONAL_INFO_FALSE_POSITIVE_TAG;
 		}
 	}
 
 	/** @inheritDoc */
 	public function onListRestrictedTags( array &$restrictedTags ): void {
 		if ( $this->isPersonalInfoTagEnabled() ) {
-			$restrictedTags['mw-private-personal-info'] = [ 'viewsuppressed', 'suppressrevision' ];
-			$restrictedTags['mw-private-personal-info-false-positive'] = [ 'viewsuppressed', 'suppressrevision' ];
+			$restrictedTags[self::PERSONAL_INFO_TAG] = [ 'viewsuppressed', 'suppressrevision' ];
+			$restrictedTags[self::PERSONAL_INFO_FALSE_POSITIVE_TAG] = [ 'viewsuppressed', 'suppressrevision' ];
 		}
 	}
 

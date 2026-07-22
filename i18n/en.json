@@ -19,5 +19,10 @@
 	"tag-mw-private-personal-info-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content",
 	"tag-mw-private-personal-info-false-positive": "False positive (personal info)",
 	"tag-mw-private-personal-info-false-positive-description": "Edits that were automatically flagged as adding personal information, but marked as a false positive",
-	"tag-mw-private-personal-info-false-positive-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content"
+	"tag-mw-private-personal-info-false-positive-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content",
+	"echo-category-title-personal-info": "Flagged as likely personal information",
+	"echo-pref-tooltip-personal-info": "Notify me when an edit is flagged as likely containing personal information.",
+	"notification-header-personal-info-flagged": "An edit to <strong>$1</strong> may contain personal information.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edit|edits}} may contain personal information.",
+	"notification-link-text-personal-info-flagged": "View flagged edits"
 }

@@ -16,10 +16,18 @@
 			"i18n"
 		]
 	},
+	"DefaultUserOptions": {
+		"echo-subscriptions-web-personal-info": false,
+		"echo-subscriptions-email-personal-info": false
+	},
 	"config": {
 		"WikimediaAntiAbuseEnablePersonalInfoTag": {
 			"value": false,
 			"description": "Enables the mw-private-personal-info tag."
+		},
+		"WikimediaAntiAbuseEnablePersonalInfoFlagNotifications": {
+			"value": false,
+			"description": "Enables Echo notifications, sent to opted-in users with the viewsuppressed or suppressrevision right, when the mw-private-personal-info tag is applied to a revision. Requires the Echo extension."
 		},
 		"WikimediaAntiAbuseCoPEModelConfig": {
 			"value": {
@@ -52,13 +60,21 @@
 				"JobQueueGroup",
 				"ConnectionProvider"
 			]
+		},
+		"EchoHooksHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
+			"services": [
+				"MainConfig"
+			]
 		}
 	},
 	"Hooks": {
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
-		"PageSaveComplete": "PageSaveCompleteHandler"
+		"PageSaveComplete": "PageSaveCompleteHandler",
+		"BeforeCreateEchoEvent": "EchoHooksHandler",
+		"EchoGetBundleRules": "EchoHooksHandler"
 	},
 	"SpecialPages": {
 		"AbuseReview": {
@@ -84,6 +100,7 @@
 				"WikimediaAntiAbuseHookRunner",
 				"WikimediaAntiAbuseContentPolicyEvaluator",
 				"ChangeTagsStore",
+				"WikimediaAntiAbusePersonalInfoFlagNotifier",
 				"WikimediaAntiAbuseLogger"
 			],
 			"needsPage": false

@@ -4,11 +4,13 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Jobs;
 
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Jobs\CheckRevisionJob;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ActionsToTake;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\CoPEModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\IModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
@@ -48,6 +50,37 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$this->assertTrue( $this->newJob( $revisionId, $evaluator )->run() );
 		$this->assertRevisionTags( [ 'test-tag-name' ], $revisionId,
 			'The tag registered by the model-result hook should be applied to the revision' );
+	}
+
+	public function testNotifiesWhenPersonalInfoTagApplied(): void {
+		$revisionId = $this->createRevisionId();
+
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+		$this->setModelToRunHook();
+		$this->setTemporaryHook(
+			'WikimediaAntiAbuseModelResult',
+			static function (
+				ModelToRun $modelToRun,
+				RevisionRecord $revisionRecord,
+				IModelResponse $response,
+				ActionsToTake $actionsToTake
+			): void {
+				$actionsToTake->addTags( [ ChangeTagsHandler::PERSONAL_INFO_TAG ] );
+			}
+		);
+
+		$notifier = $this->createMock( PersonalInfoFlagNotifier::class );
+		$notifier->expects( $this->once() )
+			->method( 'notify' )
+			->with( $this->callback(
+				static fn ( RevisionRecord $revision ): bool => $revision->getId() === $revisionId
+			) );
+
+		$evaluator = $this->newEvaluatorReturning( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
+
+		$this->assertTrue( $this->newJob( $revisionId, $evaluator, null, $notifier )->run() );
+		$this->assertRevisionTags( [ ChangeTagsHandler::PERSONAL_INFO_TAG ], $revisionId,
+			'The personal-info tag registered by the model-result hook should be applied' );
 	}
 
 	public function testNullResponseSkipsModelResultHook(): void {
@@ -307,7 +340,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 	private function newJob(
 		int $revisionId,
 		ContentPolicyEvaluator $evaluator,
-		?RevisionLookup $revisionLookup = null
+		?RevisionLookup $revisionLookup = null,
+		?PersonalInfoFlagNotifier $notifier = null
 	): CheckRevisionJob {
 		$services = $this->getServiceContainer();
 
@@ -318,6 +352,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			$services->get( 'WikimediaAntiAbuseHookRunner' ),
 			$evaluator,
 			$services->getChangeTagsStore(),
+			$notifier ?? $services->get( 'WikimediaAntiAbusePersonalInfoFlagNotifier' ),
 			new NullLogger()
 		);
 	}
