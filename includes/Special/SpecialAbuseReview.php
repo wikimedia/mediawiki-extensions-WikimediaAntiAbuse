@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special;
 use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\HTMLForm\HTMLForm;
 use MediaWiki\Message\Message;
@@ -18,13 +19,6 @@ use MediaWiki\User\User;
 use MediaWiki\User\UserEditTracker;
 
 class SpecialAbuseReview extends FormSpecialPage {
-
-	/**
-	 * Maps each tag that flags a revision for review to the tag that marks it as a false positive.
-	 */
-	public const array ABUSE_REVIEW_TAGS = [
-		'mw-private-personal-info' => 'mw-private-personal-info-false-positive',
-	];
 
 	private array $tagsFilter;
 	private bool $includeRevisionsWithSuppressedText;
@@ -68,14 +62,14 @@ class SpecialAbuseReview extends FormSpecialPage {
 	/** @inheritDoc */
 	public function onSubmit( array $data ) {
 		$this->tagsFilter = $this->changeTagsStore->filterViewableTags(
-			array_keys( self::ABUSE_REVIEW_TAGS ),
+			array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
 			$this->getAuthority()
 		);
 		if ( $data['ShowFalsePositives'] ) {
 			$this->tagsFilter = array_merge(
 				$this->tagsFilter,
 				$this->changeTagsStore->filterViewableTags(
-					array_values( self::ABUSE_REVIEW_TAGS ),
+					array_values( ChangeTagsHandler::REVIEWABLE_TAGS ),
 					$this->getAuthority()
 				)
 			);
@@ -143,7 +137,10 @@ class SpecialAbuseReview extends FormSpecialPage {
 	 */
 	public function userCanExecute( User $user ): bool {
 		return count( $this->changeTagsStore->filterViewableTags(
-			array_merge( array_keys( self::ABUSE_REVIEW_TAGS ), array_values( self::ABUSE_REVIEW_TAGS ) ),
+			array_merge(
+				array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
+				array_values( ChangeTagsHandler::REVIEWABLE_TAGS )
+			),
 			$user
 		) ) > 0;
 	}

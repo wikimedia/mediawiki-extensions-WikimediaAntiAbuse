@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Context\IContextSource;
-use MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Html\Html;
 use MediaWiki\Linker\Linker;
 use MediaWiki\Linker\LinkRenderer;
@@ -85,8 +85,8 @@ class AbuseReviewPager extends CodexTablePager {
 					array_intersect(
 						explode( ',', $value ),
 						array_merge(
-							array_values( SpecialAbuseReview::ABUSE_REVIEW_TAGS ),
-							array_keys( SpecialAbuseReview::ABUSE_REVIEW_TAGS )
+							array_values( ChangeTagsHandler::REVIEWABLE_TAGS ),
+							array_keys( ChangeTagsHandler::REVIEWABLE_TAGS )
 						)
 					)
 				) );

@@ -6,7 +6,7 @@
 		"test:lint": "npm run test:lint:js && npm run test:lint:styles && npm run test:lint:i18n",
 		"test:lint:js": "eslint --cache .",
 		"test:lint:styles": "stylelint --cache --allow-empty-input \"**/*.{css,less}\"",
-		"test:lint:i18n": "banana-checker i18n/",
+		"test:lint:i18n": "banana-checker i18n/ i18n/api/",
 		"fix": "npm run fix:js && npm run fix:styles",
 		"fix:js": "eslint --cache --fix .",
 		"fix:styles": "stylelint --cache --allow-empty-input --fix \"**/*.{css,less}\""

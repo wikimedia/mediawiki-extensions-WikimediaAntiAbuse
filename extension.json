@@ -13,7 +13,8 @@
 	},
 	"MessagesDirs": {
 		"WikimediaAntiAbuse": [
-			"i18n"
+			"i18n",
+			"i18n/api"
 		]
 	},
 	"DefaultUserOptions": {
@@ -116,6 +117,30 @@
 			"needsPage": false
 		}
 	},
+	"RestRoutes": [
+		{
+			"method": "POST",
+			"path": "/wikimediaantiabuse/v0/mark/revision/{revision}/{tag}/false-positive",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkFalsePositiveHandler",
+			"services": [
+				"WikimediaAntiAbuseFalsePositiveTagService"
+			],
+			"openApiSpec": {
+				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-mark-description"
+			}
+		},
+		{
+			"method": "POST",
+			"path": "/wikimediaantiabuse/v0/unmark/revision/{revision}/{tag}/false-positive",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkFalsePositiveHandler",
+			"services": [
+				"WikimediaAntiAbuseFalsePositiveTagService"
+			],
+			"openApiSpec": {
+				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-unmark-description"
+			}
+		}
+	],
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/",
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Maintenance\\": "maintenance/"
