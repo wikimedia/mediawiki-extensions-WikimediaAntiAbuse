@@ -4,12 +4,18 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Special;
 
+use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\HTMLForm\HTMLForm;
 use MediaWiki\Message\Message;
+use MediaWiki\Page\LinkBatchFactory;
+use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Revision\RevisionStore;
 use MediaWiki\SpecialPage\FormSpecialPage;
 use MediaWiki\User\User;
+use MediaWiki\User\UserEditTracker;
 
 class SpecialAbuseReview extends FormSpecialPage {
 
@@ -20,8 +26,15 @@ class SpecialAbuseReview extends FormSpecialPage {
 		'mw-private-personal-info' => 'mw-private-personal-info-false-positive',
 	];
 
+	private array $tagsFilter;
+	private bool $includeRevisionsWithSuppressedText;
+
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly ChangeTagsFormatter $changeTagsFormatter,
+		private readonly RevisionStore $revisionStore,
+		private readonly UserEditTracker $userEditTracker,
+		private readonly LinkBatchFactory $linkBatchFactory,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -54,7 +67,40 @@ class SpecialAbuseReview extends FormSpecialPage {
 
 	/** @inheritDoc */
 	public function onSubmit( array $data ) {
+		$this->tagsFilter = $this->changeTagsStore->filterViewableTags(
+			array_keys( self::ABUSE_REVIEW_TAGS ),
+			$this->getAuthority()
+		);
+		if ( $data['ShowFalsePositives'] ) {
+			$this->tagsFilter = array_merge(
+				$this->tagsFilter,
+				$this->changeTagsStore->filterViewableTags(
+					array_values( self::ABUSE_REVIEW_TAGS ),
+					$this->getAuthority()
+				)
+			);
+		}
+		$this->includeRevisionsWithSuppressedText = $data['ShowHandledRevisions'];
+
 		return true;
+	}
+
+	public function onSuccess(): void {
+		$pager = new AbuseReviewPager(
+			$this->getContext(),
+			$this->getLinkRenderer(),
+			$this->changeTagsStore,
+			$this->changeTagsFormatter,
+			$this->revisionStore,
+			$this->userEditTracker,
+			$this->linkBatchFactory,
+			$this->tagsFilter,
+			$this->includeRevisionsWithSuppressedText
+		);
+		$this->getOutput()->addParserOutputContent(
+			$pager->getFullOutput(),
+			ParserOptions::newFromContext( $this->getContext() )
+		);
 	}
 
 	/** @inheritDoc */

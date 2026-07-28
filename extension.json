@@ -64,7 +64,11 @@
 		"AbuseReview": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
 			"services": [
-				"ChangeTagsStore"
+				"ChangeTagsStore",
+				"ChangeTagsFormatter",
+				"RevisionStore",
+				"UserEditTracker",
+				"LinkBatchFactory"
 			]
 		}
 	},
@@ -91,6 +95,9 @@
 	},
 	"TestAutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
+	},
+	"TestAutoloadClasses": {
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\Integration\\Special\\SpecialAbuseReviewTestBase": "tests/phpunit/integration/Special/SpecialAbuseReviewTestBase.php"
 	},
 	"ServiceWiringFiles": [
 		"includes/ServiceWiring.php"

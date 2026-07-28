@@ -5,19 +5,13 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Exception\ErrorPageError;
-use MediaWiki\Tests\Specials\SpecialPageTestBase;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
  * @group Database
  */
-class SpecialAbuseReviewTest extends SpecialPageTestBase {
-
-	protected function setUp(): void {
-		parent::setUp();
-
-		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', true );
-	}
+class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 
 	public function testViewWhenCannotSeeAnyAbuseTag(): void {
 		$this->expectException( ErrorPageError::class );
@@ -25,7 +19,7 @@ class SpecialAbuseReviewTest extends SpecialPageTestBase {
 		$this->executeSpecialPage();
 	}
 
-	public function testViewWhenUserCanSeeAbuseTags(): void {
+	public function testViewWhenNoRevisionsPresent(): void {
 		$testUser = $this->getTestUser( [ 'suppress' ] )->getUser();
 		[ $html ] = $this->executeSpecialPage( '', null, null, $testUser );
 
@@ -35,23 +29,14 @@ class SpecialAbuseReviewTest extends SpecialPageTestBase {
 			$specialPageSummaryHtml
 		);
 
-		$filterFormHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-htmlform' );
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-show-false-positives)',
-			$filterFormHtml
+		$this->verifyFilterForm( $html );
+
+		$tablePagerHtml = $this->commonVerifyTablePager( $html );
+		$tablePagerEmptyContentHtml = $this->assertSelectorMatchesOneElement(
+			$tablePagerHtml,
+			'.cdx-table__table__empty-state'
 		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-show-handled-revisions)',
-			$filterFormHtml
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-filter-submit)',
-			$filterFormHtml
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-filter-legend)',
-			$filterFormHtml
-		);
+		$this->assertStringContainsString( '(table_pager_empty)', $tablePagerEmptyContentHtml );
 	}
 
 	/** @inheritDoc */
