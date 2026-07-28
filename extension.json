@@ -60,6 +60,17 @@
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler"
 	},
+	"SpecialPages": {
+		"AbuseReview": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
+			"services": [
+				"ChangeTagsStore"
+			]
+		}
+	},
+	"ExtensionMessagesFiles": {
+		"WikimediaAntiAbuseAliases": "WikimediaAntiAbuse.alias.php"
+	},
 	"JobClasses": {
 		"wikimediaAntiAbuseCheckRevision": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Jobs\\CheckRevisionJob",
