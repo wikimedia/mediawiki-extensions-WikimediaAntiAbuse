@@ -84,6 +84,17 @@
 			"services": [
 				"MainConfig"
 			]
+		},
+		"UserRightsNotificationHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\UserRightsNotificationHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\UserRightsNotificationHandler::factory",
+			"services": [
+				"MainConfig",
+				"ChangeTagsStore",
+				"UserFactory",
+				"ConnectionProvider",
+				"ExtensionRegistry"
+			]
 		}
 	},
 	"Hooks": {
@@ -94,7 +105,8 @@
 		"GetPreferences": "NotificationPreferencesHandler",
 		"ArticleRevisionVisibilitySet": "RevisionVisibilityHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
-		"EchoGetBundleRules": "EchoHooksHandler"
+		"EchoGetBundleRules": "EchoHooksHandler",
+		"UserGroupsChanged": "UserRightsNotificationHandler"
 	},
 	"SpecialPages": {
 		"AbuseReview": {
