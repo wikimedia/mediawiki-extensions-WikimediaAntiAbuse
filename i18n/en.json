@@ -22,6 +22,7 @@
 	"tag-mw-private-personal-info-false-positive-helppage": ":mw:Special:MyLanguage/Product_Safety_and_Integrity/Detecting_abusive_content",
 	"echo-category-title-personal-info": "Flagged as likely personal information",
 	"echo-pref-tooltip-personal-info": "Notify me when an edit is flagged as likely containing personal information.",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Learn more about this notification]]",
 	"notification-header-personal-info-flagged": "An edit to <strong>$1</strong> may contain personal information.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edit|edits}} may contain personal information.",
 	"notification-link-text-personal-info-flagged": "View flagged edits"

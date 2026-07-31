@@ -64,6 +64,7 @@
 		},
 		"NotificationPreferencesHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\NotificationPreferencesHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\NotificationPreferencesHandler::factory",
 			"services": [
 				"MainConfig",
 				"ChangeTagsStore",

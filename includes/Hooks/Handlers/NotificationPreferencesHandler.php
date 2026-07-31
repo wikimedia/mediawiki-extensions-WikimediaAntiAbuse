@@ -6,7 +6,10 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Config\Config;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
+use MediaWiki\Html\Html;
+use MediaWiki\Language\MessageLocalizer;
 use MediaWiki\Preferences\Hook\GetPreferencesHook;
 use MediaWiki\Registration\ExtensionRegistry;
 use Psr\Log\LoggerInterface;
@@ -18,7 +21,19 @@ class NotificationPreferencesHandler implements GetPreferencesHook {
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly LoggerInterface $logger,
 		private readonly ExtensionRegistry $extensionRegistry,
+		private readonly MessageLocalizer $messageLocalizer,
 	) {
+	}
+
+	public static function factory(
+		Config $config,
+		ChangeTagsStore $changeTagsStore,
+		LoggerInterface $logger,
+		ExtensionRegistry $extensionRegistry
+	): self {
+		// The preferences form is rendered in the viewing user's interface language; the main
+		// request context is the localizer for it.
+		return new self( $config, $changeTagsStore, $logger, $extensionRegistry, RequestContext::getMain() );
 	}
 
 	/**
@@ -32,6 +47,9 @@ class NotificationPreferencesHandler implements GetPreferencesHook {
 		if ( $this->config->get( 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' )
 			&& $this->changeTagsStore->canViewTag( ChangeTagsHandler::PERSONAL_INFO_TAG, $user )
 		) {
+			// The recipient may view the tag, so they keep the opt-in row. Point its tooltip at a
+			// help page so someone discovering the category can learn what the notification is.
+			$this->addTooltipHelpLink( $preferences );
 			return;
 		}
 
@@ -71,5 +89,36 @@ class NotificationPreferencesHandler implements GetPreferencesHook {
 				) );
 			}
 		}
+	}
+
+	/**
+	 * Replace the plain-text tooltip Echo set for the personal-info row with an HTML tooltip that
+	 * appends a help link. The plain tooltip renders only as a title attribute, so a link needs the
+	 * 'tooltips-html' variant, which HTMLCheckMatrix shows as a clickable help popup.
+	 */
+	private function addTooltipHelpLink( array &$preferences ): void {
+		if ( !isset( $preferences['echo-subscriptions']['rows'] ) ) {
+			return;
+		}
+
+		$categoryRowLabel = array_search(
+			PersonalInfoFlagNotifier::CATEGORY,
+			$preferences['echo-subscriptions']['rows'],
+			true
+		);
+		if ( $categoryRowLabel === false ) {
+			return;
+		}
+
+		$tooltipText = $preferences['echo-subscriptions']['tooltips'][$categoryRowLabel]
+			?? $this->messageLocalizer->msg( 'echo-pref-tooltip-' . PersonalInfoFlagNotifier::CATEGORY )->text();
+		// CheckMatrixWidget's JS gives a plain 'tooltips' entry precedence over 'tooltips-html' (unlike
+		// the PHP), so drop the plain entry to let the HTML tooltip render after client-side infusion.
+		unset( $preferences['echo-subscriptions']['tooltips'][$categoryRowLabel] );
+		$preferences['echo-subscriptions']['tooltips-html'][$categoryRowLabel] =
+			Html::element( 'p', [], $tooltipText )
+			. $this->messageLocalizer->msg(
+				'echo-pref-tooltip-' . PersonalInfoFlagNotifier::CATEGORY . '-learn-more'
+			)->parse();
 	}
 }
