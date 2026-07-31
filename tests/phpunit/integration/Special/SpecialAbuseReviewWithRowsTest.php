@@ -112,6 +112,61 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					$tagsCellHtml
 				);
 			}
+
+			// Both tag-description variants are rendered so the visible one can switch client-side
+			// when the row is marked or unmarked.
+			$this->assertStringContainsString(
+				'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
+				$tagsCellHtml
+			);
+			$this->assertStringContainsString(
+				'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
+				$tagsCellHtml
+			);
+
+			// The tag variant not matching the row's current state starts hidden.
+			$isFalsePositiveRow = $actualRevId === static::$falsePositiveRevId;
+			$notFpTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
+				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--not-false-positive'
+			), 'class' );
+			$fpTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
+				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--false-positive'
+			), 'class' );
+			$this->assertSame(
+				$isFalsePositiveRow,
+				str_contains( $notFpTagClass, 'mw-wikimediaantiabuse-hidden' )
+			);
+			$this->assertSame(
+				!$isFalsePositiveRow,
+				str_contains( $fpTagClass, 'mw-wikimediaantiabuse-hidden' )
+			);
+
+			$actionsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.cdx-table-pager__col--actions',
+				true
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
+				$actionsCellHtml
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)',
+				$actionsCellHtml
+			);
+			// The controls the click binding and show/hide CSS depend on.
+			$markButton = DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-mark-button' );
+			$unmarkButton = DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-unmark-button' );
+			$this->assertNotNull( $markButton, 'mark button is present' );
+			$this->assertNotNull( $unmarkButton, 'unmark button is present' );
+			$this->assertSame(
+				(string)$actualRevId,
+				DOMCompat::getAttribute( $markButton, 'data-rev-id' )
+			);
+			$this->assertSame(
+				'mw-private-personal-info',
+				DOMCompat::getAttribute( $markButton, 'data-abuse-review-tag' )
+			);
 		}
 
 		$notTaggedContentRevIdElement = DOMCompat::querySelector(

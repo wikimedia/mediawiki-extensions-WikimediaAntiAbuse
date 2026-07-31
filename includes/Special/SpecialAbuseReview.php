@@ -37,6 +37,8 @@ class SpecialAbuseReview extends FormSpecialPage {
 	public function execute( $par ): void {
 		parent::execute( $par );
 		$this->addHelpLink( 'Extension:WikimediaAntiAbuse' );
+		$this->getOutput()->addModuleStyles( 'ext.wikimediaAntiAbuse.styles' );
+		$this->getOutput()->addModules( 'ext.wikimediaAntiAbuse' );
 	}
 
 	/** @inheritDoc */

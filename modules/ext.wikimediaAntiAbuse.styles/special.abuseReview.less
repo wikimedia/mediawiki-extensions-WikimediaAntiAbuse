@@ -1,0 +1,12 @@
+@import 'mediawiki.skin.variables.less';
+
+.mw-wikimediaantiabuse-abuse-review-actions {
+	display: flex;
+	gap: @spacing-25;
+}
+
+// Scoped under the row so the two-class selector out-specifies Codex's own
+// `.cdx-button { display: inline-flex }` without needing !important.
+.mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-hidden {
+	display: none;
+}

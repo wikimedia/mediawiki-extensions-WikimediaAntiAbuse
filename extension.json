@@ -121,6 +121,49 @@
 			]
 		}
 	},
+	"ResourceModules": {
+		"ext.wikimediaAntiAbuse.styles": {
+			"localBasePath": "modules/ext.wikimediaAntiAbuse.styles",
+			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse.styles",
+			"styles": [
+				"special.abuseReview.less"
+			]
+		},
+		"ext.wikimediaAntiAbuse": {
+			"localBasePath": "modules/ext.wikimediaAntiAbuse",
+			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
+			"packageFiles": [
+				"dispatcher.js",
+				"rest.js",
+				"SpecialAbuseReview.js",
+				"utils.js"
+			],
+			"dependencies": [
+				"mediawiki.api"
+			],
+			"messages": [
+				"wikimediaantiabuse-special-abuse-review-action-error"
+			]
+		}
+	},
+	"QUnitTestModule": {
+		"localBasePath": "",
+		"remoteExtPath": "WikimediaAntiAbuse",
+		"packageFiles": [
+			"tests/qunit/index.js",
+			"tests/qunit/rest.test.js",
+			"tests/qunit/utils.test.js",
+			"modules/ext.wikimediaAntiAbuse/rest.js",
+			"modules/ext.wikimediaAntiAbuse/utils.js"
+		],
+		"dependencies": [
+			"mediawiki.qunit-testrunner",
+			"mediawiki.base",
+			"mediawiki.api",
+			"ext.wikimediaAntiAbuse",
+			"sinonjs"
+		]
+	},
 	"ExtensionMessagesFiles": {
 		"WikimediaAntiAbuseAliases": "WikimediaAntiAbuse.alias.php"
 	},

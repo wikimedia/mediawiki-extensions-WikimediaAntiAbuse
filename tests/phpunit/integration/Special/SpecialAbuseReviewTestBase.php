@@ -85,6 +85,16 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 			$tagsColumnHeaderHtml
 		);
 
+		$actionsColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
+			$tablePager,
+			'th.cdx-table-pager__col--actions',
+			true
+		);
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-heading-actions)',
+			$actionsColumnHeaderHtml
+		);
+
 		return DOMCompat::getOuterHTML( $tablePager );
 	}
 
