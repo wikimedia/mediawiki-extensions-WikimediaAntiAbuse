@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"Epiphanus Jidechukwu"
+		]
+	},
+	"echo-pref-tooltip-personal-info": "Mee ka m mara mgbe ihe emeziri nwere ike ịnwe ozi nkeonwe.",
+	"notification-header-personal-info-flagged": "Ndezigharị nke <strong>$1</strong> nwere ike ịnwe ozi nkeonwe.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1| dezie|mmezi}} nwere ike ịnwe ozi nkeonwe.",
+	"notification-link-text-personal-info-flagged": "Lee ndezi ndị e depụtara akara"
+}

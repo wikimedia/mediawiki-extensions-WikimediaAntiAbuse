@@ -1,10 +1,28 @@
 {
 	"@metadata": {
-		"authors": []
+		"authors": [
+			"Brettchenweber"
+		]
 	},
 	"wikimediaantiabuse-desc": "Missbrauchsschutzfunktionen für Wikimedia-Wikis",
+	"wikimediaantiabuse-special-abuse-review": "Missbrauchsprüfung",
+	"wikimediaantiabuse-special-abuse-review-caption": "Versionen zur Überprüfung markiert",
+	"wikimediaantiabuse-special-abuse-review-summary": "Auf dieser Seite werden Versionen angezeigt, die automatisch zur Überprüfung markiert wurden.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Falsch-positive Ergebnisse anzeigen",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Bearbeitete Versionen anzeigen",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filter",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Versionen filtern",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Version",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Autor",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "Tags",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "Du besitzt keine der erforderlichen Berechtigungen, um diese Seite anzusehen.",
 	"tag-mw-private-personal-info": "Enthält wahrscheinlich persönliche Informationen",
 	"tag-mw-private-personal-info-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden",
 	"tag-mw-private-personal-info-false-positive": "Falsch positiv (personenbezogene Daten)",
-	"tag-mw-private-personal-info-false-positive-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden, jedoch als Fehlalarm markiert"
+	"tag-mw-private-personal-info-false-positive-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden, jedoch als Fehlalarm markiert",
+	"echo-category-title-personal-info": "Als wahrscheinlich personenbezogene Daten gekennzeichnet",
+	"echo-pref-tooltip-personal-info": "Benachrichtige mich, wenn eine Bearbeitung als wahrscheinlich personenbezogene Daten enthaltend gekennzeichnet wird.",
+	"notification-header-personal-info-flagged": "Eine Änderung an <strong>$1</strong> kann personenbezogene Daten enthalten.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Bearbeitung kann|Bearbeitungen können}} personenbezogene Daten enthalten.",
+	"notification-link-text-personal-info-flagged": "Markierte Bearbeitungen anzeigen"
 }

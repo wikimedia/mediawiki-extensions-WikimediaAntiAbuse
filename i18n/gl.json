@@ -5,8 +5,24 @@
 		]
 	},
 	"wikimediaantiabuse-desc": "Funcionalidades contra o abuso para os wikis da Wikimedia",
+	"wikimediaantiabuse-special-abuse-review": "Revisión de abusos",
+	"wikimediaantiabuse-special-abuse-review-caption": "Revisións marcadas para a súa revisión",
+	"wikimediaantiabuse-special-abuse-review-summary": "Esta páxina mostra as revisións que foron marcadas automaticamente para a súa revisión.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Mostrar os falsos positivos",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Mostrar as revisións xestionadas",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filtrar",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filtrar as revisións",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Revisión",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Autor",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "Etiquetas",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "Non tes ningún dos permisos necesarios para ver esta páxina.",
 	"tag-mw-private-personal-info": "Probablemente conteña información persoal",
 	"tag-mw-private-personal-info-description": "Edicións que foron marcadas automaticamente como posibles adicións de información persoal",
 	"tag-mw-private-personal-info-false-positive": "Falso positivo (información persoal)",
-	"tag-mw-private-personal-info-false-positive-description": "Edicións que foron marcadas automaticamente como adición de información persoal, pero marcadas como falso positivo"
+	"tag-mw-private-personal-info-false-positive-description": "Edicións que foron marcadas automaticamente como adición de información persoal, pero marcadas como falso positivo",
+	"echo-category-title-personal-info": "Marcado como posible información persoal",
+	"echo-pref-tooltip-personal-info": "Notificádeme cando se marque unha edición como que probablemente conteña información persoal.",
+	"notification-header-personal-info-flagged": "Unha edición feita en «<strong>$1</strong>» pode conter información persoal.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edición pode|edicións poden}} conter información persoal.",
+	"notification-link-text-personal-info-flagged": "Ver as edicións marcadas"
 }

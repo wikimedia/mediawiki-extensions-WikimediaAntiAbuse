@@ -1,0 +1,27 @@
+{
+	"@metadata": {
+		"authors": [
+			"Meno25"
+		]
+	},
+	"wikimediaantiabuse-desc": "ميزات مكافحة إساءة الاستخدام لمواقع ويكيميديا",
+	"wikimediaantiabuse-special-abuse-review": "مراجعة إساءة الاستخدام",
+	"wikimediaantiabuse-special-abuse-review-caption": "تم وضع علامة على التعديلات للمراجعة",
+	"wikimediaantiabuse-special-abuse-review-summary": "تعرض هذه الصفحة التعديلات التي تم وضع علامة عليها تلقائيًا للمراجعة.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "إظهار النتائج الإيجابية الخاطئة",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "عرض المراجعات التي تمت معالجتها",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "فلتر",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "تصفية المراجعات",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "مراجعة",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "مؤلف",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "الوسوم",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "ليس لديك أي من الصلاحيات اللازمة لعرض هذه الصفحة.",
+	"tag-mw-private-personal-info": "من المحتمل أن يحتوي على معلومات شخصية",
+	"tag-mw-private-personal-info-description": "التعديلات التي تم تصنيفها تلقائيًا على أنها قد تضيف معلومات شخصية",
+	"tag-mw-private-personal-info-false-positive": "نتيجة إيجابية خاطئة (معلومات شخصية)",
+	"tag-mw-private-personal-info-false-positive-description": "التعديلات التي تم تصنيفها تلقائيًا على أنها إضافة معلومات شخصية، ولكن تم وضع علامة عليها على أنها إيجابية خاطئة",
+	"echo-category-title-personal-info": "تم تصنيفها على أنها معلومات شخصية محتملة",
+	"echo-pref-tooltip-personal-info": "أبلغني عندما يتم الإبلاغ عن تعديل ما على أنه من المحتمل أن يحتوي على معلومات شخصية.",
+	"notification-header-personal-info-flagged": "قد يحتوي تعديل على <strong>$1</strong> على معلومات شخصية.",
+	"notification-link-text-personal-info-flagged": "عرض التعديلات التي تم الإبلاغ عنها"
+}

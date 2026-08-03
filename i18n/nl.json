@@ -6,8 +6,24 @@
 		]
 	},
 	"wikimediaantiabuse-desc": "Antimisbruikfuncties voor Wikimedia-wiki’s",
+	"wikimediaantiabuse-special-abuse-review": "Misbruikcontrole",
+	"wikimediaantiabuse-special-abuse-review-caption": "Versies gemarkeerd voor beoordeling",
+	"wikimediaantiabuse-special-abuse-review-summary": "Op deze pagina worden versies weergegeven die automatisch zijn gemarkeerd voor beoordeling.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Foutpositieve resultaten weergeven",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Verwerkte versies weergeven",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filteren",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Versies filteren",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versie",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Auteur",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "Labels",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "U hebt niet de benodigde machtigingen om deze pagina te bekijken.",
 	"tag-mw-private-personal-info": "Bevat waarschijnlijk persoonlijke gegevens",
 	"tag-mw-private-personal-info-description": "Bewerkingen die automatisch zijn gemarkeerd als voegen mogelijk persoonlijke gegevens toe",
 	"tag-mw-private-personal-info-false-positive": "Foutpositief (persoonlijke gegevens)",
-	"tag-mw-private-personal-info-false-positive-description": "Bewerkingen die automatisch zijn gemarkeerd als voegen mogelijk persoonlijke gegevens toe, maar zo ten onrechte zijn aangemerkt"
+	"tag-mw-private-personal-info-false-positive-description": "Bewerkingen die automatisch zijn gemarkeerd als voegen mogelijk persoonlijke gegevens toe, maar zo ten onrechte zijn aangemerkt",
+	"echo-category-title-personal-info": "Gemarkeerd als mogelijk persoonlijke gegevens",
+	"echo-pref-tooltip-personal-info": "Stel me op de hoogte wanneer een bewerking wordt gemarkeerd omdat deze mogelijk persoonlijke gegevens bevat.",
+	"notification-header-personal-info-flagged": "Een bewerking van <strong>$1</strong> kan persoonlijke gegevens bevatten.",
+	"notification-bundle-header-personal-info-flagged": "{{PLURAL:$1|Één bewerking kan|$1 bewerkingen kunnen}} persoonlijke gegevens bevatten.",
+	"notification-link-text-personal-info-flagged": "Gemarkeerde bewerkingen bewerken"
 }

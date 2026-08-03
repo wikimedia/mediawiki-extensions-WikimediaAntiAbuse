@@ -1,0 +1,23 @@
+{
+	"@metadata": {
+		"authors": [
+			"NClara"
+		]
+	},
+	"wikimediaantiabuse-special-abuse-review": "Examen des abus",
+	"wikimediaantiabuse-special-abuse-review-caption": "Révisions signalées pour examen",
+	"wikimediaantiabuse-special-abuse-review-summary": "Cette page affiche les modifications qui ont été automatiquement signalées pour révision.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Afficher les faux positifs",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Afficher les révisions traitées",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filtrer",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filtrer les révisions",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Révision",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Auteur",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "Mots-clés",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "Vous ne disposez d'aucune des autorisations nécessaires pour consulter cette page.",
+	"echo-category-title-personal-info": "Signalé comme étant probablement une information personnelle",
+	"echo-pref-tooltip-personal-info": "Prévenez-moi lorsqu'une modification est signalée comme susceptible de contenir des informations personnelles.",
+	"notification-header-personal-info-flagged": "Une modification apportée à l'article <strong>$1</strong> est susceptible de contenir des informations personnelles.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|modification est susceptible|modifications sont susceptibles}} de contenir des informations personnelles.",
+	"notification-link-text-personal-info-flagged": "Afficher les modifications signalées"
+}

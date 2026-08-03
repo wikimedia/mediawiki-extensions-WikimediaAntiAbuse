@@ -4,5 +4,11 @@
 			"Volvox"
 		]
 	},
-	"wikimediaantiabuse-desc": "Anti-Mëssbrauchsfunktioune fir Wikimedia-Wikien"
+	"wikimediaantiabuse-desc": "Anti-Mëssbrauchsfunktioune fir Wikimedia-Wikien",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Falsch-positiv Resultater weisen",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Versioune filteren",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versioun",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Auteur",
+	"notification-header-personal-info-flagged": "Eng Ännerung op <strong>$1</strong> kéint perséinlech Informatiounen enthalen.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Ännerung kéint|Ännerunge kéinte}} perséinlech Informatiounen enthalen."
 }
