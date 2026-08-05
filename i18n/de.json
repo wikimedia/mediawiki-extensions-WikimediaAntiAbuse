@@ -22,6 +22,7 @@
 	"tag-mw-private-personal-info-false-positive-description": "Bearbeitungen, die automatisch als möglicherweise personenbezogene Daten enthaltend markiert wurden, jedoch als Fehlalarm markiert",
 	"echo-category-title-personal-info": "Als wahrscheinlich personenbezogene Daten gekennzeichnet",
 	"echo-pref-tooltip-personal-info": "Benachrichtige mich, wenn eine Bearbeitung als wahrscheinlich personenbezogene Daten enthaltend gekennzeichnet wird.",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Weitere Informationen über diese Benachrichtigung]]",
 	"notification-header-personal-info-flagged": "Eine Änderung an <strong>$1</strong> kann personenbezogene Daten enthalten.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Bearbeitung kann|Bearbeitungen können}} personenbezogene Daten enthalten.",
 	"notification-link-text-personal-info-flagged": "Markierte Bearbeitungen anzeigen"

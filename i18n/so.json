@@ -22,6 +22,7 @@
 	"tag-mw-private-personal-info-false-positive-description": "Tafatirro si toos ah loogu calaamadeeyay inay ku darayaan xog shakhsiyeed, balse loo aqoonsaday calaamadayn khaldan",
 	"echo-category-title-personal-info": "Loo calaamadeeyay inay u badan tahay xog shakhsiyeed",
 	"echo-pref-tooltip-personal-info": "I ogeysii marka wax ka beddel loo calaamadeeyo inuu u badan yahay inuu ka kooban yahay xog shakhsiyeed.",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Wax badan ka ogow ogeysiiskan]]",
 	"notification-header-personal-info-flagged": "Wax ka beddel lagu sameeyay <strong>$1</strong> waxaa laga yaabaa inuu ka kooban yahay xog shakhsiyeed.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|wax ka beddel|wax ka beddello}} waxaa laga yaabaa inuu ka kooban yahay xog shakhsiyeed.",
 	"notification-link-text-personal-info-flagged": "Eeg wax ka beddellada la calaamadeeyay"
