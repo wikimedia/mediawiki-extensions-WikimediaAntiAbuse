@@ -9,10 +9,12 @@ use MediaWiki\Config\Config;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ActionsToTake;
+use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ContentPolicyEvaluationResult;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\CoPEModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
 use MediaWiki\JobQueue\IJobSpecification;
 use MediaWiki\JobQueue\Job;
 use MediaWiki\JobQueue\JobSpecification;
@@ -34,6 +36,7 @@ class CheckRevisionJob extends Job {
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly PersonalInfoFlagNotifier $personalInfoFlagNotifier,
 		private readonly LoggerInterface $logger,
+		private readonly IContentPolicyScoreEventLogger $contentPolicyScoreEventLogger,
 	) {
 		parent::__construct( self::TYPE, $params );
 	}
@@ -73,8 +76,16 @@ class CheckRevisionJob extends Job {
 			]
 		);
 
+		$results = [];
 		foreach ( $modelsToRun as $modelToRun ) {
-			$this->runModelCheck( $modelToRun, $revisionRecord );
+			$result = $this->runModelCheck( $modelToRun, $revisionRecord );
+			if ( $result ) {
+				$results[] = $result;
+			}
+		}
+
+		if ( $results ) {
+			$this->contentPolicyScoreEventLogger->record( $revisionRecord, $results );
 		}
 
 		return true;
@@ -89,7 +100,10 @@ class CheckRevisionJob extends Job {
 		return $revisionRecord;
 	}
 
-	private function runModelCheck( ModelToRun $modelToRun, RevisionRecord $revisionRecord ): void {
+	private function runModelCheck(
+		ModelToRun $modelToRun,
+		RevisionRecord $revisionRecord
+	): ?ContentPolicyEvaluationResult {
 		$response = $this->contentPolicyEvaluator->evaluateCoPEModel(
 			$modelToRun->getPolicyText(),
 			$modelToRun->getContentPolicyName(),
@@ -97,16 +111,21 @@ class CheckRevisionJob extends Job {
 		);
 		if ( !$response ) {
 			// The evaluator already logs why it could not produce a response, so no need to double log
-			return;
+			return null;
 		}
 
 		$tagsToAdd = $this->collectActionsToTake( $modelToRun, $revisionRecord, $response )->getTagsToAdd();
-		if ( !$tagsToAdd ) {
-			return;
+		if ( $tagsToAdd ) {
+			$tagsEffectivelyAdded = $this->applyTags( $modelToRun, $revisionRecord, $tagsToAdd );
+			$this->notifyWhenPersonalInfoFlagged( $tagsEffectivelyAdded, $revisionRecord );
 		}
 
-		$tagsEffectivelyAdded = $this->applyTags( $modelToRun, $revisionRecord, $tagsToAdd );
-		$this->notifyWhenPersonalInfoFlagged( $tagsEffectivelyAdded, $revisionRecord );
+		return new ContentPolicyEvaluationResult(
+			$modelToRun->getContentPolicyName(),
+			$modelToRun->getModelName(),
+			$response,
+			$modelToRun->getPolicyVersion()
+		);
 	}
 
 	private function collectActionsToTake(

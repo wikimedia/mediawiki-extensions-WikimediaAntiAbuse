@@ -13,7 +13,9 @@ readonly class ModelToRun {
 	public function __construct(
 		private string $contentPolicyName,
 		private string $policyText,
-		private string $content
+		private string $content,
+		private string $modelName,
+		private ?string $policyVersion = null
 	) {
 	}
 
@@ -25,13 +27,10 @@ readonly class ModelToRun {
 	}
 
 	/**
-	 * This method returns the content policy name, not the model name. Callers outside
-	 * this extension compare the result with their own content policy name. A later
-	 * change makes this method return the model name, after those callers move to
-	 * getContentPolicyName().
+	 * The name of the model being used to evaluate the content policy.
 	 */
 	public function getModelName(): string {
-		return $this->contentPolicyName;
+		return $this->modelName;
 	}
 
 	/**
@@ -46,5 +45,12 @@ readonly class ModelToRun {
 	 */
 	public function getContent(): string {
 		return $this->content;
+	}
+
+	/**
+	 * Version of the content policy text, or null when the caller does not track one.
+	 */
+	public function getPolicyVersion(): ?string {
+		return $this->policyVersion;
 	}
 }

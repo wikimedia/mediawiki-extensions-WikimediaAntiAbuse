@@ -12,6 +12,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\IModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWikiIntegrationTestCase;
@@ -44,7 +45,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->expects( $this->once() )
 			->method( 'evaluateCoPEModel' )
-			->with( 'Test policy text', 'test-model', 'test content' )
+			->with( 'Test policy text', 'test-content-policy-name', 'test content' )
 			->willReturn( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
 
 		$this->assertTrue( $this->newJob( $revisionId, $evaluator )->run() );
@@ -129,7 +130,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->expects( $this->once() )
 			->method( 'evaluateCoPEModel' )
-			->with( 'Test policy text', 'test-model', 'test content' )
+			->with( 'Test policy text', 'test-content-policy-name', 'test content' )
 			->willReturn( null );
 
 		$this->assertTrue( $this->newJob( 123, $evaluator, $revisionLookup )->run() );
@@ -170,8 +171,12 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$this->setTemporaryHook(
 			'WikimediaAntiAbuseGetModelsToRun',
 			static function ( RevisionRecord $revisionRecord, array &$modelsToRun ): void {
-				$modelsToRun[] = new ModelToRun( 'test-model-one', 'Test policy text', 'test content' );
-				$modelsToRun[] = new ModelToRun( 'test-model-two', 'Test policy text', 'test content' );
+				$modelsToRun[] = new ModelToRun(
+					'test-content-policy-name-one', 'Test policy text', 'test content', 'test-model-name-one'
+				);
+				$modelsToRun[] = new ModelToRun(
+					'test-content-policy-name-two', 'Test policy text', 'test content', 'test-model-name-two'
+				);
 			}
 		);
 
@@ -185,13 +190,13 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 				ActionsToTake $actionsToTake
 			) use ( &$modelResultCalls ): void {
 				$modelResultCalls[] = $modelToRun->getModelName();
-				if ( $modelToRun->getModelName() === 'test-model-one' ) {
+				if ( $modelToRun->getModelName() === 'test-model-name-one' ) {
 					$actionsToTake->addTags( [ 'test-tag-name' ] );
 				}
 			}
 		);
 
-		$checkedModels = [];
+		$checkedContentPolicies = [];
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->expects( $this->exactly( 2 ) )
 			->method( 'evaluateCoPEModel' )
@@ -199,20 +204,23 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 				static function (
 					string $contentPolicy,
 					string $contentPolicyName
-				) use ( &$checkedModels ): CoPEModelResponse {
-					$checkedModels[] = $contentPolicyName;
+				) use ( &$checkedContentPolicies ): CoPEModelResponse {
+					$checkedContentPolicies[] = $contentPolicyName;
 
 					return new CoPEModelResponse( [ 'test-key' => 'test-value' ] );
 				}
 			);
 
 		$this->assertTrue( $this->newJob( $revisionId, $evaluator )->run() );
-		$this->assertSame( [ 'test-model-one', 'test-model-two' ], $checkedModels,
-			'The evaluator must be called once per model, in order' );
-		$this->assertSame( [ 'test-model-one', 'test-model-two' ], $modelResultCalls,
+		$this->assertSame(
+			[ 'test-content-policy-name-one', 'test-content-policy-name-two' ],
+			$checkedContentPolicies,
+			'The evaluator must be called once per model, in order'
+		);
+		$this->assertSame( [ 'test-model-name-one', 'test-model-name-two' ], $modelResultCalls,
 			'The model-result hook must fire once per model, in order' );
 		$this->assertRevisionTags( [ 'test-tag-name' ], $revisionId,
-			'Only the tag registered for test-model-one should be applied' );
+			'Only the tag registered for test-model-name-one should be applied' );
 	}
 
 	/** @dataProvider provideEarlyExit */
@@ -297,17 +305,78 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$this->assertRevisionTags( [], 123, 'No change_tag rows should be written when the revision cannot be found' );
 	}
 
+	public function testRecordsScoresWhenModelReturnsResponse(): void {
+		$revisionId = $this->createRevisionId();
+
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+		$this->setModelToRunHook( '1.2' );
+
+		$evaluator = $this->newEvaluatorReturning( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
+
+		$eventLogger = $this->createMock( IContentPolicyScoreEventLogger::class );
+		$eventLogger->expects( $this->once() )
+			->method( 'record' )
+			->with(
+				$this->callback(
+					static fn ( RevisionRecord $revision ): bool => $revision->getId() === $revisionId
+				),
+				$this->callback(
+					static fn ( array $results ): bool => count( $results ) === 1
+						&& $results[0]->contentPolicyName === 'test-content-policy-name'
+						&& $results[0]->modelName === 'test-model-name'
+						&& $results[0]->policyVersion === '1.2'
+				)
+			);
+
+		$this->assertTrue( $this->newJob( $revisionId, $evaluator, eventLogger: $eventLogger )->run() );
+	}
+
+	/** @dataProvider provideNoScoresProduced */
+	public function testDoesNotRecordScoresWhenNoResponsesProduced( bool $registerModel ): void {
+		$revisionId = $this->createRevisionId();
+
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+
+		if ( $registerModel ) {
+			$this->setModelToRunHook();
+			$evaluator = $this->newEvaluatorReturning( null );
+		} else {
+			$this->setTemporaryHook(
+				'WikimediaAntiAbuseGetModelsToRun',
+				static function ( RevisionRecord $revisionRecord, array &$modelsToRun ): void {
+					$modelsToRun = [];
+				}
+			);
+			$evaluator = $this->newNeverCalledEvaluator();
+		}
+
+		$eventLogger = $this->createMock( IContentPolicyScoreEventLogger::class );
+		$eventLogger->expects( $this->never() )
+			->method( 'record' );
+
+		$this->assertTrue( $this->newJob( $revisionId, $evaluator, eventLogger: $eventLogger )->run() );
+	}
+
+	public static function provideNoScoresProduced(): array {
+		return [
+			'no models to run' => [ 'registerModel' => false ],
+			'all evaluations return null' => [ 'registerModel' => true ],
+		];
+	}
+
 	private function createRevisionId(): int {
 		return $this->editPage( 'WikimediaAntiAbuse test page', 'test content' )
 			->getNewRevision()
 			->getId();
 	}
 
-	private function setModelToRunHook(): void {
+	private function setModelToRunHook( ?string $policyVersion = null ): void {
 		$this->setTemporaryHook(
 			'WikimediaAntiAbuseGetModelsToRun',
-			static function ( RevisionRecord $revisionRecord, array &$modelsToRun ): void {
-				$modelsToRun[] = new ModelToRun( 'test-model', 'Test policy text', 'test content' );
+			static function ( RevisionRecord $revisionRecord, array &$modelsToRun ) use ( $policyVersion ): void {
+				$modelsToRun[] = new ModelToRun(
+					'test-content-policy-name', 'Test policy text', 'test content', 'test-model-name', $policyVersion
+				);
 			}
 		);
 	}
@@ -341,7 +410,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		int $revisionId,
 		ContentPolicyEvaluator $evaluator,
 		?RevisionLookup $revisionLookup = null,
-		?PersonalInfoFlagNotifier $notifier = null
+		?PersonalInfoFlagNotifier $notifier = null,
+		?IContentPolicyScoreEventLogger $eventLogger = null
 	): CheckRevisionJob {
 		$services = $this->getServiceContainer();
 
@@ -353,7 +423,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			$evaluator,
 			$services->getChangeTagsStore(),
 			$notifier ?? $services->get( 'WikimediaAntiAbusePersonalInfoFlagNotifier' ),
-			new NullLogger()
+			new NullLogger(),
+			$eventLogger ?? $this->createMock( IContentPolicyScoreEventLogger::class )
 		);
 	}
 }

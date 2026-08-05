@@ -25,13 +25,15 @@ class ModelCheckPipelineTest extends MediaWikiIntegrationTestCase {
 		$this->setTemporaryHook(
 			'WikimediaAntiAbuseGetModelsToRun',
 			static function ( RevisionRecord $revisionRecord, array &$modelsToRun ): void {
-				$modelsToRun[] = new ModelToRun( 'test-model', 'Test policy text', 'test content' );
+				$modelsToRun[] = new ModelToRun(
+					'test-content-policy-name', 'Test policy text', 'test content', 'test-model-name'
+				);
 			}
 		);
 
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->method( 'evaluateCoPEModel' )
-			->with( 'Test policy text', 'test-model', 'test content' )
+			->with( 'Test policy text', 'test-content-policy-name', 'test content' )
 			->willReturn( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
 		$this->setService( 'WikimediaAntiAbuseContentPolicyEvaluator', $evaluator );
 

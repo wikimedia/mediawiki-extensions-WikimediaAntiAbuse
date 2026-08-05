@@ -9,6 +9,9 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifie
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\NoOpContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
@@ -51,6 +54,20 @@ return [
 		$services->getStatsFactory(),
 		LoggerFactory::getInstance( 'WikimediaAntiAbuse' )
 	),
+
+	'WikimediaAntiAbuseContentPolicyScoreEventLogger' => static function (
+		MediaWikiServices $services
+	): IContentPolicyScoreEventLogger {
+		// If EventLogging or EventBus is not installed, return the no-op logger so callers can call it safely.
+		if ( !$services->has( 'EventLogging.EventSubmitter' ) || !$services->has( 'EventBus.UserEntitySerializer' ) ) {
+			return new NoOpContentPolicyScoreEventLogger();
+		}
+
+		return new ContentPolicyScoreEventLogger(
+			$services->getService( 'EventLogging.EventSubmitter' ),
+			$services->getService( 'EventBus.UserEntitySerializer' )
+		);
+	},
 
 	'WikimediaAntiAbuseHookRunner' => static fn (
 		MediaWikiServices $services

@@ -205,7 +205,8 @@
 				"WikimediaAntiAbuseContentPolicyEvaluator",
 				"ChangeTagsStore",
 				"WikimediaAntiAbusePersonalInfoFlagNotifier",
-				"WikimediaAntiAbuseLogger"
+				"WikimediaAntiAbuseLogger",
+				"WikimediaAntiAbuseContentPolicyScoreEventLogger"
 			],
 			"needsPage": false
 		}
