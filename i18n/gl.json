@@ -22,6 +22,7 @@
 	"tag-mw-private-personal-info-false-positive-description": "Edicións que foron marcadas automaticamente como adición de información persoal, pero marcadas como falso positivo",
 	"echo-category-title-personal-info": "Marcado como posible información persoal",
 	"echo-pref-tooltip-personal-info": "Notificádeme cando se marque unha edición como que probablemente conteña información persoal.",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Máis información sobre esta notificación]]",
 	"notification-header-personal-info-flagged": "Unha edición feita en «<strong>$1</strong>» pode conter información persoal.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edición pode|edicións poden}} conter información persoal.",
 	"notification-link-text-personal-info-flagged": "Ver as edicións marcadas"
