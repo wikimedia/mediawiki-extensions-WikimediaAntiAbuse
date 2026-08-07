@@ -141,12 +141,24 @@ class AbuseReviewPager extends CodexTablePager {
 					$unmarkClass .= ' ' . self::HIDDEN_CLASS;
 				}
 
+				// A suppressed revision has been handled as a true positive, so it cannot be
+				// marked as a false positive, but can be unmarked as a false positive.
+				$isSuppressed = $this->isSuppressedRow( $row );
+
+				$noteId = 'mw-wikimediaantiabuse-abuse-review-suppressed-note-' . $row->rev_id;
+
+				$markAttributes = [ ...$buttonAttributes, 'class' => $markClass ];
+				if ( $isSuppressed ) {
+					$markAttributes['aria-describedby'] = $noteId;
+				}
+
 				$codex = new Codex();
 				$markButton = $codex->button()
 					->setLabel( $markLabel )
 					->setType( 'button' )
 					->setAction( 'progressive' )
-					->setAttributes( [ ...$buttonAttributes, 'class' => $markClass ] )
+					->setDisabled( $isSuppressed )
+					->setAttributes( $markAttributes )
 					->build()
 					->getHtml();
 				$unmarkButton = $codex->button()
@@ -156,10 +168,24 @@ class AbuseReviewPager extends CodexTablePager {
 					->build()
 					->getHtml();
 
+				$actionsContent = $markButton . $unmarkButton;
+				if ( $isSuppressed ) {
+					// Always show the note on a suppressed row, whether or not it is a false
+					// positive, so reviewers can see at a glance which rows are already handled.
+					$actionsContent .= Html::element(
+						'span',
+						[
+							'id' => $noteId,
+							'class' => 'mw-wikimediaantiabuse-abuse-review-suppressed-note',
+						],
+						$this->msg( 'wikimediaantiabuse-special-abuse-review-already-suppressed-note' )->text()
+					);
+				}
+
 				return Html::rawElement(
 					'div',
 					[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions' ],
-					$markButton . $unmarkButton
+					$actionsContent
 				);
 			default:
 				throw new InvalidArgumentException( "Unable to format $name" );
@@ -246,6 +272,21 @@ class AbuseReviewPager extends CodexTablePager {
 			$this->splitTags( $tsTags ),
 			true
 		);
+	}
+
+	/**
+	 * Whether the revision on this row has been handled by suppressing its text.
+	 *
+	 * This mirrors the rows hidden by default in {@link self::getQueryInfo}: a revision is only
+	 * treated as handled once both its text and the restriction (suppression) bit are set.
+	 *
+	 * @param \stdClass $row
+	 * @return bool
+	 */
+	private function isSuppressedRow( \stdClass $row ): bool {
+		$deleted = (int)$row->rev_deleted;
+		return ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
+			&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
 	}
 
 	/**

@@ -16,6 +16,7 @@
 	"wikimediaantiabuse-special-abuse-review-heading-actions": "Actions",
 	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "Mark as false positive",
 	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Unmark as false positive",
+	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "This revision has already been suppressed.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Could not update the revision. Please try again.",
 	"wikimediaantiabuse-special-abuse-review-permission-error": "You do not have any of the permissions needed to view this page.",
 	"tag-mw-private-personal-info": "Likely contains personal information",

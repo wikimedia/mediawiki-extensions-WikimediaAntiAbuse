@@ -20,6 +20,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $notTaggedContentRevId;
 	private static int $taggedContentRevId;
 	private static int $falsePositiveRevId;
+	private static int $suppressedFalsePositiveRevId;
 
 	/** @dataProvider provideViewWhenRevisionsPresent */
 	public function testViewWhenRevisionsPresent(
@@ -106,7 +107,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'(tag-mw-private-personal-info)',
 					$tagsCellHtml
 				);
-			} elseif ( $actualRevId === static::$falsePositiveRevId ) {
+			} elseif ( in_array(
+				$actualRevId,
+				[ static::$falsePositiveRevId, static::$suppressedFalsePositiveRevId ],
+				true
+			) ) {
 				$this->assertStringContainsString(
 					'(tag-mw-private-personal-info-false-positive)',
 					$tagsCellHtml
@@ -125,7 +130,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			);
 
 			// The tag variant not matching the row's current state starts hidden.
-			$isFalsePositiveRow = $actualRevId === static::$falsePositiveRevId;
+			$isFalsePositiveRow = in_array(
+				$actualRevId,
+				[ static::$falsePositiveRevId, static::$suppressedFalsePositiveRevId ],
+				true
+			);
 			$notFpTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
 				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--not-false-positive'
 			), 'class' );
@@ -167,6 +176,41 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'mw-private-personal-info',
 				DOMCompat::getAttribute( $markButton, 'data-abuse-review-tag' )
 			);
+
+			// A suppressed revision has been handled: its mark button is disabled and an
+			// explanatory note is shown. Unmarking stays enabled regardless.
+			$isSuppressedRow = in_array(
+				$actualRevId,
+				[ static::$suppressedContentRevId, static::$suppressedFalsePositiveRevId ],
+				true
+			);
+			$this->assertSame(
+				$isSuppressedRow,
+				DOMCompat::getAttribute( $markButton, 'disabled' ) !== null,
+				'mark button is disabled only for suppressed revisions'
+			);
+			$this->assertNull(
+				DOMCompat::getAttribute( $unmarkButton, 'disabled' ),
+				'unmark button is never disabled'
+			);
+			if ( $isSuppressedRow ) {
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-already-suppressed-note)',
+					$actionsCellHtml
+				);
+
+				// The note is always visible on a suppressed row, whether or not it is a false
+				// positive, so handled rows can always be recognised.
+				$noteClass = DOMCompat::getAttribute( DOMCompat::querySelector(
+					$tableRow, '.mw-wikimediaantiabuse-abuse-review-suppressed-note'
+				), 'class' );
+				$this->assertStringNotContainsString( 'mw-wikimediaantiabuse-hidden', $noteClass );
+			} else {
+				$this->assertStringNotContainsString(
+					'(wikimediaantiabuse-special-abuse-review-already-suppressed-note)',
+					$actionsCellHtml
+				);
+			}
 		}
 
 		$notTaggedContentRevIdElement = DOMCompat::querySelector(
@@ -214,6 +258,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 					static::$falsePositiveRevId,
 					static::$suppressedContentRevId,
+					static::$suppressedFalsePositiveRevId,
 				],
 			],
 			'False positives and suppressed revisions included but user lacks access to deleted history' => [
@@ -224,6 +269,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 					static::$falsePositiveRevId,
 					static::$suppressedContentRevId,
+					static::$suppressedFalsePositiveRevId,
 				],
 			],
 		];
@@ -249,6 +295,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertStatusGood( $falsePositiveEditStatus );
 		static::$falsePositiveRevId = $falsePositiveEditStatus->getNewRevision()->getId();
 
+		// A revision that was marked a false positive and then suppressed.
+		$thirdPage = $this->getNonexistingTestPage();
+		$suppressedFalsePositiveEditStatus = $this->editPage( $thirdPage, 'Suppressed false positive content' );
+		$this->assertStatusGood( $suppressedFalsePositiveEditStatus );
+		static::$suppressedFalsePositiveRevId = $suppressedFalsePositiveEditStatus->getNewRevision()->getId();
+		$this->assertStatusGood( $this->editPage( $thirdPage, 'Trailing content' ) );
+
 		$changeTagsStore = $this->getServiceContainer()->getChangeTagsStore();
 		$changeTagsStore->addTags(
 			[ 'mw-private-personal-info' ],
@@ -265,9 +318,18 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			null,
 			static::$falsePositiveRevId
 		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-personal-info-false-positive' ],
+			null,
+			static::$suppressedFalsePositiveRevId
+		);
 
 		$this->revisionDelete(
 			static::$suppressedContentRevId,
+			[ RevisionRecord::DELETED_RESTRICTED | RevisionRecord::DELETED_TEXT => 1 ]
+		);
+		$this->revisionDelete(
+			static::$suppressedFalsePositiveRevId,
 			[ RevisionRecord::DELETED_RESTRICTED | RevisionRecord::DELETED_TEXT => 1 ]
 		);
 		$this->revisionDelete(

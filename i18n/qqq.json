@@ -16,6 +16,7 @@
 	"wikimediaantiabuse-special-abuse-review-heading-actions": "Column heading for a column that contains buttons to mark or unmark the revision as a false positive.",
 	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "Label for the button on [[Special:AbuseReview]] that marks a revision's abuse review flag as a false positive.",
 	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Label for the button on [[Special:AbuseReview]] that undoes marking a revision's abuse review flag as a false positive, restoring the original flag.",
+	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Note shown on [[Special:AbuseReview]] in the actions column, next to the disabled buttons, for a revision that has already been handled by suppressing its text.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Error shown on [[Special:AbuseReview]] when marking or unmarking a revision as a false positive fails.",
 	"wikimediaantiabuse-special-abuse-review-permission-error": "A permission error message shown on [[Special:AbuseReview]] when the user does not have any of the permissions needed to view the page.",
 	"tag-mw-private-personal-info": "Change tag for edits that likely contain personal information",
