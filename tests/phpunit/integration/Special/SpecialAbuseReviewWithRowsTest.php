@@ -79,6 +79,17 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'oldid=' . $actualRevId, $timestampCellHtml );
 			}
 
+			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
+				$this->assertStringContainsString( 'history-deleted', $timestampCellHtml );
+				$this->assertSame(
+					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
+					str_contains( $timestampCellHtml, 'mw-history-suppressed' ),
+					'suppressed revisions are doubly struck through'
+				);
+			} else {
+				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
+			}
+
 			$authorCellHtml = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
 				'.cdx-table-pager__col--rev_user_text',

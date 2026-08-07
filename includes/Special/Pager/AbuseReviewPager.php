@@ -71,21 +71,34 @@ class AbuseReviewPager extends CodexTablePager {
 			case 'rev_timestamp':
 				$timestamp = $this->getLanguage()->userTimeAndDate( $value, $this->getUser() );
 				$title = Title::makeTitle( $row->page_namespace, $row->page_title );
-				if ( !RevisionRecord::userCanBitfield(
+
+				if ( RevisionRecord::userCanBitfield(
 					(int)$row->rev_deleted,
 					RevisionRecord::DELETED_TEXT,
 					$this->getAuthority(),
-					$title )
-				) {
-					return Html::element( 'span', [ 'class' => 'history-deleted' ], $timestamp );
+					$title
+				) ) {
+					$dateLink = $this->getLinkRenderer()->makeKnownLink(
+						$title,
+						$timestamp,
+						[],
+						[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
+					);
+				} else {
+					$dateLink = htmlspecialchars( $timestamp );
 				}
 
-				return $this->getLinkRenderer()->makeKnownLink(
-					$title,
-					$this->getLanguage()->userTimeAndDate( $value, $this->getUser() ),
-					[],
-					[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
-				);
+				// Strike out the timestamp for a revision with deleted text, doubly for a
+				// suppressed one, matching Special:Contributions.
+				if ( ( (int)$row->rev_deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
+					$deletedClass = 'history-deleted';
+					if ( ( (int)$row->rev_deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0 ) {
+						$deletedClass .= ' mw-history-suppressed';
+					}
+					$dateLink = Html::rawElement( 'span', [ 'class' => $deletedClass ], $dateLink );
+				}
+
+				return $dateLink;
 			case 'ts_tags':
 				$tag = $this->getFirstReviewableTag( $value );
 				if ( $tag === null ) {
