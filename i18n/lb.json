@@ -9,6 +9,9 @@
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Versioune filteren",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versioun",
 	"wikimediaantiabuse-special-abuse-review-heading-author": "Auteur",
+	"wikimediaantiabuse-special-abuse-review-heading-actions": "Aktiounen",
+	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Dës Versioun gouf schonn ënnerdréckt.",
+	"wikimediaantiabuse-special-abuse-review-action-error": "D'Versioun konnt net aktualiséiert ginn. Probéiert wgl. nach eng Kéier.",
 	"notification-header-personal-info-flagged": "Eng Ännerung op <strong>$1</strong> kéint perséinlech Informatiounen enthalen.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Ännerung kéint|Ännerunge kéinte}} perséinlech Informatiounen enthalen."
 }
