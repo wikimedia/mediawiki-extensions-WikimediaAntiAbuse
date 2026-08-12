@@ -75,37 +75,43 @@ class BackfillAbuseReview extends Maintenance {
 		$dbr = $this->getReplicaDB();
 
 		$batchStartRevisionId = null;
+		$batchStartRevisionTimestamp = $startTimestamp;
 		$jobsPushed = 0;
 		do {
-			$revisionIdsQueryBuilder = $revisionStore->newSelectQueryBuilder( $dbr )
+			$revisionsQueryBuilder = $revisionStore->newSelectQueryBuilder( $dbr )
 				->clearFields()
-				->select( 'rev_id' )
-				->where( $dbr->expr( 'rev_timestamp', '>=', $dbr->timestamp( $startTimestamp ) ) )
+				->select( [ 'rev_id', 'rev_timestamp' ] )
+				->where( $dbr->expr( 'rev_timestamp', '>=', $dbr->timestamp( $batchStartRevisionTimestamp ) ) )
 				->andWhere( $dbr->expr( 'rev_timestamp', '<=', $dbr->timestamp( $endTimestamp ) ) )
-				->orderBy( 'rev_id', SelectQueryBuilder::SORT_ASC )
+				->orderBy( [ 'rev_timestamp', 'rev_id' ], SelectQueryBuilder::SORT_ASC )
 				->limit( $this->getBatchSize() ?? 200 );
 			if ( $batchStartRevisionId ) {
-				$revisionIdsQueryBuilder->andWhere( $dbr->expr( 'rev_id', '>', $batchStartRevisionId ) );
+				$revisionsQueryBuilder->andWhere( $dbr->expr( 'rev_id', '>', $batchStartRevisionId ) );
 			}
-			$revisionIdsToEvaluate = $revisionIdsQueryBuilder
+			$revisionsToEvaluate = $revisionsQueryBuilder
 				->caller( __METHOD__ )
-				->fetchFieldValues();
+				->fetchResultSet();
 
 			$jobsToPush = [];
-			foreach ( $revisionIdsToEvaluate as $revisionId ) {
-				$jobsToPush[] = CheckRevisionJob::newSpec( (int)$revisionId );
+			foreach ( $revisionsToEvaluate as $revisionRow ) {
+				$jobsToPush[] = CheckRevisionJob::newSpec( (int)$revisionRow->rev_id );
 			}
 			$jobQueueGroup->push( $jobsToPush );
 			$jobsPushed += count( $jobsToPush );
 
 			if ( count( $jobsToPush ) ) {
 				sleep( intval( $this->getOption( 'sleep', 1 ) ) );
-				$batchStartRevisionId = (int)end( $revisionIdsToEvaluate );
+
+				$revisionsToEvaluate->seek( $revisionsToEvaluate->count() - 1 );
+				$lastRevisionRow = $revisionsToEvaluate->fetchObject();
+				$batchStartRevisionTimestamp = $lastRevisionRow->rev_timestamp;
+				$batchStartRevisionId = (int)$lastRevisionRow->rev_id;
 				$this->output(
-					'Pushed ' . count( $jobsToPush ) . " jobs to the queue. Total jobs pushed: $jobsPushed" . PHP_EOL
+					'Pushed ' . count( $jobsToPush ) . " jobs to the queue. Processed to timestamp:" .
+					" $batchStartRevisionTimestamp. Total jobs pushed: $jobsPushed" . PHP_EOL
 				);
 			}
-		} while ( count( $revisionIdsToEvaluate ) !== 0 );
+		} while ( count( $revisionsToEvaluate ) !== 0 );
 
 		$this->output( 'Backfill complete. Total jobs pushed: ' . $jobsPushed . PHP_EOL );
 	}
