@@ -114,7 +114,7 @@ class BackfillAbuseReviewTest extends MaintenanceBaseTestCase {
 		$this->maintenance->setOption( 'sleep', 0 );
 		$this->expectOutputRegex(
 			'/Backfilling Special:AbuseReview by evaluating revisions between 20260801010101 and 20260801010140' .
-			'[\s\S]*Pushed 1 jobs to the queue. Total jobs pushed: 1' .
+			'[\s\S]*Pushed 1 jobs to the queue. Processed to timestamp: 20260801010101. Total jobs pushed: 1' .
 			'[\s\S]*Backfill complete\. Total jobs pushed: 1/'
 		);
 		$this->maintenance->execute();
@@ -141,13 +141,13 @@ class BackfillAbuseReviewTest extends MaintenanceBaseTestCase {
 		$this->maintenance->loadWithArgv( [
 			'--batch-size', '2',
 			'--start-timestamp', '20260801010101',
-			'--end-timestamp', '20260801010301',
+			'--end-timestamp', '20260801010401',
 			'--sleep', '0',
 		] );
 		$this->expectOutputRegex(
-			'/Backfilling Special:AbuseReview by evaluating revisions between 20260801010101 and 20260801010301' .
-			'[\s\S]*Pushed 2 jobs to the queue. Total jobs pushed: 2' .
-			'[\s\S]*Pushed 1 jobs to the queue. Total jobs pushed: 3' .
+			'/Backfilling Special:AbuseReview by evaluating revisions between 20260801010101 and 20260801010401' .
+			'[\s\S]*Pushed 2 jobs to the queue. Processed to timestamp: 20260801010201. Total jobs pushed: 2' .
+			'[\s\S]*Pushed 1 jobs to the queue. Processed to timestamp: 20260801010301. Total jobs pushed: 3' .
 			'[\s\S]*Backfill complete\. Total jobs pushed: 3/'
 		);
 		$this->maintenance->execute();
