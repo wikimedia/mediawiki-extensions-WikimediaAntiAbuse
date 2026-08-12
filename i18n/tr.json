@@ -4,5 +4,31 @@
 			"Hedda"
 		]
 	},
-	"wikimediaantiabuse-desc": "Wikimedia vikileri için kötüye kullanım karşıtı özellikler"
+	"wikimediaantiabuse-desc": "Wikimedia vikileri için kötüye kullanım karşıtı özellikler",
+	"wikimediaantiabuse-special-abuse-review": "Kötüye kullanım incelemesi",
+	"wikimediaantiabuse-special-abuse-review-caption": "İnceleme için işaretlenen sürümler",
+	"wikimediaantiabuse-special-abuse-review-summary": "Bu sayfa, inceleme için otomatik olarak işaretlenen sürümleri gösterir. Sürüm, eşleştiği etiket açısından yanlış pozitifse işlemler sütunundaki düğmeleri kullanarak yanlış pozitif olarak işaretleyin. Sürüm gerçek pozitifse sürüm metnini gizlemek, sürümü işlenmiş olarak işaretler.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Yanlış pozitifleri göster",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "İşlenmiş sürümleri göster",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filtrele",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Sürümleri filtrele",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Sürüm",
+	"wikimediaantiabuse-special-abuse-review-heading-author": "Yazar",
+	"wikimediaantiabuse-special-abuse-review-heading-tags": "Etiketler",
+	"wikimediaantiabuse-special-abuse-review-heading-actions": "Eylemler",
+	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "Yanlış pozitif olarak işaretle",
+	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Yanlış pozitif işaretini kaldır",
+	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Bu sürüm zaten gizlenmiş.",
+	"wikimediaantiabuse-special-abuse-review-action-error": "Sürüm güncellenemedi. Lütfen tekrar deneyin.",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "Bu sayfayı görüntülemek için gerekli izinlerin hiçbirine sahip değilsiniz.",
+	"tag-mw-private-personal-info": "Kişisel bilgi içeriyor olabilir",
+	"tag-mw-private-personal-info-description": "Kişisel bilgi eklediği şüphesiyle otomatik olarak işaretlenen düzenlemeler",
+	"tag-mw-private-personal-info-false-positive": "Yanlış pozitif (kişisel bilgi)",
+	"tag-mw-private-personal-info-false-positive-description": "Kişisel bilgi eklediği gerekçesiyle otomatik işaretlenen ancak yanlış pozitif olarak işaretlenmiş düzenlemeler",
+	"echo-category-title-personal-info": "Kişisel bilgi içerdiği şüphesiyle işaretlendi",
+	"echo-pref-tooltip-personal-info": "Bir düzenleme kişisel bilgi içeriyor olabilir diye işaretlendiğinde beni bilgilendir.",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Bu bildirim hakkında daha fazla bilgi edinin]]",
+	"notification-header-personal-info-flagged": "<strong>$1</strong> sayfasındaki bir düzenleme kişisel bilgi içeriyor olabilir.",
+	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|düzenleme}} kişisel bilgi içeriyor olabilir.",
+	"notification-link-text-personal-info-flagged": "İşaretlenen düzenlemeleri görüntüle"
 }

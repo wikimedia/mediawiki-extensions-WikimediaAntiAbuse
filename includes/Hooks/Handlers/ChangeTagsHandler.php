@@ -14,6 +14,11 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public const string PERSONAL_INFO_TAG = 'mw-private-personal-info';
 	public const string PERSONAL_INFO_FALSE_POSITIVE_TAG = 'mw-private-personal-info-false-positive';
 
+	/** Maps each abuse review tag to the tag applied when it is marked a false positive. */
+	public const array REVIEWABLE_TAGS = [
+		self::PERSONAL_INFO_TAG => self::PERSONAL_INFO_FALSE_POSITIVE_TAG,
+	];
+
 	public function __construct( private readonly Config $config ) {
 	}
 

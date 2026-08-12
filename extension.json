@@ -13,7 +13,8 @@
 	},
 	"MessagesDirs": {
 		"WikimediaAntiAbuse": [
-			"i18n"
+			"i18n",
+			"i18n/api"
 		]
 	},
 	"DefaultUserOptions": {
@@ -63,6 +64,7 @@
 		},
 		"NotificationPreferencesHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\NotificationPreferencesHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\NotificationPreferencesHandler::factory",
 			"services": [
 				"MainConfig",
 				"ChangeTagsStore",
@@ -70,10 +72,29 @@
 				"ExtensionRegistry"
 			]
 		},
+		"RevisionVisibilityHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler::factory",
+			"services": [
+				"MainConfig",
+				"ExtensionRegistry"
+			]
+		},
 		"EchoHooksHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
 			"services": [
 				"MainConfig"
+			]
+		},
+		"UserRightsNotificationHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\UserRightsNotificationHandler",
+			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\UserRightsNotificationHandler::factory",
+			"services": [
+				"MainConfig",
+				"ChangeTagsStore",
+				"UserFactory",
+				"ConnectionProvider",
+				"ExtensionRegistry"
 			]
 		}
 	},
@@ -83,8 +104,10 @@
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
 		"GetPreferences": "NotificationPreferencesHandler",
+		"ArticleRevisionVisibilitySet": "RevisionVisibilityHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
-		"EchoGetBundleRules": "EchoHooksHandler"
+		"EchoGetBundleRules": "EchoHooksHandler",
+		"UserGroupsChanged": "UserRightsNotificationHandler"
 	},
 	"SpecialPages": {
 		"AbuseReview": {
@@ -97,6 +120,49 @@
 				"LinkBatchFactory"
 			]
 		}
+	},
+	"ResourceModules": {
+		"ext.wikimediaAntiAbuse.styles": {
+			"localBasePath": "modules/ext.wikimediaAntiAbuse.styles",
+			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse.styles",
+			"styles": [
+				"special.abuseReview.less"
+			]
+		},
+		"ext.wikimediaAntiAbuse": {
+			"localBasePath": "modules/ext.wikimediaAntiAbuse",
+			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
+			"packageFiles": [
+				"dispatcher.js",
+				"rest.js",
+				"SpecialAbuseReview.js",
+				"utils.js"
+			],
+			"dependencies": [
+				"mediawiki.api"
+			],
+			"messages": [
+				"wikimediaantiabuse-special-abuse-review-action-error"
+			]
+		}
+	},
+	"QUnitTestModule": {
+		"localBasePath": "",
+		"remoteExtPath": "WikimediaAntiAbuse",
+		"packageFiles": [
+			"tests/qunit/index.js",
+			"tests/qunit/rest.test.js",
+			"tests/qunit/utils.test.js",
+			"modules/ext.wikimediaAntiAbuse/rest.js",
+			"modules/ext.wikimediaAntiAbuse/utils.js"
+		],
+		"dependencies": [
+			"mediawiki.qunit-testrunner",
+			"mediawiki.base",
+			"mediawiki.api",
+			"ext.wikimediaAntiAbuse",
+			"sinonjs"
+		]
 	},
 	"ExtensionMessagesFiles": {
 		"WikimediaAntiAbuseAliases": "WikimediaAntiAbuse.alias.php"
@@ -116,6 +182,30 @@
 			"needsPage": false
 		}
 	},
+	"RestRoutes": [
+		{
+			"method": "POST",
+			"path": "/wikimediaantiabuse/v0/mark/revision/{revision}/{tag}/false-positive",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkFalsePositiveHandler",
+			"services": [
+				"WikimediaAntiAbuseFalsePositiveTagService"
+			],
+			"openApiSpec": {
+				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-mark-description"
+			}
+		},
+		{
+			"method": "POST",
+			"path": "/wikimediaantiabuse/v0/unmark/revision/{revision}/{tag}/false-positive",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkFalsePositiveHandler",
+			"services": [
+				"WikimediaAntiAbuseFalsePositiveTagService"
+			],
+			"openApiSpec": {
+				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-unmark-description"
+			}
+		}
+	],
 	"AutoloadNamespaces": {
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\": "includes/",
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Maintenance\\": "maintenance/"

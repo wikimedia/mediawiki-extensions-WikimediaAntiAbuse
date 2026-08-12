@@ -8,9 +8,11 @@ use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Config\HashConfig;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\NotificationPreferencesHandler;
+use MediaWiki\Language\MessageLocalizer;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\User\User;
 use MediaWikiUnitTestCase;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 /**
@@ -26,45 +28,38 @@ class NotificationPreferencesHandlerTest extends MediaWikiUnitTestCase {
 		$this->user = $this->createMock( User::class );
 	}
 
-	/** @dataProvider providePersonalInfoRowRemoval */
-	public function testPersonalInfoRowRemoval( bool $flagEnabled, bool $canViewTag, bool $expectRemoved ): void {
+	/**
+	 * The row-kept path adds a help link via wfMessage()->parse(), which needs the service
+	 * container, so it is covered by the integration test instead.
+	 *
+	 * @dataProvider providePersonalInfoRowRemoval
+	 */
+	public function testPersonalInfoRowRemoval( bool $flagEnabled, bool $canViewTag ): void {
 		$preferences = $this->newPreferences();
 
 		$this->newHandler( $flagEnabled, $canViewTag )->onGetPreferences( $this->user, $preferences );
 
 		$checkmatrix = $preferences['echo-subscriptions'];
-		if ( $expectRemoved ) {
-			$this->assertNotContains( 'personal-info', $checkmatrix['rows'] );
-			$this->assertArrayNotHasKey( 'Personal info label', $checkmatrix['rows'] );
-			$this->assertArrayNotHasKey( 'Personal info label', $checkmatrix['tooltips'] );
-			$this->assertSame( [ 'echo-subscriptions-web-system' ], $checkmatrix['force-options-off'] );
-			$this->assertSame( [], $checkmatrix['force-options-on'] );
-		} else {
-			$this->assertSame( $this->newPreferences()['echo-subscriptions'], $checkmatrix );
-		}
+		$this->assertNotContains( 'personal-info', $checkmatrix['rows'] );
+		$this->assertArrayNotHasKey( 'Personal info label', $checkmatrix['rows'] );
+		$this->assertArrayNotHasKey( 'Personal info label', $checkmatrix['tooltips'] );
+		$this->assertSame( [ 'echo-subscriptions-web-system' ], $checkmatrix['force-options-off'] );
+		$this->assertSame( [], $checkmatrix['force-options-on'] );
 	}
 
 	public static function providePersonalInfoRowRemoval(): array {
 		return [
-			'enabled and can view the tag keeps the row' => [
-				'flagEnabled' => true,
-				'canViewTag' => true,
-				'expectRemoved' => false,
-			],
 			'enabled without tag access removes the row' => [
 				'flagEnabled' => true,
 				'canViewTag' => false,
-				'expectRemoved' => true,
 			],
 			'disabled removes the row despite tag access' => [
 				'flagEnabled' => false,
 				'canViewTag' => true,
-				'expectRemoved' => true,
 			],
 			'disabled without tag access removes the row' => [
 				'flagEnabled' => false,
 				'canViewTag' => false,
-				'expectRemoved' => true,
 			],
 		];
 	}
@@ -92,10 +87,42 @@ class NotificationPreferencesHandlerTest extends MediaWikiUnitTestCase {
 		];
 	}
 
+	public function testWarnsWhenEchoLoadedButRowsMissing(): void {
+		$logger = $this->createMock( LoggerInterface::class );
+		$logger->expects( $this->once() )
+			->method( 'warning' )
+			->with( $this->stringContains( 'registered before Echo' ) );
+
+		$preferences = [ 'echo-subscriptions' => [ 'tooltips' => [ 'System label' => 'system-tip' ] ] ];
+		$this->newHandler( false, false, true, $logger )
+			->onGetPreferences( $this->user, $preferences );
+	}
+
+	/** @dataProvider provideTooltipHelpLinkNoOp */
+	public function testTooltipHelpLinkNoOp( array $preferences ): void {
+		$original = $preferences;
+
+		$this->newHandler( true, true )->onGetPreferences( $this->user, $preferences );
+
+		$this->assertSame( $original, $preferences );
+	}
+
+	public static function provideTooltipHelpLinkNoOp(): array {
+		return [
+			'checkmatrix rows key absent' => [
+				'preferences' => [ 'echo-subscriptions' => [ 'tooltips' => [ 'System label' => 'system-tip' ] ] ],
+			],
+			'personal-info row not present' => [
+				'preferences' => [ 'echo-subscriptions' => [ 'rows' => [ 'System label' => 'system' ] ] ],
+			],
+		];
+	}
+
 	private function newHandler(
 		bool $flagEnabled,
 		bool $canViewTag,
-		bool $echoIsLoaded = false
+		bool $echoIsLoaded = false,
+		?LoggerInterface $logger = null
 	): NotificationPreferencesHandler {
 		$changeTagsStore = $this->createMock( ChangeTagsStore::class );
 		$changeTagsStore->expects( $flagEnabled ? $this->once() : $this->never() )
@@ -111,8 +138,9 @@ class NotificationPreferencesHandlerTest extends MediaWikiUnitTestCase {
 		return new NotificationPreferencesHandler(
 			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => $flagEnabled ] ),
 			$changeTagsStore,
-			new NullLogger(),
-			$extensionRegistry
+			$logger ?? new NullLogger(),
+			$extensionRegistry,
+			$this->createMock( MessageLocalizer::class )
 		);
 	}
 

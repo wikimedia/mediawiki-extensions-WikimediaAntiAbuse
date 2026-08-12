@@ -3,10 +3,12 @@
 declare( strict_types=1 );
 
 use MediaWiki\Config\ServiceOptions;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\FalsePositiveTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
@@ -31,6 +33,23 @@ return [
 		$services->getStatsFactory(),
 		LoggerFactory::getInstance( 'WikimediaAntiAbuse' )
 	),
+
+	'WikimediaAntiAbuseFalsePositiveTagService' => static function ( MediaWikiServices $services ) {
+		$config = $services->getMainConfig();
+		$enabledReviewableTags = [];
+		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
+			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
+		}
+
+		return new FalsePositiveTagService(
+			$enabledReviewableTags,
+			$services->getChangeTagsStore(),
+			$services->getConnectionProvider(),
+			$services->getRevisionLookup(),
+			$services->getReadOnlyMode(),
+			$services->get( 'WikimediaAntiAbuseLogger' )
+		);
+	},
 
 	'WikimediaAntiAbuseHookRunner' => static fn (
 		MediaWikiServices $services

@@ -1,0 +1,19 @@
+@import 'mediawiki.skin.variables.less';
+
+.mw-wikimediaantiabuse-abuse-review-actions {
+	display: flex;
+	align-items: center;
+	// Let the suppressed note drop to its own line rather than shrinking the buttons.
+	flex-wrap: wrap;
+	gap: @spacing-25;
+}
+
+.mw-wikimediaantiabuse-abuse-review-suppressed-note {
+	color: @color-subtle;
+}
+
+// Scoped under the row so the two-class selector out-specifies Codex's own
+// `.cdx-button { display: inline-flex }` without needing !important.
+.mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-hidden {
+	display: none;
+}

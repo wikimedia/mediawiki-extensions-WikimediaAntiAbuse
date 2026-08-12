@@ -21,7 +21,7 @@ class NotificationPreferencesHandlerTest extends MediaWikiIntegrationTestCase {
 		parent::setUp();
 	}
 
-	private function getEchoSubscriptionRows( User $user ): array {
+	private function getEchoSubscriptions( User $user ): array {
 		$context = RequestContext::getMain();
 		$context->setTitle( Title::makeTitle( NS_SPECIAL, 'Preferences' ) );
 		$context->setUser( $user );
@@ -29,7 +29,11 @@ class NotificationPreferencesHandlerTest extends MediaWikiIntegrationTestCase {
 		$descriptor = $this->getServiceContainer()->getPreferencesFactory()
 			->getFormDescriptor( $user, $context );
 
-		return $descriptor['echo-subscriptions']['rows'] ?? [];
+		return $descriptor['echo-subscriptions'] ?? [];
+	}
+
+	private function getEchoSubscriptionRows( User $user ): array {
+		return $this->getEchoSubscriptions( $user )['rows'] ?? [];
 	}
 
 	/** @dataProvider provideRowVisibility */
@@ -71,6 +75,38 @@ class NotificationPreferencesHandlerTest extends MediaWikiIntegrationTestCase {
 				'expectRow' => false,
 			],
 		];
+	}
+
+	public function testEligibleUserGetsTooltipHelpLink(): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => true,
+			'EchoNotificationCategories' => array_merge(
+				$this->getServiceContainer()->getMainConfig()->get( 'EchoNotificationCategories' ),
+				[ 'personal-info' => [ 'priority' => 2, 'tooltip' => 'echo-pref-tooltip-personal-info' ] ]
+			),
+		] );
+		$this->setGroupPermissions( 'tag-viewer', 'viewsuppressed', true );
+		$user = $this->getTestUser( [ 'tag-viewer' ] )->getUser();
+
+		$checkmatrix = $this->getEchoSubscriptions( $user );
+		$label = array_search( 'personal-info', $checkmatrix['rows'], true );
+		$this->assertIsString( $label );
+		$this->assertArrayHasKey(
+			$label,
+			$checkmatrix['tooltips-html'] ?? [],
+			'eligible users get an HTML tooltip for the personal-info row'
+		);
+		$this->assertStringContainsString(
+			'Detecting_abusive_content',
+			$checkmatrix['tooltips-html'][$label],
+			'the HTML tooltip links to the help page'
+		);
+		$this->assertArrayNotHasKey(
+			$label,
+			$checkmatrix['tooltips'] ?? [],
+			'the plain tooltip is dropped so the JS widget renders the HTML one'
+		);
 	}
 
 	public function testEchoCheckmatrixShapeMatchesHandlerAssumptions(): void {
