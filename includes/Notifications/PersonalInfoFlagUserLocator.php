@@ -39,10 +39,10 @@ class PersonalInfoFlagUserLocator {
 			->distinct()
 			->from( 'user_properties' )
 			->where( [
-				// echo-subscriptions-web-personal-info, echo-subscriptions-email-personal-info
 				'up_property' => [
 					'echo-subscriptions-web-' . PersonalInfoFlagNotifier::CATEGORY,
 					'echo-subscriptions-email-' . PersonalInfoFlagNotifier::CATEGORY,
+					'echo-subscriptions-push-' . PersonalInfoFlagNotifier::CATEGORY,
 				],
 				'up_value' => '1',
 			] )

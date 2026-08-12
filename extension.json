@@ -19,7 +19,8 @@
 	},
 	"DefaultUserOptions": {
 		"echo-subscriptions-web-personal-info": false,
-		"echo-subscriptions-email-personal-info": false
+		"echo-subscriptions-email-personal-info": false,
+		"echo-subscriptions-push-personal-info": false
 	},
 	"config": {
 		"WikimediaAntiAbuseEnablePersonalInfoTag": {

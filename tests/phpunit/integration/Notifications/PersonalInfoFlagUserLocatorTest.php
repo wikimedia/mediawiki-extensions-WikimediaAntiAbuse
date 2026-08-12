@@ -35,14 +35,23 @@ class PersonalInfoFlagUserLocatorTest extends MediaWikiIntegrationTestCase {
 			(bool)$userOptionsLookup->getDefaultOption( 'echo-subscriptions-email-personal-info' ),
 			'email subscription must default to off for locate() to find opted-in users'
 		);
+		$this->assertFalse(
+			(bool)$userOptionsLookup->getDefaultOption( 'echo-subscriptions-push-personal-info' ),
+			'push subscription must default to off for locate() to find opted-in users'
+		);
 	}
 
 	/** @dataProvider provideEligibility */
-	public function testLocate( bool $optedIn, array $groups, bool $expectEligible ): void {
+	public function testLocate(
+		bool $optedIn,
+		array $groups,
+		bool $expectEligible,
+		string $subscriptionType = 'web'
+	): void {
 		$user = $this->getTestUser( $groups )->getUser();
 		if ( $optedIn ) {
 			$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
-			$userOptionsManager->setOption( $user, 'echo-subscriptions-web-personal-info', '1' );
+			$userOptionsManager->setOption( $user, "echo-subscriptions-$subscriptionType-personal-info", '1' );
 			$userOptionsManager->saveOptions( $user );
 		}
 
@@ -69,6 +78,12 @@ class PersonalInfoFlagUserLocatorTest extends MediaWikiIntegrationTestCase {
 				'optedIn' => true,
 				'groups' => [ 'suppress-only' ],
 				'expectEligible' => true,
+			],
+			'opted in via push only and holds viewsuppressed is eligible' => [
+				'optedIn' => true,
+				'groups' => [ 'suppress' ],
+				'expectEligible' => true,
+				'subscriptionType' => 'push',
 			],
 			'opted in without tag access is excluded' => [
 				'optedIn' => true,
