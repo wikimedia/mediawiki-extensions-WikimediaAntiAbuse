@@ -8,6 +8,7 @@ use MediaWiki\Block\AbstractBlock;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Permissions\Authority;
+use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Title\Title;
 use Psr\Log\LoggerInterface;
@@ -30,6 +31,7 @@ class FalsePositiveTagService {
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly IConnectionProvider $connectionProvider,
 		private readonly RevisionLookup $revisionLookup,
+		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly ReadOnlyMode $readOnlyMode,
 		private readonly LoggerInterface $logger,
 	) {
@@ -140,6 +142,9 @@ class FalsePositiveTagService {
 		}
 
 		$revision = $this->revisionLookup->getRevisionById( $revisionId );
+		if ( !$revision && $authority->isAllowed( 'deletedhistory' ) ) {
+			$revision = $this->archivedRevisionLookup->getArchivedRevisionRecord( null, $revisionId );
+		}
 		if ( !$revision ) {
 			return $this->fatal( self::HTTP_NOT_FOUND, 'rest-nonexistent-revision', [ $revisionId ] );
 		}

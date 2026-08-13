@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special\Pager;
 
 use InvalidArgumentException;
+use LogicException;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
@@ -40,10 +41,31 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		$objectUnderTest->formatValue( 'unknown', 'some value' );
 	}
 
-	public function testGetQueryInfoWhenTagsFilterEmpty(): void {
+	/** @dataProvider provideGetQueryInfoWhenInvalidTableProvided */
+	public function testGetQueryInfoWhenInvalidTableProvided( ?string $table ): void {
+		$this->expectException( LogicException::class );
+		$this->getObjectUnderTest( [] )->getQueryInfo( $table );
+	}
+
+	public static function provideGetQueryInfoWhenInvalidTableProvided(): array {
+		return [
+			'No table provided' => [ 'table' => null ],
+			'Unhandled table provided' => [ 'table' => 'logging' ],
+		];
+	}
+
+	/** @dataProvider provideTablesForEmptyTagsFilter */
+	public function testGetQueryInfoWhenTagsFilterEmpty( string $table ): void {
 		$objectUnderTest = $this->getObjectUnderTest( [] );
-		$actualQueryInfo = $objectUnderTest->getQueryInfo();
+		$actualQueryInfo = $objectUnderTest->getQueryInfo( $table );
 		$this->assertContains( '1=0', $actualQueryInfo['conds'] );
+	}
+
+	public static function provideTablesForEmptyTagsFilter(): array {
+		return [
+			'revision table' => [ 'revision' ],
+			'archive table' => [ 'archive' ],
+		];
 	}
 
 	public function testFormatValueWhenRevisionHasNoReviewTags(): void {

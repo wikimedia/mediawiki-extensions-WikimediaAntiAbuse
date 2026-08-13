@@ -46,6 +46,7 @@ return [
 			$services->getChangeTagsStore(),
 			$services->getConnectionProvider(),
 			$services->getRevisionLookup(),
+			$services->getArchivedRevisionLookup(),
 			$services->getReadOnlyMode(),
 			$services->get( 'WikimediaAntiAbuseLogger' )
 		);

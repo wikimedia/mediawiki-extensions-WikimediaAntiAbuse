@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager;
 
 use InvalidArgumentException;
+use LogicException;
 use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Context\IContextSource;
@@ -17,10 +18,13 @@ use MediaWiki\Pager\CodexTablePager;
 use MediaWiki\Pager\IndexPager;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\RevisionStore;
+use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
 use MediaWiki\User\UserEditTracker;
 use MediaWiki\User\UserIdentityValue;
 use Wikimedia\Codex\Utility\Codex;
+use Wikimedia\Rdbms\FakeResultWrapper;
+use Wikimedia\Rdbms\IResultWrapper;
 use Wikimedia\Rdbms\RawSQLExpression;
 
 class AbuseReviewPager extends CodexTablePager {
@@ -29,6 +33,9 @@ class AbuseReviewPager extends CodexTablePager {
 
 	// Marks every control/tag whose visibility flips when a row is marked/unmarked.
 	private const string TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle';
+
+	/** @var true Always default to paging in a descending order */
+	public $mDefaultDirection = IndexPager::DIR_DESCENDING;
 
 	public function __construct(
 		IContextSource $context,
@@ -46,14 +53,13 @@ class AbuseReviewPager extends CodexTablePager {
 			$context,
 			$linkRenderer
 		);
-		$this->mDefaultDirection = IndexPager::DIR_DESCENDING;
 	}
 
 	/** @inheritDoc */
 	protected function getFieldNames(): array {
 		return [
-			'rev_timestamp' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-revision' )->text(),
-			'rev_user_text' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-author' )->text(),
+			'timestamp' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-revision' )->text(),
+			'user_text' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-author' )->text(),
 			'ts_tags' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-tags' )->text(),
 			'actions' => $this->msg( 'wikimediaantiabuse-special-abuse-review-heading-actions' )->text(),
 		];
@@ -68,31 +74,44 @@ class AbuseReviewPager extends CodexTablePager {
 		$row = $this->mCurrentRow;
 
 		switch ( $name ) {
-			case 'rev_timestamp':
+			case 'timestamp':
 				$timestamp = $this->getLanguage()->userTimeAndDate( $value, $this->getUser() );
-				$title = Title::makeTitle( $row->page_namespace, $row->page_title );
+				$title = Title::makeTitle( $row->namespace, $row->title );
 
 				if ( RevisionRecord::userCanBitfield(
-					(int)$row->rev_deleted,
+					(int)$row->deleted,
 					RevisionRecord::DELETED_TEXT,
 					$this->getAuthority(),
 					$title
 				) ) {
-					$dateLink = $this->getLinkRenderer()->makeKnownLink(
-						$title,
-						$timestamp,
-						[],
-						[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
-					);
+					if ( $row->is_archive ) {
+						$dateLink = $this->getLinkRenderer()->makeKnownLink(
+							SpecialPage::getTitleValueFor( 'Undelete' ),
+							$timestamp,
+							[],
+							[
+								'target' => $title->getPrefixedText(),
+								'timestamp' => $row->timestamp,
+								'diff' => 'prev',
+							],
+						);
+					} else {
+						$dateLink = $this->getLinkRenderer()->makeKnownLink(
+							$title,
+							$timestamp,
+							[],
+							[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
+						);
+					}
 				} else {
 					$dateLink = htmlspecialchars( $timestamp );
 				}
 
 				// Strike out the timestamp for a revision with deleted text, doubly for a
 				// suppressed one, matching Special:Contributions.
-				if ( ( (int)$row->rev_deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
+				if ( ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
 					$deletedClass = 'history-deleted';
-					if ( ( (int)$row->rev_deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0 ) {
+					if ( ( (int)$row->deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0 ) {
 						$deletedClass .= ' mw-history-suppressed';
 					}
 					$dateLink = Html::rawElement( 'span', [ 'class' => $deletedClass ], $dateLink );
@@ -109,12 +128,12 @@ class AbuseReviewPager extends CodexTablePager {
 				$isFalsePositive = $this->isFalsePositiveRow( $value, $tag );
 				return $this->renderTagVariant( $tag, false, $isFalsePositive ) .
 					$this->renderTagVariant( ChangeTagsHandler::REVIEWABLE_TAGS[$tag], true, $isFalsePositive );
-			case 'rev_user_text':
+			case 'user_text':
 				if ( !RevisionRecord::userCanBitfield(
-					(int)$row->rev_deleted,
+					(int)$row->deleted,
 					RevisionRecord::DELETED_USER,
 					$this->getAuthority(),
-					Title::makeTitle( $row->page_namespace, $row->page_title )
+					Title::makeTitle( $row->namespace, $row->title )
 				) ) {
 					return Html::element(
 						'span',
@@ -123,7 +142,7 @@ class AbuseReviewPager extends CodexTablePager {
 					);
 				}
 
-				$author = new UserIdentityValue( (int)$row->rev_user, $row->rev_user_text );
+				$author = new UserIdentityValue( (int)$row->user, $row->user_text );
 				return $this->getLinkRenderer()->makeUserLink( $author, $this->getContext() ) .
 					Linker::userToolLinks( $author->getId(), $author->getName(), true );
 			case 'actions':
@@ -206,26 +225,177 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/** @inheritDoc */
-	public function getQueryInfo(): array {
-		$queryBuilder = $this->revisionStore->newSelectQueryBuilder( $this->getDatabase() )
-			->joinPage();
+	public function reallyDoQuery( $offset, $limit, $order ): IResultWrapper {
+		$queryInfo = $this->buildQueryInfo( $offset, $limit, $order );
+
+		// Short circuit if only one table is being queried, to avoid the overhead of merging and sorting.
+		if ( count( $queryInfo ) === 1 ) {
+			return $this->getDatabase()->newSelectQueryBuilder()
+				->queryInfo( $queryInfo[0] )
+				->fetchResultSet();
+		}
+
+		$rows = [];
+		foreach ( $queryInfo as $tableQueryInfo ) {
+			$rows = array_merge(
+				$rows,
+				iterator_to_array(
+					$this->getDatabase()->newSelectQueryBuilder()
+						->queryInfo( $tableQueryInfo )
+						->fetchResultSet()
+				)
+			);
+		}
+
+		// Group the rows by timestamp with each row indexed by its rev_id, then sort these groups
+		$groupedRows = [];
+		foreach ( $rows as $row ) {
+			if ( !array_key_exists( $row->timestamp, $groupedRows ) ) {
+				$groupedRows[$row->timestamp] = [];
+			}
+
+			$groupedRows[$row->timestamp][$row->rev_id] = $row;
+		}
+
+		if ( $order === self::QUERY_DESCENDING ) {
+			krsort( $groupedRows );
+			array_walk( $groupedRows, static fn ( &$value ) => krsort( $value ) );
+		} else {
+			ksort( $groupedRows );
+			array_walk( $groupedRows, static fn ( &$value ) => ksort( $value ) );
+		}
+
+		// Flatten the now sorted results into a single array and slice it to the requested limit
+		$sortedRows = [];
+		array_walk_recursive( $groupedRows, static function ( $value ) use ( &$sortedRows ) {
+			$sortedRows[] = $value;
+		} );
+
+		return new FakeResultWrapper( array_slice( $sortedRows, 0, $limit ) );
+	}
+
+	/**
+	 * Builds the query information. This is the same code as written in {@link IndexPager::buildQueryInfo}
+	 * but modifies it to return the per-table query info applying the arguments to each table's query info.
+	 *
+	 * @inheritDoc
+	 * @return array[] One query info array per queried table, in the format accepted by
+	 *   {@link SelectQueryBuilder::queryInfo}
+	 */
+	protected function buildQueryInfo( $offset, $limit, $order ): array {
+		// Copied, with modification, from IndexPager::buildQueryInfo
+		$fname = __METHOD__ . ' (' . $this->getSqlComment() . ')';
+		$queryInfo = [];
+
+		$tablesToQuery = [ 'revision' ];
+		if ( $this->getAuthority()->isAllowed( 'deletedhistory' ) ) {
+			$tablesToQuery[] = 'archive';
+		}
+
+		foreach ( $tablesToQuery as $table ) {
+			$info = $this->getQueryInfo( $table );
+			$tables = $info['tables'];
+			$fields = $info['fields'];
+			$conds = $info['conds'] ?? [];
+			$options = $info['options'] ?? [];
+			$joinConds = $info['join_conds'] ?? [];
+			$indexColumns = (array)$this->mIndexField;
+			$sortColumns = array_merge( $indexColumns, $this->mExtraSortFields );
+
+			if ( $order === self::QUERY_ASCENDING ) {
+				$options['ORDER BY'] = $sortColumns;
+				$operator = $this->mIncludeOffset ? '>=' : '>';
+			} else {
+				$orderBy = [];
+				foreach ( $sortColumns as $col ) {
+					$orderBy[] = $col . ' DESC';
+				}
+				$options['ORDER BY'] = $orderBy;
+				$operator = $this->mIncludeOffset ? '<=' : '<';
+			}
+			if ( $offset ) {
+				$offsets = explode( '|', $offset, count( $indexColumns ) );
+				$indexColumns = array_slice( $indexColumns, 0, count( $offsets ) );
+
+				// Convert the index columns to the correct table column names for the revision and archive tables.
+				$indexColumns = array_map( static fn ( $value ) => match ( $value ) {
+				  'timestamp' => $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp',
+				  'rev_id' => $table === 'revision' ? 'rev_id' : 'ar_rev_id',
+				}, $indexColumns );
+
+				$conds[] = $this->getDatabase()->buildComparison( $operator, array_combine( $indexColumns, $offsets ) );
+			}
+			$options['LIMIT'] = intval( $limit );
+
+			// Add the data that would normally be returned by this method to an array
+			// so that it can be returned for both tables
+			$queryInfo[] = [
+				'tables' => $tables,
+				'fields' => $fields,
+				'conds' => $conds,
+				'caller' => $fname,
+				'options' => $options,
+				'join_conds' => $joinConds
+			];
+		}
+		return $queryInfo;
+	}
+
+	/** @inheritDoc */
+	public function getQueryInfo( ?string $table = null ): array {
+		if ( !in_array( $table, [ 'revision', 'archive' ], true ) ) {
+			throw new LogicException(
+				'This ::getQueryInfo method must be provided with a valid table to generate ' .
+				'the correct query info'
+			);
+		}
+
+		if ( $table === 'revision' ) {
+			$queryBuilder = $this->revisionStore->newSelectQueryBuilder( $this->getDatabase() )
+				->joinPage()
+				->clearFields()
+				->select( [
+					'title' => 'page_title',
+					'namespace' => 'page_namespace',
+					'user' => 'actor_user',
+					'user_text' => 'actor_name',
+					'deleted' => 'rev_deleted',
+					'rev_id' => 'rev_id',
+					'timestamp' => 'rev_timestamp',
+					'is_archive' => '0',
+				] );
+		} else {
+			$queryBuilder = $this->revisionStore->newArchiveSelectQueryBuilder( $this->getDatabase() )
+				->clearFields()
+				->select( [
+					'title' => 'ar_title',
+					'namespace' => 'ar_namespace',
+					'user' => 'actor_user',
+					'user_text' => 'actor_name',
+					'deleted' => 'ar_deleted',
+					'rev_id' => 'ar_rev_id',
+					'timestamp' => 'ar_timestamp',
+					'is_archive' => '1',
+				] );
+		}
 
 		if ( $this->tagsFilter ) {
 			$this->changeTagsStore->addTagsToDisplayQuery(
-				$queryBuilder, 'revision', $this->getAuthority(), $this->tagsFilter
+				$queryBuilder, $table, $this->getAuthority(), $this->tagsFilter
 			);
 		} else {
 			$queryBuilder->where( '1=0' );
 		}
 
 		if ( !$this->includeRevisionsWithSuppressedText ) {
+			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
 			$queryBuilder->where( $this->getDatabase()->orExpr( [
 				new RawSQLExpression( $this->getDatabase()->bitAnd(
-					'rev_deleted',
+					$deletedField,
 					RevisionRecord::DELETED_RESTRICTED
 				) . ' = 0' ),
 				new RawSQLExpression( $this->getDatabase()->bitAnd(
-					'rev_deleted',
+					$deletedField,
 					RevisionRecord::DELETED_TEXT
 				) . ' = 0' ),
 			] ) );
@@ -241,7 +411,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$lb = $this->linkBatchFactory->newLinkBatch()->setCaller( __METHOD__ );
 		$users = [];
 		foreach ( $this->mResult as $row ) {
-			$user = new UserIdentityValue( (int)$row->rev_user, $row->rev_user_text );
+			$user = new UserIdentityValue( (int)$row->user, $row->user_text );
 			$users[] = $user;
 			$lb->addUser( $user );
 		}
@@ -297,7 +467,7 @@ class AbuseReviewPager extends CodexTablePager {
 	 * @return bool
 	 */
 	private function isSuppressedRow( \stdClass $row ): bool {
-		$deleted = (int)$row->rev_deleted;
+		$deleted = (int)$row->deleted;
 		return ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
 			&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
 	}
@@ -339,16 +509,16 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/** @inheritDoc */
 	public function getIndexField(): array {
-		return [ 'rev_timestamp' => [ 'rev_timestamp', 'rev_id' ] ];
+		return [ 'timestamp' => [ 'timestamp', 'rev_id' ] ];
 	}
 
 	/** @inheritDoc */
 	public function getDefaultSort(): string {
-		return '';
+		return 'timestamp';
 	}
 
 	/** @inheritDoc */
 	protected function isFieldSortable( $field ): bool {
-		return $field === 'rev_timestamp';
+		return $field === 'timestamp';
 	}
 }

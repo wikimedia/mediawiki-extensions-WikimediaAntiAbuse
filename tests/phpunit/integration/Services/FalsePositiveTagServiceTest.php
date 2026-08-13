@@ -90,6 +90,16 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	public function testMarkReturnsErrorWhenUserCannotSeeDeletedRevision(): void {
+		$authority = $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed' ] );
+		$revId = $this->createRevisionId();
+		$this->deletePage( 'False positive test page' );
+
+		$status = $this->getService()->markFalsePositive( $authority, $revId, self::PERSONAL_INFO_TAG );
+		$this->assertStatusError( 'rest-nonexistent-revision', $status );
+		$this->assertSame( 404, $status->getValue() );
+	}
+
 	public function testMarkReturnsForbiddenWhenSitewideBlocked(): void {
 		$authority = $this->mockUserAuthorityWithBlock(
 			new UserIdentityValue( 9999, 'Blocked reviewer' ),
@@ -148,11 +158,16 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame( 422, $status->getValue() );
 	}
 
-	public function testMarkAndUnmarkSwapTags(): void {
-		$reviewer = $this->reviewer();
+	/** @dataProvider providePageIsDeleted */
+	public function testMarkAndUnmarkSwapTags( bool $pageIsDeleted ): void {
+		$reviewer = $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed', 'deletedhistory' ] );
 		$revId = $this->createRevisionId();
 		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
 		$this->assertSame( [ self::PERSONAL_INFO_TAG ], $this->getTags( $revId ) );
+
+		if ( $pageIsDeleted ) {
+			$this->deletePage( 'False positive test page' );
+		}
 
 		$this->assertStatusGood(
 			$this->getService()->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG )
@@ -171,6 +186,13 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 			$this->getTags( $revId ),
 			'Unmarking must restore the personal-info tag and remove the false-positive tag'
 		);
+	}
+
+	public static function providePageIsDeleted(): array {
+		return [
+			'Page is not deleted' => [ 'pageIsDeleted' => false ],
+			'Page is deleted' => [ 'pageIsDeleted' => true ],
+		];
 	}
 
 	/** @dataProvider provideSuppressionRights */

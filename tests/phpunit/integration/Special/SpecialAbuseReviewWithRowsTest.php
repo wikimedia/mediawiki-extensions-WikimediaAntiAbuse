@@ -8,6 +8,7 @@ use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\Ext\DOMUtils;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview
@@ -21,13 +22,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $taggedContentRevId;
 	private static int $falsePositiveRevId;
 	private static int $suppressedFalsePositiveRevId;
+	private static int $deletedTaggedContentRevId;
 
 	/** @dataProvider provideViewWhenRevisionsPresent */
 	public function testViewWhenRevisionsPresent(
 		bool $includeFalsePositiveRevisions,
 		bool $includeSuppressedRevisions,
+		bool $descendingOrder,
+		callable $extraQueryParamsCallback,
 		array $authorityRights,
-		callable $expectedRevIdsCallback
+		callable $expectedRevIdsCallback,
 	): void {
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
@@ -38,6 +42,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		if ( $includeSuppressedRevisions ) {
 			$data['wpShowHandledRevisions'] = '1';
 		}
+		if ( !$descendingOrder ) {
+			$data['asc'] = '1';
+		}
+		$data = array_merge( $data, $extraQueryParamsCallback() );
 		[ $html ] = $this->executeSpecialPage( '', new FauxRequest( $data ), null, $testUser );
 
 		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );
@@ -55,28 +63,50 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertSameSize( $expectedRevIds, $tableRows );
 
 		$revisionStore = $this->getServiceContainer()->getRevisionStore();
+		$archivedRevisionLookup = $this->getServiceContainer()->getArchivedRevisionLookup();
 		$qqxLanguage = $this->getServiceContainer()->getLanguageFactory()->getLanguage( 'qqx' );
-		foreach ( $tableRows as $tableRow ) {
+		foreach ( $tableRows as $tableRowIndex => $tableRow ) {
 			$actualRevId = (int)DOMCompat::getAttribute( $tableRow, 'data-rev-id' );
-			$this->assertContains( $actualRevId, $expectedRevIds );
-
-			$actualRevision = $revisionStore->getRevisionById( $actualRevId );
-
-			$timestampCellHtml = $this->assertSelectorMatchesOneElementInNode(
-				$tableRow,
-				'.cdx-table-pager__col--rev_timestamp',
-				true
+			$this->assertContains(
+				$actualRevId,
+				$expectedRevIds,
+				'The revision was not expected to be in the table'
 			);
+			$this->assertSame(
+				array_search( $actualRevId, $expectedRevIds, true ),
+				$tableRowIndex,
+				'The order of the rows was not as expected'
+			);
+
+			$isArchivedRevision = $actualRevId === static::$deletedTaggedContentRevId;
+
+			$actualRevision = $isArchivedRevision ?
+				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
+				$revisionStore->getRevisionById( $actualRevId );
+
+			$timestampCellNode = $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.cdx-table-pager__col--timestamp'
+			);
+			$timestampCellHtml = DOMCompat::getInnerHTML( $timestampCellNode );
 			$this->assertStringContainsString(
 				$qqxLanguage->userTimeAndDate( $actualRevision->getTimestamp(), $testUser ),
 				$timestampCellHtml
 			);
 
 			// Link to diff should only exist if the user can see the revision text
+			$timestampLink = DOMCompat::querySelector( $timestampCellNode, 'a' );
 			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
-				$this->assertStringContainsString( 'oldid=' . $actualRevId, $timestampCellHtml );
+				$href = DOMCompat::getAttribute( $timestampLink, 'href' );
+				if ( $isArchivedRevision ) {
+					$this->assertStringContainsString( 'Special:Undelete', $href );
+					$this->assertStringContainsString( 'timestamp=' . $actualRevision->getTimestamp(), $href );
+					$this->assertStringContainsString( 'diff=prev', $href );
+				} else {
+					$this->assertStringContainsString( 'oldid=' . $actualRevId, $href );
+				}
 			} else {
-				$this->assertStringNotContainsString( 'oldid=' . $actualRevId, $timestampCellHtml );
+				$this->assertNull( $timestampLink );
 			}
 
 			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
@@ -92,7 +122,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 			$authorCellHtml = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.cdx-table-pager__col--rev_user_text',
+				'.cdx-table-pager__col--user_text',
 				true
 			);
 			if ( $actualRevision->userCan( RevisionRecord::DELETED_USER, $testUser ) ) {
@@ -240,23 +270,46 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'False positives and suppressed revisions excluded' => [
 				'includeFalsePositiveRevisions' => false,
 				'includeSuppressedRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
-				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedRevIdsCallback' => static fn () => [
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
 			],
 			'False positives included, suppressed revisions excluded' => [
 				'includeFalsePositiveRevisions' => true,
 				'includeSuppressedRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$deletedTaggedContentRevId,
+					static::$falsePositiveRevId,
+					static::$taggedContentRevId,
+				],
+			],
+			'False positives included, suppressed revisions excluded in reverse order' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeSuppressedRevisions' => false,
+				'descendingOrder' => false,
+				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
 					static::$taggedContentRevId,
 					static::$falsePositiveRevId,
+					static::$deletedTaggedContentRevId,
 				],
 			],
 			'False positives excluded, suppressed revisions included' => [
 				'includeFalsePositiveRevisions' => false,
 				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
 				],
@@ -264,54 +317,114 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'False positives and suppressed revisions included' => [
 				'includeFalsePositiveRevisions' => true,
 				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$deletedTaggedContentRevId,
+					static::$suppressedFalsePositiveRevId,
+					static::$falsePositiveRevId,
+					static::$taggedContentRevId,
+					static::$suppressedContentRevId,
+				],
+			],
+			'False positives and suppressed revisions included with limit of 2' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'limit' => 2 ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$deletedTaggedContentRevId,
+					static::$suppressedFalsePositiveRevId,
+				],
+			],
+			'False positives and suppressed revisions included with limit of 2 with offset' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'limit' => 2,
+					'offset' => '20260101010103|' . static::$falsePositiveRevId,
+				],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
 					static::$taggedContentRevId,
-					static::$falsePositiveRevId,
 					static::$suppressedContentRevId,
+				],
+			],
+			'False positives and suppressed revisions included with offset and prev direction' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'limit' => 2,
+					'dir' => 'prev',
+					'offset' => '20260101010103|' . static::$taggedContentRevId,
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
 					static::$suppressedFalsePositiveRevId,
+					static::$falsePositiveRevId,
 				],
 			],
 			'False positives and suppressed revisions included but user lacks access to deleted history' => [
 				'includeFalsePositiveRevisions' => true,
 				'includeSuppressedRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => [ 'viewsuppressed' ],
 				'expectedRevIdsCallback' => static fn () => [
-					static::$taggedContentRevId,
-					static::$falsePositiveRevId,
-					static::$suppressedContentRevId,
 					static::$suppressedFalsePositiveRevId,
+					static::$falsePositiveRevId,
+					static::$taggedContentRevId,
+					static::$suppressedContentRevId,
 				],
 			],
 		];
 	}
 
 	public function addDBDataOnce(): void {
+		ConvertibleTimestamp::setFakeTime( '20260101010101' );
 		// Get enough revisions to test each state of the filters, and one that should never show up in the results
 		$firstPage = $this->getNonexistingTestPage();
 		$suppressedContentEditStatus = $this->editPage( $firstPage, 'Suppressed and tagged content' );
 		$this->assertStatusGood( $suppressedContentEditStatus );
 		static::$suppressedContentRevId = $suppressedContentEditStatus->getNewRevision()->getId();
 
+		ConvertibleTimestamp::setFakeTime( '20260101010102' );
 		$notTaggedContentEditStatus = $this->editPage( $firstPage, 'Not tagged content' );
 		$this->assertStatusGood( $notTaggedContentEditStatus );
 		static::$notTaggedContentRevId = $notTaggedContentEditStatus->getNewRevision()->getId();
 
+		ConvertibleTimestamp::setFakeTime( '20260101010103' );
 		$secondPage = $this->getNonexistingTestPage();
 		$taggedContentEditStatus = $this->editPage( $secondPage, 'Tagged content' );
 		$this->assertStatusGood( $taggedContentEditStatus );
 		static::$taggedContentRevId = $taggedContentEditStatus->getNewRevision()->getId();
 
+		// Intentionally use the same timestamp as the previous revision to test
+		// handling when multiple revisions have the same timestamp.
+		ConvertibleTimestamp::setFakeTime( '20260101010103' );
 		$falsePositiveEditStatus = $this->editPage( $secondPage, 'False positive tagged content' );
 		$this->assertStatusGood( $falsePositiveEditStatus );
 		static::$falsePositiveRevId = $falsePositiveEditStatus->getNewRevision()->getId();
 
 		// A revision that was marked a false positive and then suppressed.
+		ConvertibleTimestamp::setFakeTime( '20260101010105' );
 		$thirdPage = $this->getNonexistingTestPage();
 		$suppressedFalsePositiveEditStatus = $this->editPage( $thirdPage, 'Suppressed false positive content' );
 		$this->assertStatusGood( $suppressedFalsePositiveEditStatus );
 		static::$suppressedFalsePositiveRevId = $suppressedFalsePositiveEditStatus->getNewRevision()->getId();
 		$this->assertStatusGood( $this->editPage( $thirdPage, 'Trailing content' ) );
+
+		ConvertibleTimestamp::setFakeTime( '20260101010106' );
+		$fourthPage = $this->getNonexistingTestPage();
+		$deletedTaggedContentEditStatus = $this->editPage( $fourthPage, 'Deleted tagged content' );
+		$this->assertStatusGood( $deletedTaggedContentEditStatus );
+		static::$deletedTaggedContentRevId = $deletedTaggedContentEditStatus->getNewRevision()->getId();
+
+		ConvertibleTimestamp::setFakeTime( false );
 
 		$changeTagsStore = $this->getServiceContainer()->getChangeTagsStore();
 		$changeTagsStore->addTags(
@@ -334,6 +447,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			null,
 			static::$suppressedFalsePositiveRevId
 		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-personal-info' ],
+			null,
+			static::$deletedTaggedContentRevId
+		);
 
 		$this->revisionDelete(
 			static::$suppressedContentRevId,
@@ -347,5 +465,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			static::$taggedContentRevId,
 			[ RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_USER => 1 ]
 		);
+
+		$this->deletePage( $fourthPage );
 	}
 }

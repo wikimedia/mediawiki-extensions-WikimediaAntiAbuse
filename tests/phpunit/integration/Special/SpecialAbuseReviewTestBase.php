@@ -57,7 +57,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 
 		$timestampColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
 			$tablePager,
-			'th.cdx-table-pager__col--rev_timestamp',
+			'th.cdx-table-pager__col--timestamp',
 			true
 		);
 		$this->assertStringContainsString(
@@ -67,7 +67,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 
 		$authorColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
 			$tablePager,
-			'th.cdx-table-pager__col--rev_user_text',
+			'th.cdx-table-pager__col--user_text',
 			true
 		);
 		$this->assertStringContainsString(
