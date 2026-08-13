@@ -158,4 +158,44 @@ class BackfillAbuseReviewTest extends MaintenanceBaseTestCase {
 			$thirdEditStatus->getNewRevision()->getId(),
 		] );
 	}
+
+	public function testExecuteWhenHigherRevisionIdsHaveSmallerTimestamps(): void {
+		ConvertibleTimestamp::setFakeTime( '20260801010301' );
+		$firstEditStatus = $this->editPage( 'First test page', 'Test content' );
+		$this->assertStatusGood( $firstEditStatus );
+
+		// A higher revision ID with an earlier timestamp can happen during imports, but simulate it
+		// to avoid that overhead
+		ConvertibleTimestamp::setFakeTime( '20260801010201' );
+		$secondEditStatus = $this->editPage( 'Second test page', 'Test content' );
+		$this->assertStatusGood( $secondEditStatus );
+
+		ConvertibleTimestamp::setFakeTime( '20260801010201' );
+		$thirdEditStatus = $this->editPage( 'Third test page', 'Test content' );
+		$this->assertStatusGood( $thirdEditStatus );
+
+		ConvertibleTimestamp::setFakeTime( false );
+		$this->clearJobQueue();
+
+		$this->maintenance->loadWithArgv( [
+			'--batch-size', '1',
+			'--start-timestamp', '20260801010101',
+			'--end-timestamp', '20260801010401',
+			'--sleep', '0',
+		] );
+		$this->expectOutputRegex(
+			'/Backfilling Special:AbuseReview by evaluating revisions between 20260801010101 and 20260801010401' .
+			'[\s\S]*Pushed 1 jobs to the queue. Processed to timestamp: 20260801010201. Total jobs pushed: 1' .
+			'[\s\S]*Pushed 1 jobs to the queue. Processed to timestamp: 20260801010201. Total jobs pushed: 2' .
+			'[\s\S]*Pushed 1 jobs to the queue. Processed to timestamp: 20260801010301. Total jobs pushed: 3' .
+			'[\s\S]*Backfill complete\. Total jobs pushed: 3/'
+		);
+		$this->maintenance->execute();
+
+		$this->checkRevisionJobsExist( [
+			$firstEditStatus->getNewRevision()->getId(),
+			$secondEditStatus->getNewRevision()->getId(),
+			$thirdEditStatus->getNewRevision()->getId(),
+		] );
+	}
 }

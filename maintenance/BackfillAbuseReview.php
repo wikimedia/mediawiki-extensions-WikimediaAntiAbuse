@@ -70,7 +70,6 @@ class BackfillAbuseReview extends Maintenance {
 			$endTimestamp . '...' . PHP_EOL
 		);
 
-		$revisionStore = $this->getServiceContainer()->getRevisionStore();
 		$jobQueueGroup = $this->getServiceContainer()->getJobQueueGroup();
 		$dbr = $this->getReplicaDB();
 
@@ -78,17 +77,24 @@ class BackfillAbuseReview extends Maintenance {
 		$batchStartRevisionTimestamp = $startTimestamp;
 		$jobsPushed = 0;
 		do {
-			$revisionsQueryBuilder = $revisionStore->newSelectQueryBuilder( $dbr )
-				->clearFields()
+			if ( $batchStartRevisionId ) {
+				$lowerBoundExpr = $dbr->buildComparison(
+					'>',
+					[
+						'rev_timestamp' => $dbr->timestamp( $batchStartRevisionTimestamp ),
+						'rev_id' => $batchStartRevisionId,
+					]
+				);
+			} else {
+				$lowerBoundExpr = $dbr->expr( 'rev_timestamp', '>=', $dbr->timestamp( $batchStartRevisionTimestamp ) );
+			}
+			$revisionsToEvaluate = $dbr->newSelectQueryBuilder()
 				->select( [ 'rev_id', 'rev_timestamp' ] )
-				->where( $dbr->expr( 'rev_timestamp', '>=', $dbr->timestamp( $batchStartRevisionTimestamp ) ) )
+				->from( 'revision' )
+				->where( $lowerBoundExpr )
 				->andWhere( $dbr->expr( 'rev_timestamp', '<=', $dbr->timestamp( $endTimestamp ) ) )
 				->orderBy( [ 'rev_timestamp', 'rev_id' ], SelectQueryBuilder::SORT_ASC )
-				->limit( $this->getBatchSize() ?? 200 );
-			if ( $batchStartRevisionId ) {
-				$revisionsQueryBuilder->andWhere( $dbr->expr( 'rev_id', '>', $batchStartRevisionId ) );
-			}
-			$revisionsToEvaluate = $revisionsQueryBuilder
+				->limit( $this->getBatchSize() ?? 200 )
 				->caller( __METHOD__ )
 				->fetchResultSet();
 
