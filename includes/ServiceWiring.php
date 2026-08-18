@@ -7,8 +7,8 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\FalsePositiveTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Logger\LoggerFactory;
 use MediaWiki\MediaWikiServices;
@@ -21,6 +21,24 @@ use MediaWiki\Registration\ExtensionRegistry;
 
 /** @phpcs-require-sorted-array */
 return [
+	'WikimediaAntiAbuseAbuseReviewTagService' => static function ( MediaWikiServices $services ) {
+		$config = $services->getMainConfig();
+		$enabledReviewableTags = [];
+		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
+			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
+		}
+
+		return new AbuseReviewTagService(
+			$enabledReviewableTags,
+			$services->getChangeTagsStore(),
+			$services->getConnectionProvider(),
+			$services->getRevisionLookup(),
+			$services->getArchivedRevisionLookup(),
+			$services->getReadOnlyMode(),
+			$services->get( 'WikimediaAntiAbuseLogger' )
+		);
+	},
+
 	'WikimediaAntiAbuseContentPolicyEvaluator' => static fn (
 		MediaWikiServices $services
 	) => new ContentPolicyEvaluator(
@@ -33,24 +51,6 @@ return [
 		$services->getStatsFactory(),
 		LoggerFactory::getInstance( 'WikimediaAntiAbuse' )
 	),
-
-	'WikimediaAntiAbuseFalsePositiveTagService' => static function ( MediaWikiServices $services ) {
-		$config = $services->getMainConfig();
-		$enabledReviewableTags = [];
-		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
-			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
-		}
-
-		return new FalsePositiveTagService(
-			$enabledReviewableTags,
-			$services->getChangeTagsStore(),
-			$services->getConnectionProvider(),
-			$services->getRevisionLookup(),
-			$services->getArchivedRevisionLookup(),
-			$services->getReadOnlyMode(),
-			$services->get( 'WikimediaAntiAbuseLogger' )
-		);
-	},
 
 	'WikimediaAntiAbuseHookRunner' => static fn (
 		MediaWikiServices $services

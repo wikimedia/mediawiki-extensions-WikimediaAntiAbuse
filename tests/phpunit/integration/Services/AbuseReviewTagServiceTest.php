@@ -5,17 +5,17 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 
 use MediaWiki\Block\DatabaseBlock;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\FalsePositiveTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
 use MediaWiki\User\UserIdentityValue;
 use MediaWikiIntegrationTestCase;
 
 /**
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\FalsePositiveTagService
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService
  * @group Database
  */
-class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
+class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 
 	use MockAuthorityTrait;
 
@@ -28,8 +28,8 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', true );
 	}
 
-	private function getService(): FalsePositiveTagService {
-		return $this->getServiceContainer()->get( 'WikimediaAntiAbuseFalsePositiveTagService' );
+	private function getService(): AbuseReviewTagService {
+		return $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' );
 	}
 
 	private function reviewer(): Authority {
@@ -56,13 +56,13 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', false );
 
 		$status = $this->getService()->markFalsePositive( $this->reviewer(), 1234567, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-disabled', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-disabled', $status );
 		$this->assertSame( 404, $status->getValue() );
 	}
 
 	public function testMarkReturnsBadRequestForUnknownTag(): void {
 		$status = $this->getService()->markFalsePositive( $this->reviewer(), 1234567, 'mw-not-a-reviewable-tag' );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-unknown-tag', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-unknown-tag', $status );
 		$this->assertSame( 400, $status->getValue() );
 	}
 
@@ -79,7 +79,7 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$authority = $isRegistered ? $this->mockRegisteredNullAuthority() : $this->mockAnonNullAuthority();
 
 		$status = $this->getService()->markFalsePositive( $authority, 1234567, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-permission-denied', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-permission-denied', $status );
 		$this->assertSame( $expected, $status->getValue() );
 	}
 
@@ -108,7 +108,7 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		);
 
 		$status = $this->getService()->markFalsePositive( $authority, 1234567, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-blocked', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-blocked', $status );
 		$this->assertSame( 403, $status->getValue() );
 	}
 
@@ -124,7 +124,7 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		);
 
 		$status = $this->getService()->markFalsePositive( $authority, $revId, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-blocked', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-blocked', $status );
 		$this->assertSame( 403, $status->getValue() );
 	}
 
@@ -138,7 +138,7 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$revId = $this->createRevisionId();
 
 		$status = $this->getService()->markFalsePositive( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-not-flagged', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-not-flagged', $status );
 		$this->assertSame( 422, $status->getValue() );
 	}
 
@@ -146,7 +146,7 @@ class FalsePositiveTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', false );
 
 		$status = $this->getService()->unmarkFalsePositive( $this->reviewer(), 1234567, self::PERSONAL_INFO_TAG );
-		$this->assertStatusError( 'wikimediaantiabuse-api-falsepositive-disabled', $status );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-disabled', $status );
 		$this->assertSame( 404, $status->getValue() );
 	}
 

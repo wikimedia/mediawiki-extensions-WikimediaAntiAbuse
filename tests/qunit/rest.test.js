@@ -63,7 +63,7 @@ QUnit.test( 'unmarkAsFalsePositive resolves with the response body on success', 
 } );
 
 QUnit.test( 'rejects with the parsed error body on a non-token error', async ( assert ) => {
-	const error = { errorKey: 'wikimediaantiabuse-api-falsepositive-blocked', httpCode: 403 };
+	const error = { errorKey: 'wikimediaantiabuse-api-review-blocked', httpCode: 403 };
 	server.respond( ( request ) => {
 		if ( request.url.endsWith( 'wikimediaantiabuse/v0/mark/revision/2/' + TAG + '/false-positive' ) ) {
 			request.respond( 403, { 'Content-Type': 'application/json' }, JSON.stringify( error ) );

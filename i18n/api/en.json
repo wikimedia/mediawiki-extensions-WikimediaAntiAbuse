@@ -2,12 +2,12 @@
 	"@metadata": {
 		"authors": []
 	},
-	"wikimediaantiabuse-api-falsepositive-permission-denied": "You do not have permission to change the false positive status of this revision.",
-	"wikimediaantiabuse-api-falsepositive-not-flagged": "This revision is not marked with an abuse review tag.",
+	"wikimediaantiabuse-api-review-permission-denied": "You do not have permission to change the review status of this revision.",
+	"wikimediaantiabuse-api-review-not-flagged": "This revision is not marked with an abuse review tag.",
 	"wikimediaantiabuse-api-falsepositive-not-marked": "This revision is not marked as a false positive.",
-	"wikimediaantiabuse-api-falsepositive-disabled": "The false positive API is not enabled on this wiki.",
-	"wikimediaantiabuse-api-falsepositive-unknown-tag": "The tag \"$1\" cannot be marked as a false positive.",
-	"wikimediaantiabuse-api-falsepositive-blocked": "You cannot change the false positive status of a revision while you are blocked from editing.",
-	"wikimediaantiabuse-api-falsepositive-mark-description": "Marks a revision as a false positive for a reviewable tag. Removes the tag and adds the false positive version of the tag. For example, providing the `mw-private-personal-info` tag will change it to the `mw-private-personal-info-false-positive` tag. Requires the ability to see the tag you are changing.",
-	"wikimediaantiabuse-api-falsepositive-unmark-description": "Removes the false positive marking from a revision: For example, providing the `mw-private-personal-info` tag will remove the `mw-private-personal-info-false-positive` tag and restores the `mw-private-personal-info` tag. Requires the ability to see the tag you are changing."
+	"wikimediaantiabuse-api-review-disabled": "This REST API is not enabled on this wiki.",
+	"wikimediaantiabuse-api-review-unknown-tag": "The tag \"$1\" is not a reviewable tag.",
+	"wikimediaantiabuse-api-review-blocked": "You cannot use this API while you are blocked from editing.",
+	"wikimediaantiabuse-api-review-mark-description": "Records a review verdict on a revision. The only verdict is `false-positive`, which removes the reviewable tag and adds its false positive version. For example, the `mw-private-personal-info` tag becomes the `mw-private-personal-info-false-positive` tag. Requires the ability to see the tag you are changing.",
+	"wikimediaantiabuse-api-review-unmark-description": "Removes a review verdict from a revision. The only verdict is `false-positive`, which removes the false positive version of the tag and restores the reviewable tag. For example, the `mw-private-personal-info-false-positive` tag becomes the `mw-private-personal-info` tag. Requires the ability to see the tag you are changing."
 }

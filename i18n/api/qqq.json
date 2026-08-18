@@ -2,12 +2,12 @@
 	"@metadata": {
 		"authors": []
 	},
-	"wikimediaantiabuse-api-falsepositive-permission-denied": "Error message shown over the REST API when the user lacks permission to change the false positive status of a revision.",
-	"wikimediaantiabuse-api-falsepositive-not-flagged": "Error message shown over the REST API when trying to mark a revision that is not marked with an abuse review tag.",
+	"wikimediaantiabuse-api-review-permission-denied": "Error message shown over the REST API when the user lacks permission to change the review status of a revision.",
+	"wikimediaantiabuse-api-review-not-flagged": "Error message shown over the REST API when recording a review verdict on a revision that is not marked with an abuse review tag.",
 	"wikimediaantiabuse-api-falsepositive-not-marked": "Error message shown over the REST API when trying to unmark a revision that is not currently marked as a false positive.",
-	"wikimediaantiabuse-api-falsepositive-disabled": "Error message shown over the REST API when the false positive feature is disabled by configuration.",
-	"wikimediaantiabuse-api-falsepositive-unknown-tag": "Error message shown over the REST API when the requested tag is not one that supports false-positive review.\n\nParameters:\n* $1 - the requested tag name.",
-	"wikimediaantiabuse-api-falsepositive-blocked": "Error message shown over the REST API when a user who is blocked tries to change the false positive status of a revision.",
-	"wikimediaantiabuse-api-falsepositive-mark-description": "Description of what the mark-as-false-positive REST endpoint does, shown to API consumers in the generated API documentation.",
-	"wikimediaantiabuse-api-falsepositive-unmark-description": "Description of what the unmark-as-false-positive REST endpoint does, shown to API consumers in the generated API documentation."
+	"wikimediaantiabuse-api-review-disabled": "Error message shown over the REST API when abuse review is disabled by configuration on this wiki.",
+	"wikimediaantiabuse-api-review-unknown-tag": "Error message shown over the REST API when the requested tag is not a reviewable tag.\n\nParameters:\n* $1 - the requested tag name.",
+	"wikimediaantiabuse-api-review-blocked": "Error message shown over the REST API when a blocked user tries to change the review status of a revision.",
+	"wikimediaantiabuse-api-review-mark-description": "Description of what the endpoint that records a review verdict does, shown to API consumers in the generated API documentation.",
+	"wikimediaantiabuse-api-review-unmark-description": "Description of what the endpoint that removes a review verdict does, shown to API consumers in the generated API documentation."
 }

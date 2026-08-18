@@ -186,24 +186,24 @@
 	"RestRoutes": [
 		{
 			"method": "POST",
-			"path": "/wikimediaantiabuse/v0/mark/revision/{revision}/{tag}/false-positive",
-			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkFalsePositiveHandler",
+			"path": "/wikimediaantiabuse/v0/mark/revision/{revision}/{tag}/{verdict}",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkReviewVerdictHandler",
 			"services": [
-				"WikimediaAntiAbuseFalsePositiveTagService"
+				"WikimediaAntiAbuseAbuseReviewTagService"
 			],
 			"openApiSpec": {
-				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-mark-description"
+				"x-i18n-description": "wikimediaantiabuse-api-review-mark-description"
 			}
 		},
 		{
 			"method": "POST",
-			"path": "/wikimediaantiabuse/v0/unmark/revision/{revision}/{tag}/false-positive",
-			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkFalsePositiveHandler",
+			"path": "/wikimediaantiabuse/v0/unmark/revision/{revision}/{tag}/{verdict}",
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkReviewVerdictHandler",
 			"services": [
-				"WikimediaAntiAbuseFalsePositiveTagService"
+				"WikimediaAntiAbuseAbuseReviewTagService"
 			],
 			"openApiSpec": {
-				"x-i18n-description": "wikimediaantiabuse-api-falsepositive-unmark-description"
+				"x-i18n-description": "wikimediaantiabuse-api-review-unmark-description"
 			}
 		}
 	],
