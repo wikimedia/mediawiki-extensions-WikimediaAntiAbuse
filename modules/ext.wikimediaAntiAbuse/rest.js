@@ -27,6 +27,32 @@ function unmarkAsFalsePositive( revId, reviewTag ) {
 }
 
 /**
+ * Marks a flagged revision as reviewed and needing no further action.
+ *
+ * @param {number|string} revId The revision ID being changed
+ * @param {string} reviewTag The flagged tag (not its false-positive variant)
+ * @return {Promise<Object>} Resolves with the REST response body
+ */
+function markNoFurtherAction( revId, reviewTag ) {
+	return postWithToken(
+		'/wikimediaantiabuse/v0/mark/revision/' + revId + '/' + reviewTag + '/no-further-action'
+	);
+}
+
+/**
+ * Removes the no-further-action marking from a revision.
+ *
+ * @param {number|string} revId The revision ID being changed
+ * @param {string} reviewTag The flagged tag (not its false-positive variant)
+ * @return {Promise<Object>} Resolves with the REST response body
+ */
+function unmarkNoFurtherAction( revId, reviewTag ) {
+	return postWithToken(
+		'/wikimediaantiabuse/v0/unmark/revision/' + revId + '/' + reviewTag + '/no-further-action'
+	);
+}
+
+/**
  * POST to a REST path with a CSRF token, refreshing the token and retrying once
  * if the first attempt fails because the token was stale.
  *
@@ -73,4 +99,9 @@ function post( rest, path, token ) {
 	} );
 }
 
-module.exports = { markAsFalsePositive, unmarkAsFalsePositive };
+module.exports = {
+	markAsFalsePositive,
+	unmarkAsFalsePositive,
+	markNoFurtherAction,
+	unmarkNoFurtherAction
+};

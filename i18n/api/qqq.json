@@ -4,6 +4,7 @@
 	},
 	"wikimediaantiabuse-api-review-permission-denied": "Error message shown over the REST API when the user lacks permission to change the review status of a revision.",
 	"wikimediaantiabuse-api-review-not-flagged": "Error message shown over the REST API when recording a review verdict on a revision that is not marked with an abuse review tag.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Error message shown over the REST API when recording a review verdict on a revision that already has a different verdict. A revision holds one verdict at a time.",
 	"wikimediaantiabuse-api-falsepositive-not-marked": "Error message shown over the REST API when trying to unmark a revision that is not currently marked as a false positive.",
 	"wikimediaantiabuse-api-review-disabled": "Error message shown over the REST API when abuse review is disabled by configuration on this wiki.",
 	"wikimediaantiabuse-api-review-unknown-tag": "Error message shown over the REST API when the requested tag is not a reviewable tag.\n\nParameters:\n* $1 - the requested tag name.",

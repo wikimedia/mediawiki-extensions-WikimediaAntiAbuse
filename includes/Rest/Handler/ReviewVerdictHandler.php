@@ -20,12 +20,16 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 	use TokenAwareHandlerTrait;
 
 	public const string FALSE_POSITIVE = 'false-positive';
+	public const string NO_FURTHER_ACTION = 'no-further-action';
 
 	/** Every verdict this endpoint accepts as a path parameter. */
-	public const array VERDICTS = [ self::FALSE_POSITIVE ];
+	public const array VERDICTS = [ self::FALSE_POSITIVE, self::NO_FURTHER_ACTION ];
 
 	/** Response field reporting each verdict's new state, keyed by verdict. */
-	public const array RESPONSE_FIELDS = [ self::FALSE_POSITIVE => 'falsePositive' ];
+	public const array RESPONSE_FIELDS = [
+		self::FALSE_POSITIVE => 'falsePositive',
+		self::NO_FURTHER_ACTION => 'noFurtherAction',
+	];
 
 	public function __construct(
 		protected readonly AbuseReviewTagService $abuseReviewTagService,

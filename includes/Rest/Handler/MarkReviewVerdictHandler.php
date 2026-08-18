@@ -16,6 +16,8 @@ class MarkReviewVerdictHandler extends ReviewVerdictHandler {
 		return match ( $verdict ) {
 			self::FALSE_POSITIVE
 				=> $this->abuseReviewTagService->markFalsePositive( $this->getAuthority(), $revision, $tag ),
+			self::NO_FURTHER_ACTION
+				=> $this->abuseReviewTagService->markNoFurtherAction( $this->getAuthority(), $revision, $tag ),
 		};
 	}
 

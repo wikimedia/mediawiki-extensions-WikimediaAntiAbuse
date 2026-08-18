@@ -1,7 +1,15 @@
 'use strict';
 
-const { markAsFalsePositive, unmarkAsFalsePositive } = require( './rest.js' );
-const { updateRowForFalsePositiveChange, actionErrorMessage } = require( './utils.js' );
+const {
+	markAsFalsePositive,
+	unmarkAsFalsePositive,
+	markNoFurtherAction,
+	unmarkNoFurtherAction
+} = require( './rest.js' );
+const { updateRowToggles, actionErrorMessage } = require( './utils.js' );
+
+const FALSE_POSITIVE_TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle-false-positive';
+const NO_FURTHER_ACTION_TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle-no-further-action';
 
 module.exports = function () {
 	// This module can run before the pager table exists, so bind once the DOM is ready.
@@ -13,19 +21,34 @@ module.exports = function () {
 };
 
 function bindButtons() {
-	addClickHandler( 'mw-wikimediaantiabuse-abuse-review-mark-button', true );
-	addClickHandler( 'mw-wikimediaantiabuse-abuse-review-unmark-button', false );
+	addClickHandler(
+		'mw-wikimediaantiabuse-abuse-review-mark-button',
+		markAsFalsePositive, FALSE_POSITIVE_TOGGLE_CLASS
+	);
+	addClickHandler(
+		'mw-wikimediaantiabuse-abuse-review-unmark-button',
+		unmarkAsFalsePositive, FALSE_POSITIVE_TOGGLE_CLASS
+	);
+	addClickHandler(
+		'mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button',
+		markNoFurtherAction, NO_FURTHER_ACTION_TOGGLE_CLASS
+	);
+	addClickHandler(
+		'mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button',
+		unmarkNoFurtherAction, NO_FURTHER_ACTION_TOGGLE_CLASS
+	);
 }
 
 /**
  * @param {string} className
- * @param {boolean} markingFalsePositive Whether a click marks (vs unmarks) a false positive
+ * @param {Function} request REST call that marks or unmarks the row
+ * @param {string} toggleClass Marks the row elements that flip on success
  */
-function addClickHandler( className, markingFalsePositive ) {
+function addClickHandler( className, request, toggleClass ) {
 	Array.prototype.forEach.call(
 		document.getElementsByClassName( className ),
 		( button ) => button.addEventListener(
-			'click', ( event ) => onActionClick( event, markingFalsePositive )
+			'click', ( event ) => onActionClick( event, request, toggleClass )
 		)
 	);
 }
@@ -35,9 +58,10 @@ function addClickHandler( className, markingFalsePositive ) {
  * success, flip the row. The clicked button is disabled while the request runs.
  *
  * @param {Event} event
- * @param {boolean} markingFalsePositive
+ * @param {Function} request
+ * @param {string} toggleClass
  */
-async function onActionClick( event, markingFalsePositive ) {
+async function onActionClick( event, request, toggleClass ) {
 	event.preventDefault();
 
 	const button = event.currentTarget;
@@ -47,14 +71,15 @@ async function onActionClick( event, markingFalsePositive ) {
 		return;
 	}
 
-	const request = markingFalsePositive ? markAsFalsePositive : unmarkAsFalsePositive;
-
 	// Disable the clicked button while the request is in flight.
 	button.disabled = true;
 
 	try {
 		await request( revId, tag );
-		updateRowForFalsePositiveChange( button.closest( '.mw-wikimediaantiabuse-abuse-review-row' ) );
+		updateRowToggles(
+			button.closest( '.mw-wikimediaantiabuse-abuse-review-row' ),
+			toggleClass
+		);
 	} catch ( error ) {
 		mw.notify( actionErrorMessage( error ), { type: 'error' } );
 	} finally {

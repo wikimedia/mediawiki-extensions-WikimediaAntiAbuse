@@ -23,11 +23,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $falsePositiveRevId;
 	private static int $suppressedFalsePositiveRevId;
 	private static int $deletedTaggedContentRevId;
+	private static int $noFurtherActionRevId;
+	private static int $deletedNoFurtherActionRevId;
 
 	/** @dataProvider provideViewWhenRevisionsPresent */
 	public function testViewWhenRevisionsPresent(
 		bool $includeFalsePositiveRevisions,
-		bool $includeSuppressedRevisions,
+		bool $includeHandledRevisions,
 		bool $descendingOrder,
 		callable $extraQueryParamsCallback,
 		array $authorityRights,
@@ -39,7 +41,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		if ( $includeFalsePositiveRevisions ) {
 			$data['wpShowFalsePositives'] = '1';
 		}
-		if ( $includeSuppressedRevisions ) {
+		if ( $includeHandledRevisions ) {
 			$data['wpShowHandledRevisions'] = '1';
 		}
 		if ( !$descendingOrder ) {
@@ -78,7 +80,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'The order of the rows was not as expected'
 			);
 
-			$isArchivedRevision = $actualRevId === static::$deletedTaggedContentRevId;
+			$isArchivedRevision = in_array(
+				$actualRevId,
+				[ static::$deletedTaggedContentRevId, static::$deletedNoFurtherActionRevId ],
+				true
+			);
 
 			$actualRevision = $isArchivedRevision ?
 				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
@@ -143,7 +149,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'.cdx-table-pager__col--ts_tags',
 				true
 			);
-			if ( in_array( $actualRevId, [ static::$taggedContentRevId, static::$suppressedContentRevId ], true ) ) {
+			if ( in_array(
+				$actualRevId,
+				[
+					static::$taggedContentRevId,
+					static::$suppressedContentRevId,
+					static::$noFurtherActionRevId,
+					static::$deletedNoFurtherActionRevId,
+				],
+				true
+			) ) {
 				$this->assertStringContainsString(
 					'(tag-mw-private-personal-info)',
 					$tagsCellHtml
@@ -189,6 +204,21 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$this->assertSame(
 				!$isFalsePositiveRow,
 				str_contains( $fpTagClass, 'mw-wikimediaantiabuse-hidden' )
+			);
+
+			// The no-further-action tag is rendered on every row; it starts hidden unless
+			// the row is marked as needing no further action.
+			$isNoFurtherActionRow = in_array(
+				$actualRevId,
+				[ static::$noFurtherActionRevId, static::$deletedNoFurtherActionRevId ],
+				true
+			);
+			$noFurtherActionTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
+				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--no-further-action'
+			), 'class' );
+			$this->assertSame(
+				!$isNoFurtherActionRow,
+				str_contains( $noFurtherActionTagClass, 'mw-wikimediaantiabuse-hidden' )
 			);
 
 			$actionsCellHtml = $this->assertSelectorMatchesOneElementInNode(
@@ -252,6 +282,69 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					$actionsCellHtml
 				);
 			}
+
+			// The no-further-action buttons follow the same pattern: the pair is always
+			// rendered, the one not matching the row's state starts hidden, and marking
+			// is disabled on suppressed rows.
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
+				$actionsCellHtml
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action)',
+				$actionsCellHtml
+			);
+			$markNoFurtherActionButton = DOMCompat::querySelector(
+				$tableRow, '.mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button'
+			);
+			$unmarkNoFurtherActionButton = DOMCompat::querySelector(
+				$tableRow, '.mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button'
+			);
+			$this->assertNotNull( $markNoFurtherActionButton, 'mark no-further-action button is present' );
+			$this->assertNotNull( $unmarkNoFurtherActionButton, 'unmark no-further-action button is present' );
+			$this->assertSame(
+				(string)$actualRevId,
+				DOMCompat::getAttribute( $markNoFurtherActionButton, 'data-rev-id' )
+			);
+			$this->assertSame(
+				'mw-private-personal-info',
+				DOMCompat::getAttribute( $markNoFurtherActionButton, 'data-abuse-review-tag' )
+			);
+			// A row holds one verdict, so neither mark button is offered once one is set.
+			$hasVerdict = $isFalsePositiveRow || $isNoFurtherActionRow;
+			$this->assertSame(
+				$hasVerdict,
+				str_contains(
+					DOMCompat::getAttribute( $markNoFurtherActionButton, 'class' ),
+					'mw-wikimediaantiabuse-hidden'
+				),
+				'mark no-further-action button is hidden on any row that already has a verdict'
+			);
+			$this->assertSame(
+				$hasVerdict,
+				str_contains(
+					DOMCompat::getAttribute( $markButton, 'class' ),
+					'mw-wikimediaantiabuse-hidden'
+				),
+				'mark false-positive button is hidden on any row that already has a verdict'
+			);
+			$this->assertSame(
+				!$isNoFurtherActionRow,
+				str_contains(
+					DOMCompat::getAttribute( $unmarkNoFurtherActionButton, 'class' ),
+					'mw-wikimediaantiabuse-hidden'
+				),
+				'unmark no-further-action button is shown only on marked rows'
+			);
+			$this->assertSame(
+				$isSuppressedRow,
+				DOMCompat::getAttribute( $markNoFurtherActionButton, 'disabled' ) !== null,
+				'mark no-further-action button is disabled only for suppressed revisions'
+			);
+			$this->assertNull(
+				DOMCompat::getAttribute( $unmarkNoFurtherActionButton, 'disabled' ),
+				'unmark no-further-action button is never disabled'
+			);
 		}
 
 		$notTaggedContentRevIdElement = DOMCompat::querySelector(
@@ -267,9 +360,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	public static function provideViewWhenRevisionsPresent(): array {
 		$allRights = [ 'viewsuppressed', 'suppressrevision', 'deletedhistory', 'deletedtext' ];
 		return [
-			'False positives and suppressed revisions excluded' => [
+			'False positives and handled revisions excluded' => [
 				'includeFalsePositiveRevisions' => false,
-				'includeSuppressedRevisions' => false,
+				'includeHandledRevisions' => false,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
@@ -278,9 +371,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 				],
 			],
-			'False positives included, suppressed revisions excluded' => [
+			'False positives included, handled revisions excluded' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => false,
+				'includeHandledRevisions' => false,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
@@ -290,9 +383,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 				],
 			],
-			'False positives included, suppressed revisions excluded in reverse order' => [
+			'False positives included, handled revisions excluded in reverse order' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => false,
+				'includeHandledRevisions' => false,
 				'descendingOrder' => false,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
@@ -302,9 +395,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$deletedTaggedContentRevId,
 				],
 			],
-			'False positives excluded, suppressed revisions included' => [
+			'False positives excluded, handled revisions included' => [
 				'includeFalsePositiveRevisions' => false,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
@@ -312,11 +405,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
+					static::$noFurtherActionRevId,
+					static::$deletedNoFurtherActionRevId,
 				],
 			],
-			'False positives and suppressed revisions included' => [
+			'False positives and handled revisions included' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
@@ -326,11 +421,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$falsePositiveRevId,
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
+					static::$noFurtherActionRevId,
+					static::$deletedNoFurtherActionRevId,
 				],
 			],
-			'False positives and suppressed revisions included with limit of 2' => [
+			'False positives and handled revisions included with limit of 2' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [ 'limit' => 2 ],
 				'authorityRights' => $allRights,
@@ -339,9 +436,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedFalsePositiveRevId,
 				],
 			],
-			'False positives and suppressed revisions included with limit of 2 with offset' => [
+			'False positives and handled revisions included with limit of 2 with offset' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [
 					'limit' => 2,
@@ -353,9 +450,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedContentRevId,
 				],
 			],
-			'False positives and suppressed revisions included with offset and prev direction' => [
+			'False positives and handled revisions included with offset and prev direction' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [
 					'limit' => 2,
@@ -368,9 +465,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$falsePositiveRevId,
 				],
 			],
-			'False positives and suppressed revisions included but user lacks access to deleted history' => [
+			'False positives and handled revisions included but user lacks access to deleted history' => [
 				'includeFalsePositiveRevisions' => true,
-				'includeSuppressedRevisions' => true,
+				'includeHandledRevisions' => true,
 				'descendingOrder' => true,
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => [ 'viewsuppressed' ],
@@ -379,14 +476,34 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$falsePositiveRevId,
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
+					static::$noFurtherActionRevId,
 				],
 			],
 		];
 	}
 
 	public function addDBDataOnce(): void {
+		// Get enough revisions to test each state of the filters, and one that should never show up in the results.
+		// The two no-further-action revisions get the oldest timestamps, so they sort last.
+		// This one sits on a page that is deleted below, which exercises the archive table.
+		ConvertibleTimestamp::setFakeTime( '20260101010059' );
+		$deletedNoFurtherActionPage = $this->getNonexistingTestPage();
+		$deletedNoFurtherActionEditStatus = $this->editPage(
+			$deletedNoFurtherActionPage,
+			'Deleted no further action content'
+		);
+		$this->assertStatusGood( $deletedNoFurtherActionEditStatus );
+		static::$deletedNoFurtherActionRevId = $deletedNoFurtherActionEditStatus->getNewRevision()->getId();
+
+		ConvertibleTimestamp::setFakeTime( '20260101010100' );
+		$noFurtherActionEditStatus = $this->editPage(
+			$this->getNonexistingTestPage(),
+			'No further action content'
+		);
+		$this->assertStatusGood( $noFurtherActionEditStatus );
+		static::$noFurtherActionRevId = $noFurtherActionEditStatus->getNewRevision()->getId();
+
 		ConvertibleTimestamp::setFakeTime( '20260101010101' );
-		// Get enough revisions to test each state of the filters, and one that should never show up in the results
 		$firstPage = $this->getNonexistingTestPage();
 		$suppressedContentEditStatus = $this->editPage( $firstPage, 'Suppressed and tagged content' );
 		$this->assertStatusGood( $suppressedContentEditStatus );
@@ -452,6 +569,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			null,
 			static::$deletedTaggedContentRevId
 		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-personal-info', 'mw-private-personal-info-no-further-action' ],
+			null,
+			static::$noFurtherActionRevId
+		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-personal-info', 'mw-private-personal-info-no-further-action' ],
+			null,
+			static::$deletedNoFurtherActionRevId
+		);
 
 		$this->revisionDelete(
 			static::$suppressedContentRevId,
@@ -467,5 +594,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 
 		$this->deletePage( $fourthPage );
+		$this->deletePage( $deletedNoFurtherActionPage );
 	}
 }
