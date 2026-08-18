@@ -1,6 +1,6 @@
 'use strict';
 
-const { markAsFalsePositive, unmarkAsFalsePositive } =
+const { markAsFalsePositive, unmarkAsFalsePositive, markNoFurtherAction, unmarkNoFurtherAction } =
 	require( '../../modules/ext.wikimediaAntiAbuse/rest.js' );
 
 const TAG = 'mw-private-personal-info';
@@ -59,6 +59,40 @@ QUnit.test( 'unmarkAsFalsePositive resolves with the response body on success', 
 	} );
 
 	const data = await unmarkAsFalsePositive( 1, TAG );
+	assert.deepEqual( data, body, 'resolves with the response body' );
+} );
+
+QUnit.test( 'markNoFurtherAction resolves with the response body on success', async ( assert ) => {
+	const body = { revision: 1, tag: TAG, noFurtherAction: true };
+	server.respond( ( request ) => {
+		if ( request.url.endsWith( 'wikimediaantiabuse/v0/mark/revision/1/' + TAG + '/no-further-action' ) ) {
+			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
+		} else if ( isTokenRequest( request ) ) {
+			respondWithToken( request );
+		} else {
+			assert.true( false, 'Unexpected request to ' + request.url );
+		}
+	} );
+
+	const data = await markNoFurtherAction( 1, TAG );
+	assert.deepEqual( data, body, 'resolves with the response body' );
+} );
+
+QUnit.test( 'unmarkNoFurtherAction resolves with the response body on success', async ( assert ) => {
+	const body = { revision: 1, tag: TAG, noFurtherAction: false };
+	server.respond( ( request ) => {
+		if ( request.url.endsWith( 'wikimediaantiabuse/v0/unmark/revision/1/' + TAG + '/no-further-action' ) ) {
+			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
+		} else if ( isTokenRequest( request ) ) {
+			respondWithToken( request );
+		} else {
+			assert.true( false, 'Unexpected request to ' + request.url );
+		}
+	} );
+
+	const data = await unmarkNoFurtherAction( 1, TAG );
 	assert.deepEqual( data, body, 'resolves with the response body' );
 } );
 

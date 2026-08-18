@@ -31,11 +31,17 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private const string HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
 
-	// Marks every control/tag whose visibility flips when a row is marked/unmarked.
-	private const string TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle';
+	// Mark the controls and tags that flip when a verdict changes, one scope per action.
+	private const string FALSE_POSITIVE_TOGGLE_CLASS =
+		'mw-wikimediaantiabuse-abuse-review-toggle-false-positive';
+	private const string NO_FURTHER_ACTION_TOGGLE_CLASS =
+		'mw-wikimediaantiabuse-abuse-review-toggle-no-further-action';
 
 	/** @var true Always default to paging in a descending order */
 	public $mDefaultDirection = IndexPager::DIR_DESCENDING;
+
+	/** @var array<string,string> Tag description HTML, keyed by tag name */
+	private array $tagDescriptions = [];
 
 	public function __construct(
 		IContextSource $context,
@@ -46,7 +52,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly UserEditTracker $userEditTracker,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly array $tagsFilter,
-		private readonly bool $includeRevisionsWithSuppressedText,
+		private readonly bool $includeHandledRevisions,
 	) {
 		parent::__construct(
 			$context->msg( 'wikimediaantiabuse-special-abuse-review-caption' )->text(),
@@ -124,10 +130,30 @@ class AbuseReviewPager extends CodexTablePager {
 					return '';
 				}
 
-				// Render both tag variants; the one not matching the row's state starts hidden.
-				$isFalsePositive = $this->isFalsePositiveRow( $value, $tag );
-				return $this->renderTagVariant( $tag, false, $isFalsePositive ) .
-					$this->renderTagVariant( ChangeTagsHandler::REVIEWABLE_TAGS[$tag], true, $isFalsePositive );
+				// Render every tag state; the ones not matching the row's state start hidden.
+				$isFalsePositive = $this->rowHasVerdictTag( $value, $tag, 'falsePositive' );
+				return Html::rawElement(
+					'div',
+					[ 'class' => 'mw-wikimediaantiabuse-abuse-review-tags' ],
+					$this->renderTag(
+						$tag,
+						'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
+						self::FALSE_POSITIVE_TOGGLE_CLASS,
+						$isFalsePositive
+					) .
+					$this->renderTag(
+						ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'],
+						'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
+						self::FALSE_POSITIVE_TOGGLE_CLASS,
+						!$isFalsePositive
+					) .
+					$this->renderTag(
+						ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'],
+						'mw-wikimediaantiabuse-abuse-review-tag--no-further-action',
+						self::NO_FURTHER_ACTION_TOGGLE_CLASS,
+						!$this->rowHasVerdictTag( $value, $tag, 'noFurtherAction' )
+					)
+				);
 			case 'user_text':
 				if ( !RevisionRecord::userCanBitfield(
 					(int)$row->deleted,
@@ -162,45 +188,70 @@ class AbuseReviewPager extends CodexTablePager {
 				$unmarkLabel = $this->msg(
 					'wikimediaantiabuse-special-abuse-review-action-unmark-false-positive'
 				)->text();
+				$markNoFurtherActionLabel = $this->msg(
+					'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action'
+				)->text();
+				$unmarkNoFurtherActionLabel = $this->msg(
+					'wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action'
+				)->text();
 
-				// A flagged row shows "mark"; an already-handled row shows "unmark". Hide the other.
-				$isFalsePositive = $this->isFalsePositiveRow( $row->ts_tags, $tag );
-				$markClass = 'mw-wikimediaantiabuse-abuse-review-mark-button ' . self::TOGGLE_CLASS;
-				$unmarkClass = 'mw-wikimediaantiabuse-abuse-review-unmark-button ' . self::TOGGLE_CLASS;
-				if ( $isFalsePositive ) {
+				$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
+				$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' );
+
+				// A mark button joins both toggle scopes: either verdict being set hides it.
+				$bothToggleClasses = self::FALSE_POSITIVE_TOGGLE_CLASS . ' ' .
+					self::NO_FURTHER_ACTION_TOGGLE_CLASS;
+				$markClass = 'mw-wikimediaantiabuse-abuse-review-mark-button ' . $bothToggleClasses;
+				$markNoFurtherActionClass =
+					'mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button ' . $bothToggleClasses;
+				$unmarkClass = 'mw-wikimediaantiabuse-abuse-review-unmark-button ' .
+					self::FALSE_POSITIVE_TOGGLE_CLASS;
+				$unmarkNoFurtherActionClass = 'mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button ' .
+					self::NO_FURTHER_ACTION_TOGGLE_CLASS;
+
+				if ( $isFalsePositive || $isNoFurtherAction ) {
 					$markClass .= ' ' . self::HIDDEN_CLASS;
-				} else {
+					$markNoFurtherActionClass .= ' ' . self::HIDDEN_CLASS;
+				}
+				if ( !$isFalsePositive ) {
 					$unmarkClass .= ' ' . self::HIDDEN_CLASS;
 				}
+				if ( !$isNoFurtherAction ) {
+					$unmarkNoFurtherActionClass .= ' ' . self::HIDDEN_CLASS;
+				}
 
-				// A suppressed revision has been handled as a true positive, so it cannot be
-				// marked as a false positive, but can be unmarked as a false positive.
+				// A suppressed revision is already handled, so it cannot take a new verdict.
 				$isSuppressed = $this->isSuppressedRow( $row );
 
 				$noteId = 'mw-wikimediaantiabuse-abuse-review-suppressed-note-' . $row->rev_id;
 
 				$markAttributes = [ ...$buttonAttributes, 'class' => $markClass ];
+				$markNoFurtherActionAttributes = [ ...$buttonAttributes, 'class' => $markNoFurtherActionClass ];
 				if ( $isSuppressed ) {
 					$markAttributes['aria-describedby'] = $noteId;
+					$markNoFurtherActionAttributes['aria-describedby'] = $noteId;
 				}
 
 				$codex = new Codex();
-				$markButton = $codex->button()
-					->setLabel( $markLabel )
-					->setType( 'button' )
-					->setAction( 'progressive' )
-					->setDisabled( $isSuppressed )
-					->setAttributes( $markAttributes )
-					->build()
-					->getHtml();
-				$unmarkButton = $codex->button()
-					->setLabel( $unmarkLabel )
-					->setType( 'button' )
-					->setAttributes( [ ...$buttonAttributes, 'class' => $unmarkClass ] )
-					->build()
-					->getHtml();
+				$markButton = $this->renderActionButton(
+					$codex, $markLabel, $markAttributes, true, $isSuppressed
+				);
+				$unmarkButton = $this->renderActionButton(
+					$codex, $unmarkLabel, [ ...$buttonAttributes, 'class' => $unmarkClass ], false, false
+				);
+				$markNoFurtherActionButton = $this->renderActionButton(
+					$codex, $markNoFurtherActionLabel, $markNoFurtherActionAttributes, false, $isSuppressed
+				);
+				$unmarkNoFurtherActionButton = $this->renderActionButton(
+					$codex,
+					$unmarkNoFurtherActionLabel,
+					[ ...$buttonAttributes, 'class' => $unmarkNoFurtherActionClass ],
+					false,
+					false
+				);
 
-				$actionsContent = $markButton . $unmarkButton;
+				$actionsContent = $markButton . $unmarkButton .
+					$markNoFurtherActionButton . $unmarkNoFurtherActionButton;
 				if ( $isSuppressed ) {
 					// Always show the note on a suppressed row, whether or not it is a false
 					// positive, so reviewers can see at a glance which rows are already handled.
@@ -387,7 +438,7 @@ class AbuseReviewPager extends CodexTablePager {
 			$queryBuilder->where( '1=0' );
 		}
 
-		if ( !$this->includeRevisionsWithSuppressedText ) {
+		if ( !$this->includeHandledRevisions ) {
 			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
 			$queryBuilder->where( $this->getDatabase()->orExpr( [
 				new RawSQLExpression( $this->getDatabase()->bitAnd(
@@ -399,6 +450,23 @@ class AbuseReviewPager extends CodexTablePager {
 					RevisionRecord::DELETED_TEXT
 				) . ' = 0' ),
 			] ) );
+
+			// A verdict tag has no ID until it is first applied, so there may be none to exclude.
+			$noFurtherActionTagIds = array_values( $this->changeTagsStore->getTagIdsFromNames(
+				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'noFurtherAction' )
+			) );
+			if ( $noFurtherActionTagIds !== [] ) {
+				$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
+				$queryBuilder->leftJoin(
+					'change_tag',
+					'changetagnofurtheraction',
+					[
+						'changetagnofurtheraction.ct_rev_id=' . $revIdField,
+						'changetagnofurtheraction.ct_tag_id' => $noFurtherActionTagIds,
+					]
+				);
+				$queryBuilder->andWhere( [ 'changetagnofurtheraction.ct_tag_id' => null ] );
+			}
 		}
 
 		return $queryBuilder->getQueryInfo();
@@ -435,7 +503,10 @@ class AbuseReviewPager extends CodexTablePager {
 	 * @return string|null Null if the row carries no reviewable tag
 	 */
 	private function getFirstReviewableTag( ?string $tsTags ): ?string {
-		$falsePositiveToTag = array_flip( ChangeTagsHandler::REVIEWABLE_TAGS );
+		$falsePositiveToTag = [];
+		foreach ( ChangeTagsHandler::REVIEWABLE_TAGS as $baseTag => $verdictTags ) {
+			$falsePositiveToTag[$verdictTags['falsePositive']] = $baseTag;
+		}
 
 		foreach ( $this->splitTags( $tsTags ) as $tag ) {
 			if ( isset( ChangeTagsHandler::REVIEWABLE_TAGS[$tag] ) ) {
@@ -449,9 +520,17 @@ class AbuseReviewPager extends CodexTablePager {
 		return null;
 	}
 
-	private function isFalsePositiveRow( ?string $tsTags, string $reviewableTag ): bool {
+	/**
+	 * Whether the row carries the given verdict tag for its reviewable tag.
+	 *
+	 * @param string|null $tsTags
+	 * @param string $reviewableTag
+	 * @param string $verdict A key of a {@link ChangeTagsHandler::REVIEWABLE_TAGS} entry
+	 * @return bool
+	 */
+	private function rowHasVerdictTag( ?string $tsTags, string $reviewableTag, string $verdict ): bool {
 		return in_array(
-			ChangeTagsHandler::REVIEWABLE_TAGS[$reviewableTag],
+			ChangeTagsHandler::REVIEWABLE_TAGS[$reviewableTag][$verdict],
 			$this->splitTags( $tsTags ),
 			true
 		);
@@ -460,8 +539,8 @@ class AbuseReviewPager extends CodexTablePager {
 	/**
 	 * Whether the revision on this row has been handled by suppressing its text.
 	 *
-	 * This mirrors the rows hidden by default in {@link self::getQueryInfo}: a revision is only
-	 * treated as handled once both its text and the restriction (suppression) bit are set.
+	 * This matches the suppression check in {@link self::getQueryInfo}, which by default
+	 * also hides revisions marked as needing no further action.
 	 *
 	 * @param \stdClass $row
 	 * @return bool
@@ -480,23 +559,63 @@ class AbuseReviewPager extends CodexTablePager {
 		return $tsTags !== null && $tsTags !== '' ? explode( ',', $tsTags ) : [];
 	}
 
-	private function renderTagVariant( string $tag, bool $falsePositive, bool $rowIsFalsePositive ): string {
-		$classes = [
-			'mw-wikimediaantiabuse-abuse-review-tag',
-			$falsePositive
-				? 'mw-wikimediaantiabuse-abuse-review-tag--false-positive'
-				: 'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
-			self::TOGGLE_CLASS,
-		];
-		// A variant starts hidden when it does not match the row's current state.
-		if ( $falsePositive !== $rowIsFalsePositive ) {
+	/**
+	 * @param Codex $codex
+	 * @param string $label
+	 * @param array $attributes Including the button's own classes
+	 * @param bool $progressive Whether the button takes the progressive colour
+	 * @param bool $disabled
+	 * @return string
+	 */
+	private function renderActionButton(
+		Codex $codex,
+		string $label,
+		array $attributes,
+		bool $progressive,
+		bool $disabled
+	): string {
+		$button = $codex->button()
+			->setLabel( $label )
+			->setType( 'button' )
+			->setDisabled( $disabled )
+			->setAttributes( $attributes );
+		if ( $progressive ) {
+			$button->setAction( 'progressive' );
+		}
+		return $button->build()->getHtml();
+	}
+
+	/**
+	 * @param string $tag
+	 * @param string $variantClass Marks which of the row's tag states this chip shows
+	 * @param string $toggleClass Marks the action whose controls flip with this chip
+	 * @param bool $hidden Whether the chip does not match the row's current state
+	 * @return string
+	 */
+	private function renderTag(
+		string $tag,
+		string $variantClass,
+		string $toggleClass,
+		bool $hidden
+	): string {
+		$classes = [ 'mw-wikimediaantiabuse-abuse-review-tag', $variantClass, $toggleClass ];
+		if ( $hidden ) {
 			$classes[] = self::HIDDEN_CLASS;
 		}
 		return Html::rawElement(
 			'span',
 			[ 'class' => $classes ],
-			$this->changeTagsFormatter->getTagDescription( $tag, $this->getContext() )
+			$this->getTagDescription( $tag )
 		);
+	}
+
+	/** A tag description is the same on every row, so parse each one only once per page. */
+	private function getTagDescription( string $tag ): string {
+		$this->tagDescriptions[$tag] ??= $this->changeTagsFormatter->getTagDescription(
+			$tag,
+			$this->getContext()
+		);
+		return $this->tagDescriptions[$tag];
 	}
 
 	/** @inheritDoc */

@@ -4,10 +4,11 @@
 	},
 	"wikimediaantiabuse-api-review-permission-denied": "You do not have permission to change the review status of this revision.",
 	"wikimediaantiabuse-api-review-not-flagged": "This revision is not marked with an abuse review tag.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "This revision already has a different review verdict. Remove that verdict before you record this one.",
 	"wikimediaantiabuse-api-falsepositive-not-marked": "This revision is not marked as a false positive.",
 	"wikimediaantiabuse-api-review-disabled": "This REST API is not enabled on this wiki.",
 	"wikimediaantiabuse-api-review-unknown-tag": "The tag \"$1\" is not a reviewable tag.",
 	"wikimediaantiabuse-api-review-blocked": "You cannot use this API while you are blocked from editing.",
-	"wikimediaantiabuse-api-review-mark-description": "Records a review verdict on a revision. The only verdict is `false-positive`, which removes the reviewable tag and adds its false positive version. For example, the `mw-private-personal-info` tag becomes the `mw-private-personal-info-false-positive` tag. Requires the ability to see the tag you are changing.",
-	"wikimediaantiabuse-api-review-unmark-description": "Removes a review verdict from a revision. The only verdict is `false-positive`, which removes the false positive version of the tag and restores the reviewable tag. For example, the `mw-private-personal-info-false-positive` tag becomes the `mw-private-personal-info` tag. Requires the ability to see the tag you are changing."
+	"wikimediaantiabuse-api-review-mark-description": "Records a review verdict on a revision. The `false-positive` verdict removes the reviewable tag and adds its false positive version, so the `mw-private-personal-info` tag becomes the `mw-private-personal-info-false-positive` tag. The `no-further-action` verdict adds the no further action version of the tag and keeps the tag that flagged the revision. Requires the ability to see the tag you are changing.",
+	"wikimediaantiabuse-api-review-unmark-description": "Removes a review verdict from a revision. Removing the `false-positive` verdict restores the reviewable tag in place of its false positive version. Removing the `no-further-action` verdict removes the no further action version of the tag, which puts the revision back in the review queue. Requires the ability to see the tag you are changing."
 }

@@ -49,11 +49,15 @@ class AbuseReviewTagService {
 			return $status;
 		}
 
-		$falsePositiveTag = ChangeTagsHandler::REVIEWABLE_TAGS[ $tag ];
+		$falsePositiveTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'];
 		$tags = $this->getTags( $revisionId );
 
+		if ( in_array( ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'], $tags, true ) ) {
+			return $this->conflictingVerdict();
+		}
+
 		if ( in_array( $tag, $tags, true ) ) {
-			$this->swapTags( $revisionId, $falsePositiveTag, $tag );
+			$this->changeTags( $revisionId, [ $falsePositiveTag ], [ $tag ] );
 			$this->logger->info( 'Marked revision as false positive', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -87,11 +91,11 @@ class AbuseReviewTagService {
 			return $status;
 		}
 
-		$falsePositiveTag = ChangeTagsHandler::REVIEWABLE_TAGS[ $tag ];
+		$falsePositiveTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'];
 		$tags = $this->getTags( $revisionId );
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
-			$this->swapTags( $revisionId, $tag, $falsePositiveTag );
+			$this->changeTags( $revisionId, [ $tag ], [ $falsePositiveTag ] );
 			$this->logger->info( 'Unmarked revision as false positive', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -111,8 +115,107 @@ class AbuseReviewTagService {
 		);
 	}
 
+	/**
+	 * Tag a flagged revision as reviewed and needing no further action.
+	 * - Keep the tag that flagged the revision for review, as "no further action"
+	 *   is indicative of a true positive
+	 * - Throw an error if "false positive" is already set on the revision
+	 *
+	 * @param Authority $authority
+	 * @param int $revisionId
+	 * @param string $tag The abuse review tag the revision was flagged with, not its
+	 *   false-positive variant
+	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 */
+	public function markNoFurtherAction( Authority $authority, int $revisionId, string $tag ): StatusValue {
+		$status = $this->assertReviewable( $authority, $revisionId, $tag );
+		if ( !$status->isGood() ) {
+			return $status;
+		}
+
+		$noFurtherActionTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'];
+		$tags = $this->getTags( $revisionId );
+
+		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
+			return StatusValue::newGood();
+		}
+
+		if ( in_array( ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'], $tags, true ) ) {
+			return $this->conflictingVerdict();
+		}
+
+		if ( !in_array( $tag, $tags, true ) ) {
+			return $this->fatal(
+				self::HTTP_UNPROCESSABLE_ENTITY,
+				'wikimediaantiabuse-api-review-not-flagged'
+			);
+		}
+
+		$this->changeTags( $revisionId, [ $noFurtherActionTag ], [] );
+		$this->logger->info( 'Marked revision as needing no further action', [
+			'revisionId' => $revisionId,
+			'tag' => $tag,
+			'performer' => $authority->getUser()->getName(),
+		] );
+
+		return StatusValue::newGood();
+	}
+
+	/**
+	 * Remove the no-further-action tag from a revision, putting it back in the review queue.
+	 *
+	 * @param Authority $authority
+	 * @param int $revisionId
+	 * @param string $tag The abuse review tag the revision was flagged with, not its
+	 *   false-positive variant
+	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 */
+	public function unmarkNoFurtherAction( Authority $authority, int $revisionId, string $tag ): StatusValue {
+		$status = $this->assertReviewable( $authority, $revisionId, $tag );
+		if ( !$status->isGood() ) {
+			return $status;
+		}
+
+		$noFurtherActionTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'];
+		$tags = $this->getTags( $revisionId );
+
+		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
+			$this->changeTags( $revisionId, [], [ $noFurtherActionTag ] );
+			$this->logger->info( 'Unmarked revision as needing no further action', [
+				'revisionId' => $revisionId,
+				'tag' => $tag,
+				'performer' => $authority->getUser()->getName(),
+			] );
+
+			return StatusValue::newGood();
+		}
+
+		if ( $this->isFlagged( $tags, $tag ) ) {
+			return StatusValue::newGood();
+		}
+
+		return $this->fatal(
+			self::HTTP_UNPROCESSABLE_ENTITY,
+			'wikimediaantiabuse-api-review-not-flagged'
+		);
+	}
+
+	/** Whether the revision's tags include the given abuse review tag or its false-positive variant. */
+	private function isFlagged( array $tags, string $tag ): bool {
+		return in_array( $tag, $tags, true )
+			|| in_array( ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'], $tags, true );
+	}
+
+	/** A revision holds one verdict: the reviewer removes the old one before recording another. */
+	private function conflictingVerdict(): StatusValue {
+		return $this->fatal(
+			self::HTTP_UNPROCESSABLE_ENTITY,
+			'wikimediaantiabuse-api-review-conflicting-verdict'
+		);
+	}
+
 	private function assertReviewable( Authority $authority, int $revisionId, string $tag ): StatusValue {
-		if ( !isset( ChangeTagsHandler::REVIEWABLE_TAGS[ $tag ] ) ) {
+		if ( !isset( ChangeTagsHandler::REVIEWABLE_TAGS[$tag] ) ) {
 			return $this->fatal(
 				self::HTTP_BAD_REQUEST,
 				'wikimediaantiabuse-api-review-unknown-tag',
@@ -171,8 +274,8 @@ class AbuseReviewTagService {
 		);
 	}
 
-	private function swapTags( int $revisionId, string $tagToAdd, string $tagToRemove ): void {
+	private function changeTags( int $revisionId, array $tagsToAdd, array $tagsToRemove ): void {
 		$rcId = null;
-		$this->changeTagsStore->updateTags( [ $tagToAdd ], [ $tagToRemove ], $rcId, $revisionId );
+		$this->changeTagsStore->updateTags( $tagsToAdd, $tagsToRemove, $rcId, $revisionId );
 	}
 }

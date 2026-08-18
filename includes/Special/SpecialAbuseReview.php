@@ -21,7 +21,7 @@ use MediaWiki\User\UserEditTracker;
 class SpecialAbuseReview extends FormSpecialPage {
 
 	private array $tagsFilter;
-	private bool $includeRevisionsWithSuppressedText;
+	private bool $includeHandledRevisions;
 
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
@@ -74,12 +74,12 @@ class SpecialAbuseReview extends FormSpecialPage {
 			$this->tagsFilter = array_merge(
 				$this->tagsFilter,
 				$this->changeTagsStore->filterViewableTags(
-					array_values( ChangeTagsHandler::REVIEWABLE_TAGS ),
+					array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'falsePositive' ),
 					$this->getAuthority()
 				)
 			);
 		}
-		$this->includeRevisionsWithSuppressedText = $data['ShowHandledRevisions'];
+		$this->includeHandledRevisions = $data['ShowHandledRevisions'];
 
 		return true;
 	}
@@ -94,7 +94,7 @@ class SpecialAbuseReview extends FormSpecialPage {
 			$this->userEditTracker,
 			$this->linkBatchFactory,
 			$this->tagsFilter,
-			$this->includeRevisionsWithSuppressedText
+			$this->includeHandledRevisions
 		);
 		$this->getOutput()->addParserOutputContent(
 			$pager->getFullOutput(),
@@ -144,7 +144,8 @@ class SpecialAbuseReview extends FormSpecialPage {
 		return count( $this->changeTagsStore->filterViewableTags(
 			array_merge(
 				array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
-				array_values( ChangeTagsHandler::REVIEWABLE_TAGS )
+				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'falsePositive' ),
+				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'noFurtherAction' )
 			),
 			$user
 		) ) > 0;

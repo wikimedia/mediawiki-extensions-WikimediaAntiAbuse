@@ -1,16 +1,21 @@
 'use strict';
 
 const HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
-const TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle';
 
 /**
  * Flip the visibility of a row's controls and tags after a successful
- * mark/unmark: the showing pair hides and the hidden pair shows.
+ * mark/unmark: within the given toggle scope, the showing elements hide
+ * and the hidden ones show.
  *
  * @param {HTMLElement} row The review row whose state changed
+ * @param {string} toggleClass Marks the controls/tags of the action that changed
  */
-function updateRowForFalsePositiveChange( row ) {
-	Array.prototype.forEach.call( row.querySelectorAll( '.' + TOGGLE_CLASS ), ( el ) => {
+function updateRowToggles( row, toggleClass ) {
+	Array.prototype.forEach.call( row.querySelectorAll( '.' + toggleClass ), ( el ) => {
+		// The following classes are used here:
+		// * mw-wikimediaantiabuse-hidden
+		// * mw-wikimediaantiabuse-abuse-review-toggle-false-positive
+		// * mw-wikimediaantiabuse-abuse-review-toggle-no-further-action
 		el.classList.toggle( HIDDEN_CLASS );
 	} );
 }
@@ -32,4 +37,4 @@ function actionErrorMessage( error ) {
 	return mw.msg( 'wikimediaantiabuse-special-abuse-review-action-error' );
 }
 
-module.exports = { updateRowForFalsePositiveChange, actionErrorMessage };
+module.exports = { updateRowToggles, actionErrorMessage };

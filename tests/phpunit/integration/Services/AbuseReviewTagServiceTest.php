@@ -21,6 +21,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 
 	private const string PERSONAL_INFO_TAG = 'mw-private-personal-info';
 	private const string PERSONAL_INFO_FALSE_POSITIVE_TAG = 'mw-private-personal-info-false-positive';
+	private const string PERSONAL_INFO_NO_FURTHER_ACTION_TAG = 'mw-private-personal-info-no-further-action';
 
 	protected function setUp(): void {
 		parent::setUp();
@@ -240,6 +241,139 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 			$this->getTags( $revId ),
 			'Unmarking a revision that is not a false positive leaves it unchanged'
 		);
+	}
+
+	/** @dataProvider providePageIsDeleted */
+	public function testMarkAndUnmarkNoFurtherActionKeepsFlaggingTag( bool $pageIsDeleted ): void {
+		$reviewer = $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed', 'deletedhistory' ] );
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		if ( $pageIsDeleted ) {
+			$this->deletePage( 'False positive test page' );
+		}
+
+		$this->assertStatusGood(
+			$this->getService()->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertArrayEquals(
+			[ self::PERSONAL_INFO_TAG, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ],
+			$this->getTags( $revId ),
+			false,
+			false,
+			'Marking must add the no-further-action tag and keep the flagging tag'
+		);
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertSame(
+			[ self::PERSONAL_INFO_TAG ],
+			$this->getTags( $revId ),
+			'Unmarking must remove only the no-further-action tag'
+		);
+	}
+
+	/**
+	 * A revision holds one verdict at a time: "false positive" says the flag was wrong,
+	 * "no further action" says the flag was right, so a revision cannot hold both.
+	 *
+	 * @dataProvider provideConflictingVerdicts
+	 */
+	public function testMarkingRejectsARevisionThatAlreadyHasTheOtherVerdict(
+		string $existingTag,
+		string $method
+	): void {
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, $existingTag );
+
+		$status = $this->getService()->$method( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-conflicting-verdict', $status );
+		$this->assertSame( 422, $status->getValue() );
+		$this->assertArrayEquals(
+			[ self::PERSONAL_INFO_TAG, $existingTag ],
+			$this->getTags( $revId ),
+			false,
+			false,
+			'The rejected call must leave the tags untouched'
+		);
+	}
+
+	public static function provideConflictingVerdicts(): array {
+		return [
+			'no further action on a false positive' => [
+				'existingTag' => self::PERSONAL_INFO_FALSE_POSITIVE_TAG,
+				'method' => 'markNoFurtherAction',
+			],
+			'false positive on a no further action' => [
+				'existingTag' => self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG,
+				'method' => 'markFalsePositive',
+			],
+		];
+	}
+
+	public function testMarkNoFurtherActionIsIdempotentWhenAlreadyMarked(): void {
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG );
+
+		$this->assertStatusGood(
+			$this->getService()->markNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertArrayEquals(
+			[ self::PERSONAL_INFO_TAG, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ],
+			$this->getTags( $revId ),
+			false,
+			false,
+			'Marking an already marked revision leaves it unchanged'
+		);
+	}
+
+	public function testMarkNoFurtherActionReturnsUnprocessableWhenNotFlagged(): void {
+		$revId = $this->createRevisionId();
+
+		$status = $this->getService()->markNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-not-flagged', $status );
+		$this->assertSame( 422, $status->getValue() );
+	}
+
+	public function testUnmarkNoFurtherActionIsIdempotentWhenNotMarked(): void {
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertSame(
+			[ self::PERSONAL_INFO_TAG ],
+			$this->getTags( $revId ),
+			'Unmarking a revision that is not marked leaves it unchanged'
+		);
+	}
+
+	public function testUnmarkNoFurtherActionReturnsUnprocessableWhenNotFlagged(): void {
+		$revId = $this->createRevisionId();
+
+		$status = $this->getService()->unmarkNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-not-flagged', $status );
+		$this->assertSame( 422, $status->getValue() );
+	}
+
+	/** @dataProvider provideNoFurtherActionMethods */
+	public function testNoFurtherActionReturnsNotFoundWhenFeatureDisabled( string $method ): void {
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', false );
+
+		$status = $this->getService()->$method( $this->reviewer(), 1234567, self::PERSONAL_INFO_TAG );
+		$this->assertStatusError( 'wikimediaantiabuse-api-review-disabled', $status );
+		$this->assertSame( 404, $status->getValue() );
+	}
+
+	public static function provideNoFurtherActionMethods(): array {
+		return [
+			'markNoFurtherAction' => [ 'method' => 'markNoFurtherAction' ],
+			'unmarkNoFurtherAction' => [ 'method' => 'unmarkNoFurtherAction' ],
+		];
 	}
 
 	public function testMarkOnRevisionWithBothTagsResolvesToFalsePositive(): void {

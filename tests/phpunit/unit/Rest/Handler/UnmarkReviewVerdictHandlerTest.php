@@ -72,6 +72,11 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 				'serviceMethod' => 'unmarkFalsePositive',
 				'responseField' => 'falsePositive',
 			],
+			'no further action' => [
+				'verdict' => ReviewVerdictHandler::NO_FURTHER_ACTION,
+				'serviceMethod' => 'unmarkNoFurtherAction',
+				'responseField' => 'noFurtherAction',
+			],
 		];
 	}
 
