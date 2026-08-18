@@ -16,7 +16,7 @@ use StatusValue;
 use Wikimedia\Rdbms\IConnectionProvider;
 use Wikimedia\Rdbms\ReadOnlyMode;
 
-class FalsePositiveTagService {
+class AbuseReviewTagService {
 
 	private const int HTTP_BAD_REQUEST = 400;
 	private const int HTTP_UNAUTHORIZED = 401;
@@ -71,7 +71,7 @@ class FalsePositiveTagService {
 
 		return $this->fatal(
 			self::HTTP_UNPROCESSABLE_ENTITY,
-			'wikimediaantiabuse-api-falsepositive-not-flagged'
+			'wikimediaantiabuse-api-review-not-flagged'
 		);
 	}
 
@@ -115,13 +115,13 @@ class FalsePositiveTagService {
 		if ( !isset( ChangeTagsHandler::REVIEWABLE_TAGS[ $tag ] ) ) {
 			return $this->fatal(
 				self::HTTP_BAD_REQUEST,
-				'wikimediaantiabuse-api-falsepositive-unknown-tag',
+				'wikimediaantiabuse-api-review-unknown-tag',
 				[ $tag ]
 			);
 		}
 
 		if ( !in_array( $tag, $this->enabledReviewableTags, true ) ) {
-			return $this->fatal( self::HTTP_NOT_FOUND, 'wikimediaantiabuse-api-falsepositive-disabled' );
+			return $this->fatal( self::HTTP_NOT_FOUND, 'wikimediaantiabuse-api-review-disabled' );
 		}
 
 		$readOnlyReason = $this->readOnlyMode->getReason();
@@ -132,13 +132,13 @@ class FalsePositiveTagService {
 		if ( !$this->changeTagsStore->canViewTag( $tag, $authority ) ) {
 			return $this->fatal(
 				$authority->getUser()->isRegistered() ? self::HTTP_FORBIDDEN : self::HTTP_UNAUTHORIZED,
-				'wikimediaantiabuse-api-falsepositive-permission-denied'
+				'wikimediaantiabuse-api-review-permission-denied'
 			);
 		}
 
 		$block = $authority->getBlock();
 		if ( $block && $block->isSitewide() ) {
-			return $this->fatal( self::HTTP_FORBIDDEN, 'wikimediaantiabuse-api-falsepositive-blocked' );
+			return $this->fatal( self::HTTP_FORBIDDEN, 'wikimediaantiabuse-api-review-blocked' );
 		}
 
 		$revision = $this->revisionLookup->getRevisionById( $revisionId );
@@ -152,7 +152,7 @@ class FalsePositiveTagService {
 		if ( $block instanceof AbstractBlock
 			&& $block->appliesToTitle( Title::newFromPageIdentity( $revision->getPage() ) )
 		) {
-			return $this->fatal( self::HTTP_FORBIDDEN, 'wikimediaantiabuse-api-falsepositive-blocked' );
+			return $this->fatal( self::HTTP_FORBIDDEN, 'wikimediaantiabuse-api-review-blocked' );
 		}
 
 		return StatusValue::newGood();
