@@ -7,13 +7,13 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Config\Config;
 use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\Extension\Notifications\DbFactory;
 use MediaWiki\Extension\Notifications\NotifUser;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\User\Hook\UserGroupsChangedHook;
 use MediaWiki\User\UserFactory;
 use MediaWiki\User\UserIdentity;
-use Wikimedia\Rdbms\IConnectionProvider;
 
 class UserRightsNotificationHandler implements UserGroupsChangedHook {
 
@@ -21,7 +21,6 @@ class UserRightsNotificationHandler implements UserGroupsChangedHook {
 		private readonly Config $config,
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly UserFactory $userFactory,
-		private readonly IConnectionProvider $connectionProvider,
 		private readonly bool $echoIsLoaded,
 	) {
 	}
@@ -30,14 +29,12 @@ class UserRightsNotificationHandler implements UserGroupsChangedHook {
 		Config $config,
 		ChangeTagsStore $changeTagsStore,
 		UserFactory $userFactory,
-		IConnectionProvider $connectionProvider,
 		ExtensionRegistry $extensionRegistry
 	): self {
 		return new self(
 			$config,
 			$changeTagsStore,
 			$userFactory,
-			$connectionProvider,
 			$extensionRegistry->isLoaded( 'Echo' )
 		);
 	}
@@ -74,10 +71,9 @@ class UserRightsNotificationHandler implements UserGroupsChangedHook {
 
 		$userId = $user->getId();
 		$fname = __METHOD__;
-		DeferredUpdates::addCallableUpdate( function () use ( $user, $userId, $fname ): void {
-			$eventIds = $this->connectionProvider
-				->getReplicaDatabase()
-				->newSelectQueryBuilder()
+		DeferredUpdates::addCallableUpdate( static function () use ( $user, $userId, $fname ): void {
+			$dbr = DbFactory::newFromDefault()->getEchoDb( DB_REPLICA );
+			$eventIds = $dbr->newSelectQueryBuilder()
 				->select( 'event_id' )
 				->from( 'echo_notification' )
 				->join( 'echo_event', null, 'notification_event = event_id' )

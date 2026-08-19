@@ -126,7 +126,6 @@ class UserRightsNotificationHandlerTest extends MediaWikiIntegrationTestCase {
 			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => true ] ),
 			$services->getChangeTagsStore(),
 			$services->getUserFactory(),
-			$services->getConnectionProvider(),
 			ExtensionRegistry::getInstance()
 		);
 		$this->assertInstanceOf( UserRightsNotificationHandler::class, $handler );
@@ -138,7 +137,6 @@ class UserRightsNotificationHandlerTest extends MediaWikiIntegrationTestCase {
 			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => $flagEnabled ] ),
 			$services->getChangeTagsStore(),
 			$services->getUserFactory(),
-			$services->getConnectionProvider(),
 			$echoIsLoaded
 		);
 	}
