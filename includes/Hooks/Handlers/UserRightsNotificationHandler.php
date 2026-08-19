@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Config\Config;
 use MediaWiki\Deferred\DeferredUpdates;
+use MediaWiki\Extension\Notifications\DbDomains;
 use MediaWiki\Extension\Notifications\NotifUser;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Registration\ExtensionRegistry;
@@ -76,7 +77,7 @@ class UserRightsNotificationHandler implements UserGroupsChangedHook {
 		$fname = __METHOD__;
 		DeferredUpdates::addCallableUpdate( function () use ( $user, $userId, $fname ): void {
 			$eventIds = $this->connectionProvider
-				->getReplicaDatabase()
+				->getReplicaDatabase( DbDomains::VIRTUAL_DOMAIN )
 				->newSelectQueryBuilder()
 				->select( 'event_id' )
 				->from( 'echo_notification' )
