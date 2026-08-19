@@ -94,7 +94,6 @@
 				"MainConfig",
 				"ChangeTagsStore",
 				"UserFactory",
-				"ConnectionProvider",
 				"ExtensionRegistry"
 			]
 		}
