@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"AhmedG612"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "Ma lihid oggolaanshaha aad ku beddeli karto xaaladda dib u eegista ee dib u eegistan.",
+	"wikimediaantiabuse-api-review-not-flagged": "Dib u eegistan laguma calaamadin summad dib u eegista xadgudubka.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Dib u eegistani waxay hore u leedahay go'aan dib u eegis oo ka duwan. Ka saar go'aankaas ka hor intaadan diiwaangelin kan.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Dib u eegistan looma calaamadin inay tahay been abuur togan.",
+	"wikimediaantiabuse-api-review-disabled": "REST API-gan kama shaqaynayo wiki-gan.",
+	"wikimediaantiabuse-api-review-unknown-tag": "Calaamada \"$1\" ma aha calaamad dib u eegis lagu samayn karo.",
+	"wikimediaantiabuse-api-review-blocked": "Ma isticmaali kartid API-gan inta lagaa xannibay tafatirka.",
+	"wikimediaantiabuse-api-review-mark-description": "Diiwaangeli go'aanka dib u eegista ee dib u eegis. Go'aanka `false-positive` wuxuu ka saaraa summadda dib u eegista lagu samayn karo wuxuuna ku daraa nooca natiijada khaldan, sidaas darteed summadda `mw-private-personal-info` waxay noqotaa summadda `mw-private-personal-info-false-positive`. Go'aanka `no-further-action` wuxuu ku daraa nooca summadda ee aan u baahnayn ficil dheeraad ah, wuxuuna sii hayaa summaddii calaamadisay dib u eegista. Waxaa loo baahan yahay awoodda lagu arko summadda aad beddelayso.",
+	"wikimediaantiabuse-api-review-unmark-description": "Ka saar go'aanka dib u eegista ee dib u eegis. Ka saarista go'aanka `false-positive` waxay dib u soo celisaa summadda dib u eegista lagu samayn karo halkii nooca natiijada khaldan. Ka saarista go'aanka `no-further-action` waxay ka saartaa nooca summadda ee aan u baahnayn ficil dheeraad ah, taas oo dib u eegista ku celinaysa safka dib u eegista. Waxaa loo baahan yahay awoodda lagu arko summadda aad beddelayso."
+}

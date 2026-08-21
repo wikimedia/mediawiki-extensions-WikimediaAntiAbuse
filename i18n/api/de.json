@@ -1,0 +1,10 @@
+{
+	"@metadata": {
+		"authors": []
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "Du hast keine Berechtigung, den Überprüfungsstatus dieser Version zu ändern.",
+	"wikimediaantiabuse-api-review-not-flagged": "Diese Version ist nicht mit einem Missbrauchshinweis versehen.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Diese Version hat bereits ein anderes Überprüfungsergebnis. Entferne dieses Ergebnis, bevor du das vorliegende erfasst.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Diese Version wurde nicht als falsch positiv markiert.",
+	"wikimediaantiabuse-api-review-disabled": "Diese REST-API ist in diesem Wiki nicht aktiviert."
+}

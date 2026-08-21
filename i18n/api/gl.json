@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Toliño"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "Non tes permiso para cambiar o estado de revisión desta revisión.",
+	"wikimediaantiabuse-api-review-not-flagged": "Esta revisión non está marcada cunha etiqueta de revisión de abuso.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Esta revisión xa ten un veredicto de revisión diferente. Elimina ese veredicto antes de rexistrar estoutro.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Esta revisión non está marcada como un falso positivo.",
+	"wikimediaantiabuse-api-review-disabled": "Esta API REST non está activada neste wiki.",
+	"wikimediaantiabuse-api-review-unknown-tag": "A etiqueta «$1» non é unha etiqueta revisable.",
+	"wikimediaantiabuse-api-review-blocked": "Non podes usar esta API mentres teñas bloqueada a edición.",
+	"wikimediaantiabuse-api-review-mark-description": "Rexistra un veredicto de revisión sobre unha revisión. O veredicto `false-positive` elimina a etiqueta revisable e engade a súa versión de falso positivo, polo que a etiqueta `mw-private-personal-info` convértese na etiqueta `mw-private-personal-info-false-positive`. O veredicto `no-further-action` engade a versión de «non se necesita ningunha acción» da etiqueta e mantén a etiqueta que marcou a revisión. Cómpre o dereito de ver a etiqueta que se está a cambiar.",
+	"wikimediaantiabuse-api-review-unmark-description": "Elimina un veredicto de revisión dunha revisión. Ao eliminar o veredicto `false-positive`, restáurase a etiqueta revisable no lugar da súa versión de falso positivo. Ao eliminar o veredicto `no-further-action`, elimínase a versión de «non se necesita ningunha acción» da etiqueta, o que devolve a revisión á cola de revisión. Cómpre o dereito de ver a etiqueta que se está a cambiar."
+}

@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Wizzard"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "Nemáte oprávnenie meniť stav posúdenia tejto revízie.",
+	"wikimediaantiabuse-api-review-not-flagged": "Táto revízia nie je označená značkou na posúdenie zneužitia.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Táto revízia už má iný výsledok posúdenia. Pred zaznamenaním tohto výsledku ten predchádzajúci odstráňte.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Táto revízia nie je označená ako falošne pozitívna.",
+	"wikimediaantiabuse-api-review-disabled": "Toto REST API nie je na tejto wiki zapnuté.",
+	"wikimediaantiabuse-api-review-unknown-tag": "Značka „$1“ nie je značkou určenou na posúdenie.",
+	"wikimediaantiabuse-api-review-blocked": "Toto API nemôžete používať, kým máte zablokované úpravy.",
+	"wikimediaantiabuse-api-review-mark-description": "Zaznamená výsledok posúdenia revízie. Výsledok `false-positive` odstráni značku na posúdenie a pridá jej falošne pozitívnu verziu, takže zo značky `mw-private-personal-info` sa stane značka `mw-private-personal-info-false-positive`. Výsledok `no-further-action` pridá verziu značky „bez ďalšej akcie“ a ponechá značku, ktorá revíziu označila. Vyžaduje sa možnosť vidieť značku, ktorú meníte.",
+	"wikimediaantiabuse-api-review-unmark-description": "Odstráni výsledok posúdenia z revízie. Odstránením výsledku `false-positive` sa namiesto jeho falošne pozitívnej verzie obnoví značka na posúdenie. Odstránením výsledku `no-further-action` sa odstráni verzia značky „bez ďalšej akcie“, čím sa revízia vráti do frontu na posúdenie. Vyžaduje sa možnosť vidieť značku, ktorú meníte."
+}
