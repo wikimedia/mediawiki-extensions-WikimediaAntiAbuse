@@ -11,14 +11,27 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck;
 readonly class ModelToRun {
 
 	public function __construct(
-		private string $modelName,
+		private string $contentPolicyName,
 		private string $policyText,
 		private string $content
 	) {
 	}
 
+	/**
+	 * The name of the content policy. The model uses this policy to evaluate the revision.
+	 */
+	public function getContentPolicyName(): string {
+		return $this->contentPolicyName;
+	}
+
+	/**
+	 * This method returns the content policy name, not the model name. Callers outside
+	 * this extension compare the result with their own content policy name. A later
+	 * change makes this method return the model name, after those callers move to
+	 * getContentPolicyName().
+	 */
 	public function getModelName(): string {
-		return $this->modelName;
+		return $this->contentPolicyName;
 	}
 
 	/**

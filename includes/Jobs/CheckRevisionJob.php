@@ -92,7 +92,7 @@ class CheckRevisionJob extends Job {
 	private function runModelCheck( ModelToRun $modelToRun, RevisionRecord $revisionRecord ): void {
 		$response = $this->contentPolicyEvaluator->evaluateCoPEModel(
 			$modelToRun->getPolicyText(),
-			$modelToRun->getModelName(),
+			$modelToRun->getContentPolicyName(),
 			$modelToRun->getContent()
 		);
 		if ( !$response ) {
