@@ -13,10 +13,16 @@ use MediaWikiUnitTestCase;
 class ModelToRunTest extends MediaWikiUnitTestCase {
 
 	public function testGetters(): void {
-		$modelToRun = new ModelToRun( 'test-model', 'Test policy text', 'test content' );
+		$modelToRun = new ModelToRun( 'test-content-policy-name', 'Test policy text', 'test content' );
 
-		$this->assertSame( 'test-model', $modelToRun->getModelName() );
+		$this->assertSame( 'test-content-policy-name', $modelToRun->getContentPolicyName() );
 		$this->assertSame( 'Test policy text', $modelToRun->getPolicyText() );
 		$this->assertSame( 'test content', $modelToRun->getContent() );
+	}
+
+	public function testGetModelNameStillReturnsTheContentPolicyName(): void {
+		$modelToRun = new ModelToRun( 'test-content-policy-name', 'Test policy text', 'test content' );
+
+		$this->assertSame( 'test-content-policy-name', $modelToRun->getModelName() );
 	}
 }
