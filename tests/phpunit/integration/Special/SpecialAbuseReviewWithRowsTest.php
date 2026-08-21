@@ -6,7 +6,10 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\Title\Title;
 use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\DOM\Document;
+use Wikimedia\Parsoid\DOM\Element;
 use Wikimedia\Parsoid\Ext\DOMUtils;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
 
@@ -25,6 +28,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $deletedTaggedContentRevId;
 	private static int $noFurtherActionRevId;
 	private static int $deletedNoFurtherActionRevId;
+	private static int $revertableTaggedContentRevId;
+	private static int $revertableTaggedContentParentRevId;
 
 	/** @dataProvider provideViewWhenRevisionsPresent */
 	public function testViewWhenRevisionsPresent(
@@ -126,9 +131,98 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
 			}
 
+			$detailsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.mw-wikimediaantiabuse-abuse-review-row__details',
+				true
+			);
+
+			// The row header names the edited page and offers the show/hide toggle.
+			$pageCellNode = $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.mw-wikimediaantiabuse-abuse-review-row__page'
+			);
+			$pageCellHtml = DOMCompat::getOuterHTML( $pageCellNode );
+			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
+			$this->assertStringContainsString( $pageTitle->getPrefixedText(), $pageCellHtml );
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-show-details)',
+				$detailsCellHtml
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-hide-details)',
+				$detailsCellHtml
+			);
+
+			// A deleted page can no longer be linked to, so its title points at the page's
+			// deleted revisions on Special:Undelete instead.
+			$pageLinkHref = DOMCompat::getAttribute(
+				$this->assertSelectorMatchesOneElementInNode( $pageCellNode, 'a' ),
+				'href'
+			);
+			if ( $isArchivedRevision ) {
+				$this->assertStringContainsString(
+					'Special:Undelete/' . $pageTitle->getPrefixedDBkey(),
+					$pageLinkHref,
+					'the title opens the page\'s deleted revisions'
+				);
+				$this->assertStringNotContainsString( 'diff=prev', $pageLinkHref );
+			} else {
+				$this->assertSame(
+					$pageTitle->getLocalURL(),
+					$pageLinkHref,
+					'the title links to the page itself'
+				);
+			}
+
+			// Link to the full diff should only exist if the user can see the revision text
+			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
+					$detailsCellHtml
+				);
+				$fullDiffHref = DOMCompat::getAttribute(
+					$this->assertSelectorMatchesOneElementInNode(
+						$tableRow,
+						'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
+					),
+					'href'
+				);
+				if ( $isArchivedRevision ) {
+					// An archived revision has left the revision table, so an oldid= link to it
+					// would be dead.
+					$undeleteQuery = 'target=' . urlencode( $pageTitle->getPrefixedText() ) .
+						'&timestamp=' . $actualRevision->getTimestamp();
+					$this->assertStringContainsString( 'Special:Undelete', $fullDiffHref );
+					$this->assertStringContainsString( $undeleteQuery . '&diff=prev', $fullDiffHref );
+					$this->assertStringNotContainsString( 'oldid=', $fullDiffHref );
+				} else {
+					$this->assertStringContainsString( 'diff=prev', $fullDiffHref );
+					$this->assertStringContainsString( 'oldid=' . $actualRevId, $fullDiffHref );
+				}
+			} else {
+				$this->assertStringNotContainsString( 'oldid=' . $actualRevId, $detailsCellHtml );
+				$this->assertStringNotContainsString(
+					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
+					$detailsCellHtml
+				);
+			}
+
+			// The row title carries the visibility state the timestamp used to.
+			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
+				$this->assertStringContainsString( 'history-deleted', $pageCellHtml );
+				$this->assertSame(
+					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
+					str_contains( $pageCellHtml, 'mw-history-suppressed' ),
+					'suppressed revisions are doubly struck through'
+				);
+			} else {
+				$this->assertStringNotContainsString( 'history-deleted', $pageCellHtml );
+			}
+
 			$authorCellHtml = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.cdx-table-pager__col--user_text',
+				'.mw-wikimediaantiabuse-abuse-review-row__author',
 				true
 			);
 			if ( $actualRevision->userCan( RevisionRecord::DELETED_USER, $testUser ) ) {
@@ -144,9 +238,21 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringContainsString( '(rev-deleted-user)', $authorCellHtml );
 			}
 
+			// The author is marked as deleted even for viewers permitted to see the name.
+			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_USER ) ) {
+				$this->assertStringContainsString( 'history-deleted', $authorCellHtml );
+				$this->assertSame(
+					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
+					str_contains( $authorCellHtml, 'mw-history-suppressed' ),
+					'suppressed revisions are doubly struck through'
+				);
+			} else {
+				$this->assertStringNotContainsString( 'history-deleted', $authorCellHtml );
+			}
+
 			$tagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.cdx-table-pager__col--ts_tags',
+				'.mw-wikimediaantiabuse-abuse-review-row__tags',
 				true
 			);
 			if ( in_array(
@@ -156,6 +262,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedContentRevId,
 					static::$noFurtherActionRevId,
 					static::$deletedNoFurtherActionRevId,
+					static::$revertableTaggedContentRevId,
 				],
 				true
 			) ) {
@@ -221,35 +328,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				str_contains( $noFurtherActionTagClass, 'mw-wikimediaantiabuse-hidden' )
 			);
 
-			$actionsCellHtml = $this->assertSelectorMatchesOneElementInNode(
-				$tableRow,
-				'.cdx-table-pager__col--actions',
-				true
-			);
-			$this->assertStringContainsString(
-				'(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
-				$actionsCellHtml
-			);
-			$this->assertStringContainsString(
-				'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)',
-				$actionsCellHtml
-			);
-			// The controls the click binding and show/hide CSS depend on.
-			$markButton = DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-mark-button' );
-			$unmarkButton = DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-unmark-button' );
-			$this->assertNotNull( $markButton, 'mark button is present' );
-			$this->assertNotNull( $unmarkButton, 'unmark button is present' );
-			$this->assertSame(
-				(string)$actualRevId,
-				DOMCompat::getAttribute( $markButton, 'data-rev-id' )
-			);
+			// The action bar is mounted client-side, so what the server owes the row is the
+			// state on the mount point rather than rendered controls.
+			$actions = $this->getActionsPayload( $tableRow );
 			$this->assertSame(
 				'mw-private-personal-info',
-				DOMCompat::getAttribute( $markButton, 'data-abuse-review-tag' )
+				$actions['tag'],
+				'the tag the mark and unmark actions operate on'
 			);
 
-			// A suppressed revision has been handled: its mark button is disabled and an
-			// explanatory note is shown. Unmarking stays enabled regardless.
+			// A suppressed revision has been handled, which is what stops it being marked.
 			$isSuppressedRow = in_array(
 				$actualRevId,
 				[ static::$suppressedContentRevId, static::$suppressedFalsePositiveRevId ],
@@ -257,93 +345,74 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			);
 			$this->assertSame(
 				$isSuppressedRow,
-				DOMCompat::getAttribute( $markButton, 'disabled' ) !== null,
-				'mark button is disabled only for suppressed revisions'
+				$actions['isSuppressed'],
+				'a suppressed revision is reported as already handled'
 			);
-			$this->assertNull(
-				DOMCompat::getAttribute( $unmarkButton, 'disabled' ),
-				'unmark button is never disabled'
-			);
-			if ( $isSuppressedRow ) {
-				$this->assertStringContainsString(
-					'(wikimediaantiabuse-special-abuse-review-already-suppressed-note)',
-					$actionsCellHtml
-				);
 
-				// The note is always visible on a suppressed row, whether or not it is a false
-				// positive, so handled rows can always be recognised.
-				$noteClass = DOMCompat::getAttribute( DOMCompat::querySelector(
-					$tableRow, '.mw-wikimediaantiabuse-abuse-review-suppressed-note'
-				), 'class' );
-				$this->assertStringNotContainsString( 'mw-wikimediaantiabuse-hidden', $noteClass );
-			} else {
-				$this->assertStringNotContainsString(
-					'(wikimediaantiabuse-special-abuse-review-already-suppressed-note)',
-					$actionsCellHtml
+			// Special:RevisionDelete resolves a type=revision id against the live revision
+			// table, so an archived row is not offered the link at all.
+			$expectsRevisionDelete = !$isArchivedRevision
+				&& in_array( 'deleterevision', $authorityRights, true );
+			$this->assertSame(
+				$expectsRevisionDelete,
+				$actions['revisionDeleteUrl'] !== null,
+				'revision deletion offered only on a live revision to a user who may delete revisions'
+			);
+			if ( $expectsRevisionDelete ) {
+				$this->assertStringContainsString(
+					'ids=' . $actualRevId,
+					$actions['revisionDeleteUrl']
 				);
 			}
 
-			// The no-further-action buttons follow the same pattern: the pair is always
-			// rendered, the one not matching the row's state starts hidden, and marking
-			// is disabled on suppressed rows.
-			$this->assertStringContainsString(
-				'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
-				$actionsCellHtml
-			);
-			$this->assertStringContainsString(
-				'(wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action)',
-				$actionsCellHtml
-			);
-			$markNoFurtherActionButton = DOMCompat::querySelector(
-				$tableRow, '.mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button'
-			);
-			$unmarkNoFurtherActionButton = DOMCompat::querySelector(
-				$tableRow, '.mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button'
-			);
-			$this->assertNotNull( $markNoFurtherActionButton, 'mark no-further-action button is present' );
-			$this->assertNotNull( $unmarkNoFurtherActionButton, 'unmark no-further-action button is present' );
+			// Reverting is offered only where core would accept the undo: a live revision on a
+			// live page, with a parent whose text it will still show. Of the fixtures only the
+			// revertable one qualifies; the rest are archived, parentless or text-deleted.
+			$isRevertableRow = $actualRevId === static::$revertableTaggedContentRevId;
 			$this->assertSame(
-				(string)$actualRevId,
-				DOMCompat::getAttribute( $markNoFurtherActionButton, 'data-rev-id' )
+				$isRevertableRow,
+				$actions['revertUrl'] !== null,
+				'revert is offered only where the undo can succeed'
 			);
+			if ( $isRevertableRow ) {
+				$this->assertStringContainsString(
+					'action=edit&undoafter=' . static::$revertableTaggedContentParentRevId .
+						'&undo=' . static::$revertableTaggedContentRevId,
+					$actions['revertUrl']
+				);
+			}
+
 			$this->assertSame(
-				'mw-private-personal-info',
-				DOMCompat::getAttribute( $markNoFurtherActionButton, 'data-abuse-review-tag' )
-			);
-			// A row holds one verdict, so neither mark button is offered once one is set.
-			$hasVerdict = $isFalsePositiveRow || $isNoFurtherActionRow;
-			$this->assertSame(
-				$hasVerdict,
-				str_contains(
-					DOMCompat::getAttribute( $markNoFurtherActionButton, 'class' ),
-					'mw-wikimediaantiabuse-hidden'
-				),
-				'mark no-further-action button is hidden on any row that already has a verdict'
+				$isFalsePositiveRow,
+				$actions['isFalsePositive'],
+				'the row reports whether its flag has already been called a false positive'
 			);
 			$this->assertSame(
-				$hasVerdict,
-				str_contains(
-					DOMCompat::getAttribute( $markButton, 'class' ),
-					'mw-wikimediaantiabuse-hidden'
-				),
-				'mark false-positive button is hidden on any row that already has a verdict'
+				$isNoFurtherActionRow,
+				$actions['isNoFurtherAction'],
+				'the row reports whether it has already been marked as needing no further action'
 			);
+
+			// The history offers its visibility checkboxes to a holder of deleterevision, so
+			// suppressrevision alone would reach a page with nothing to tick.
 			$this->assertSame(
-				!$isNoFurtherActionRow,
-				str_contains(
-					DOMCompat::getAttribute( $unmarkNoFurtherActionButton, 'class' ),
-					'mw-wikimediaantiabuse-hidden'
-				),
-				'unmark no-further-action button is shown only on marked rows'
+				!$isArchivedRevision
+					&& in_array( 'deleterevision', $authorityRights, true )
+					&& in_array( 'suppressrevision', $authorityRights, true ),
+				$actions['suppressUrl'] !== null,
+				'suppression offered only where the history will let the reviewer act'
 			);
+
+			// Suppression, revert and revision deletion are plain navigations, so the server
+			// renders them as links inside the mount point too: Vue empties the mount point
+			// when it takes over, which leaves them working without JavaScript at no cost.
 			$this->assertSame(
-				$isSuppressedRow,
-				DOMCompat::getAttribute( $markNoFurtherActionButton, 'disabled' ) !== null,
-				'mark no-further-action button is disabled only for suppressed revisions'
-			);
-			$this->assertNull(
-				DOMCompat::getAttribute( $unmarkNoFurtherActionButton, 'disabled' ),
-				'unmark no-further-action button is never disabled'
+				array_values( array_filter(
+					[ $actions['suppressUrl'], $actions['revisionDeleteUrl'], $actions['revertUrl'] ],
+					static fn ( $url ) => $url !== null
+				) ),
+				$this->getFallbackLinkHrefs( $tableRow ),
+				'every navigable action is also a server-rendered link, and nothing else is'
 			);
 		}
 
@@ -358,7 +427,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	}
 
 	public static function provideViewWhenRevisionsPresent(): array {
-		$allRights = [ 'viewsuppressed', 'suppressrevision', 'deletedhistory', 'deletedtext' ];
+		$allRights = [
+			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+		];
 		return [
 			'False positives and handled revisions excluded' => [
 				'includeFalsePositiveRevisions' => false,
@@ -367,6 +438,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 				],
@@ -378,6 +450,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
 					static::$falsePositiveRevId,
 					static::$taggedContentRevId,
@@ -393,6 +466,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 					static::$falsePositiveRevId,
 					static::$deletedTaggedContentRevId,
+					static::$revertableTaggedContentRevId,
 				],
 			],
 			'False positives excluded, handled revisions included' => [
@@ -402,6 +476,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
@@ -416,6 +491,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
 					static::$suppressedFalsePositiveRevId,
 					static::$falsePositiveRevId,
@@ -432,8 +508,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [ 'limit' => 2 ],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
-					static::$suppressedFalsePositiveRevId,
 				],
 			],
 			'False positives and handled revisions included with limit of 2 with offset' => [
@@ -472,6 +548,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [],
 				'authorityRights' => [ 'viewsuppressed' ],
 				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
 					static::$suppressedFalsePositiveRevId,
 					static::$falsePositiveRevId,
 					static::$taggedContentRevId,
@@ -480,6 +557,107 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				],
 			],
 		];
+	}
+
+	/**
+	 * Both sides of a diff are derived from both revisions, so a parent whose text the viewer
+	 * may not see withholds the whole preview, as it does in core.
+	 */
+	public function testDiffPreviewWithheldWhenParentTextIsNotVisible(): void {
+		$this->setGroupPermissions( [
+			'suppress-partial' => [ 'viewsuppressed' => true ],
+			'suppress-full' => [
+				'viewsuppressed' => true,
+				'deletedtext' => true,
+				'deletedhistory' => true,
+			],
+		] );
+		$request = new FauxRequest( [ 'wpShowFalsePositives' => '1' ] );
+
+		// The parent of the false positive revision is revision-deleted, so only the
+		// viewer holding deletedtext may see what it said.
+		[ $htmlForViewerWithAccess ] = $this->executeSpecialPage(
+			'', $request, null, $this->getTestUser( [ 'suppress-full' ] )->getUser()
+		);
+		$row = $this->getRowForRevision(
+			DOMUtils::parseHTML( $htmlForViewerWithAccess ),
+			static::$falsePositiveRevId
+		);
+		$this->assertSelectorMatchesOneElementInNode(
+			$row,
+			'.mw-wikimediaantiabuse-abuse-review-row__diff-removed'
+		);
+		$this->assertStringContainsString(
+			'Tagged content',
+			DOMCompat::getOuterHTML( $row ),
+			'a viewer who can see the parent gets the removed lines'
+		);
+
+		[ $htmlForViewerWithoutAccess ] = $this->executeSpecialPage(
+			'', $request, null, $this->getTestUser( [ 'suppress-partial' ] )->getUser()
+		);
+		$row = $this->getRowForRevision(
+			DOMUtils::parseHTML( $htmlForViewerWithoutAccess ),
+			static::$falsePositiveRevId
+		);
+		$rowHtml = DOMCompat::getOuterHTML( $row );
+		$this->assertStringNotContainsString(
+			'Tagged content',
+			$rowHtml,
+			'a viewer who cannot see the parent gets none of its text'
+		);
+		$this->assertStringNotContainsString(
+			'False positive tagged content',
+			$rowHtml,
+			'nor the revision\'s own text, which would give the rest of the parent away'
+		);
+		$this->assertNull(
+			DOMCompat::querySelector( $row, '.mw-wikimediaantiabuse-abuse-review-row__diff' ),
+			'no diff is rendered at all'
+		);
+		$this->assertStringContainsString(
+			'(rev-deleted-no-diff)',
+			$this->assertSelectorMatchesOneElementInNode(
+				$row,
+				'.mw-wikimediaantiabuse-abuse-review-row__withheld-diff',
+				true
+			),
+			'MediaWiki core\'s own wording explains the refusal, the parent being deleted not suppressed'
+		);
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
+			$rowHtml,
+			'and the link to the full diff stays, core refusing it there in the same terms'
+		);
+	}
+
+	/**
+	 * The action bar is rendered client-side, so the server's side of the contract is the
+	 * state it hands over on the mount point.
+	 */
+	private function getActionsPayload( Document|Element $node ): array {
+		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
+			$node,
+			'.mw-wikimediaantiabuse-abuse-review-row-actions-app'
+		);
+
+		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-actions' ), true );
+		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
+		return $payload;
+	}
+
+	/** @return string[] The hrefs of the no-JS links the mount point starts out holding */
+	private function getFallbackLinkHrefs( Document|Element $node ): array {
+		$links = DOMCompat::querySelectorAll(
+			$node,
+			'.mw-wikimediaantiabuse-abuse-review-row-actions-app a'
+		);
+
+		$hrefs = [];
+		foreach ( $links as $link ) {
+			$hrefs[] = DOMCompat::getAttribute( $link, 'href' );
+		}
+		return $hrefs;
 	}
 
 	public function addDBDataOnce(): void {
@@ -541,6 +719,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertStatusGood( $deletedTaggedContentEditStatus );
 		static::$deletedTaggedContentRevId = $deletedTaggedContentEditStatus->getNewRevision()->getId();
 
+		// A tagged revision whose page and parent both stay live, so the undo can succeed.
+		ConvertibleTimestamp::setFakeTime( '20260101010107' );
+		$fifthPage = $this->getNonexistingTestPage();
+		$revertableParentEditStatus = $this->editPage( $fifthPage, 'Content to revert to' );
+		$this->assertStatusGood( $revertableParentEditStatus );
+		static::$revertableTaggedContentParentRevId = $revertableParentEditStatus->getNewRevision()->getId();
+		$revertableEditStatus = $this->editPage( $fifthPage, 'Revertable tagged content' );
+		$this->assertStatusGood( $revertableEditStatus );
+		static::$revertableTaggedContentRevId = $revertableEditStatus->getNewRevision()->getId();
+
 		ConvertibleTimestamp::setFakeTime( false );
 
 		$changeTagsStore = $this->getServiceContainer()->getChangeTagsStore();
@@ -578,6 +766,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			[ 'mw-private-personal-info', 'mw-private-personal-info-no-further-action' ],
 			null,
 			static::$deletedNoFurtherActionRevId
+		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-personal-info' ],
+			null,
+			static::$revertableTaggedContentRevId
 		);
 
 		$this->revisionDelete(

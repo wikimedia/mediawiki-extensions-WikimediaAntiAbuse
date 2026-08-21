@@ -6,19 +6,24 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special;
 
 use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
+use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\HTMLForm\HTMLForm;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Parser\ParserOptions;
+use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionStore;
 use MediaWiki\SpecialPage\FormSpecialPage;
 use MediaWiki\User\User;
-use MediaWiki\User\UserEditTracker;
 
 class SpecialAbuseReview extends FormSpecialPage {
+
+	// The paging and ordering the pager reads out of the query string.
+	private const array PAGER_STATE_PARAMS = [ 'limit', 'sort', 'asc', 'desc' ];
 
 	private array $tagsFilter;
 	private bool $includeHandledRevisions;
@@ -27,8 +32,10 @@ class SpecialAbuseReview extends FormSpecialPage {
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly ChangeTagsFormatter $changeTagsFormatter,
 		private readonly RevisionStore $revisionStore,
-		private readonly UserEditTracker $userEditTracker,
+		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
+		private readonly RowCommentFormatter $rowCommentFormatter,
+		private readonly RevisionSnippetGenerator $revisionSnippetGenerator,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -62,6 +69,16 @@ class SpecialAbuseReview extends FormSpecialPage {
 	protected function alterForm( HTMLForm $form ): void {
 		$form->setSubmitTextMsg( 'wikimediaantiabuse-special-abuse-review-filter-submit' )
 			->setWrapperLegendMsg( 'wikimediaantiabuse-special-abuse-review-filter-legend' );
+
+		// Submitting the form replaces the whole query string, so the pager's own state
+		// rides along in it. The offset is left behind: a filtered list is a different
+		// one, and the page it named is not the page the reviewer would land on.
+		foreach ( self::PAGER_STATE_PARAMS as $param ) {
+			$value = $this->getRequest()->getRawVal( $param );
+			if ( $value !== null ) {
+				$form->addHiddenField( $param, $value );
+			}
+		}
 	}
 
 	/** @inheritDoc */
@@ -91,8 +108,10 @@ class SpecialAbuseReview extends FormSpecialPage {
 			$this->changeTagsStore,
 			$this->changeTagsFormatter,
 			$this->revisionStore,
-			$this->userEditTracker,
+			$this->archivedRevisionLookup,
 			$this->linkBatchFactory,
+			$this->rowCommentFormatter,
+			$this->revisionSnippetGenerator,
 			$this->tagsFilter,
 			$this->includeHandledRevisions
 		);

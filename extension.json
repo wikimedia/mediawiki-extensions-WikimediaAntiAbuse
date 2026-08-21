@@ -117,32 +117,58 @@
 				"ChangeTagsStore",
 				"ChangeTagsFormatter",
 				"RevisionStore",
-				"UserEditTracker",
-				"LinkBatchFactory"
+				"ArchivedRevisionLookup",
+				"LinkBatchFactory",
+				"RowCommentFormatter",
+				"WikimediaAntiAbuseRevisionSnippetGenerator"
 			]
 		}
 	},
 	"ResourceModules": {
 		"ext.wikimediaAntiAbuse.styles": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
 			"localBasePath": "modules/ext.wikimediaAntiAbuse.styles",
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse.styles",
+			"codexStyleOnly": true,
+			"codexComponents": [
+				"CdxMessage",
+				"CdxProgressIndicator"
+			],
 			"styles": [
 				"special.abuseReview.less"
 			]
 		},
 		"ext.wikimediaAntiAbuse": {
+			"class": "MediaWiki\\ResourceLoader\\CodexModule",
 			"localBasePath": "modules/ext.wikimediaAntiAbuse",
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
+			"codexComponents": [
+				"CdxButton",
+				"CdxProgressIndicator"
+			],
+			"codexScriptOnly": true,
 			"packageFiles": [
 				"dispatcher.js",
+				"mountRowActions.js",
+				"RowActions.vue",
 				"rest.js",
-				"SpecialAbuseReview.js",
 				"utils.js"
 			],
 			"dependencies": [
 				"mediawiki.api"
 			],
 			"messages": [
+				"wikimediaantiabuse-special-abuse-review-actions-heading",
+				"wikimediaantiabuse-special-abuse-review-verdicts-heading",
+				"wikimediaantiabuse-special-abuse-review-action-suppress",
+				"wikimediaantiabuse-special-abuse-review-action-revision-delete",
+				"wikimediaantiabuse-special-abuse-review-action-revert",
+				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",
+				"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive",
+				"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action",
+				"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action",
+				"wikimediaantiabuse-special-abuse-review-already-suppressed-note",
+				"wikimediaantiabuse-special-abuse-review-action-in-progress",
 				"wikimediaantiabuse-special-abuse-review-action-error"
 			]
 		}
@@ -152,17 +178,18 @@
 		"remoteExtPath": "WikimediaAntiAbuse",
 		"packageFiles": [
 			"tests/qunit/index.js",
+			"tests/qunit/mountRowActions.test.js",
 			"tests/qunit/rest.test.js",
-			"tests/qunit/utils.test.js",
-			"modules/ext.wikimediaAntiAbuse/rest.js",
-			"modules/ext.wikimediaAntiAbuse/utils.js"
+			"tests/qunit/RowActions.test.js",
+			"tests/qunit/utils.test.js"
 		],
 		"dependencies": [
 			"mediawiki.qunit-testrunner",
 			"mediawiki.base",
 			"mediawiki.api",
 			"ext.wikimediaAntiAbuse",
-			"sinonjs"
+			"sinonjs",
+			"vue-test-utils"
 		]
 	},
 	"ExtensionMessagesFiles": {

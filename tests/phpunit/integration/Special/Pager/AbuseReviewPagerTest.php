@@ -28,8 +28,10 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getChangeTagsStore(),
 			$this->getServiceContainer()->getChangeTagsFormatter(),
 			$this->getServiceContainer()->getRevisionStore(),
-			$this->getServiceContainer()->getUserEditTracker(),
+			$this->getServiceContainer()->getArchivedRevisionLookup(),
 			$this->getServiceContainer()->getLinkBatchFactory(),
+			$this->getServiceContainer()->getRowCommentFormatter(),
+			$this->getServiceContainer()->get( 'WikimediaAntiAbuseRevisionSnippetGenerator' ),
 			$tagsFilter,
 			false
 		);
@@ -84,14 +86,14 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		$this->assertCount( 1, $tableRows );
 		$tableRow = $tableRows[0];
 
-		$tagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+		$revisionCellHtml = $this->assertSelectorMatchesOneElementInNode(
 			$tableRow,
-			'.cdx-table-pager__col--ts_tags',
+			'.cdx-table-pager__col--revision',
 			true
 		);
 		$this->assertStringNotContainsString(
 			'mw-reverted',
-			$tagsCellHtml,
+			$revisionCellHtml,
 			'Only abuse review tags should be displayed'
 		);
 

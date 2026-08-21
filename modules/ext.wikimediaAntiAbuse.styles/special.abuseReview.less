@@ -1,26 +1,376 @@
 @import 'mediawiki.skin.variables.less';
+@import 'mediawiki.mixins.less';
+
+.mw-wikimediaantiabuse-abuse-review-table {
+	// Two columns, one of them sized here, so fixed layout is both safe and required.
+	table-layout: fixed;
+	width: 100%;
+
+	// Only the timestamp column is sized; the review column takes what is left.
+	.cdx-table-pager__col--timestamp {
+		width: 14em;
+	}
+
+	// Codex bottom-aligns the sort icon, for a heading that may wrap. This one never
+	// does, so centring the icon stops it from hanging below the label.
+	.cdx-table__table__sort-button {
+		align-items: center;
+	}
+
+	// The review column's cells are blocks that pad themselves; only the timestamp
+	// cell is padded as a table cell.
+	.mw-wikimediaantiabuse-abuse-review-row > .cdx-table-pager__col--timestamp {
+		padding: @spacing-75 @spacing-100;
+		vertical-align: top;
+	}
+
+	.mw-wikimediaantiabuse-abuse-review-row > .cdx-table-pager__col--revision {
+		padding: 0;
+	}
+
+	// Inset rather than a border, so marking the open row displaces none of its content.
+	// Only the first cell takes it, so the mark reads as one bar down the row's edge.
+	// Only wide screens mark it; the mobile design leaves the open row unmarked.
+	@media screen and ( min-width: @min-width-breakpoint-tablet ) {
+		.mw-wikimediaantiabuse-abuse-review-row:has( details[ open ] ) > td:first-child {
+			box-shadow: inset @spacing-50 0 0 0 @border-color-muted;
+		}
+	}
+
+	// Codex centres the empty cell and floors it at one line, so the empty state needs
+	// only the room to stand in. Its heading is the one part not already styled here.
+	.cdx-table__table__empty-state-content {
+		height: auto;
+		padding: @spacing-400 @spacing-100;
+
+		strong {
+			display: block;
+			color: @color-base;
+			font-size: @font-size-large;
+			margin-bottom: @spacing-25;
+		}
+	}
+}
+
+// The design's mark is the wiki heart, which Codex ships only as its two halves.
+// No size token reaches either, so both are sized against the heart the design draws.
+.mw-wikimediaantiabuse-abuse-review-empty-mark {
+	@size-mark: 56px;
+
+	.cdx-mixin-css-icon( @cdx-icon-heart, @color-disabled-emphasized, @size-mark );
+	display: block;
+	position: relative;
+	margin: 0 auto @spacing-100;
+
+	// A mask carries one colour, so the W is knocked out by painting it in the
+	// surface behind the heart rather than by subtracting it.
+	&::before {
+		// .cdx-mixin-css-icon() sets everything but content, which this needs to render.
+		content: '';
+		.cdx-mixin-css-icon( @cdx-icon-logo-wikipedia, @background-color-base, @size-mark * 0.6 );
+		position: absolute;
+		// The glyph sits low in its own box, so the box rides above centre to land it there.
+		top: 48%;
+		left: 50%;
+		transform: translate( -50%, -50% );
+	}
+}
+
+.mw-wikimediaantiabuse-abuse-review-row {
+	&__details > summary {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: @spacing-100;
+		padding: @spacing-75 @spacing-100;
+		cursor: pointer;
+	}
+
+	&__info {
+		display: flex;
+		flex-direction: column;
+		gap: @spacing-25;
+		// A flex item will not shrink below its content, so an unbroken title would
+		// widen the row and leave the rule beneath it short.
+		min-width: 0;
+	}
+
+	&__page {
+		font-weight: bold;
+		// anywhere rather than break-word: only anywhere narrows the min-content
+		// width that the column sizes itself to.
+		overflow-wrap: anywhere;
+	}
+
+	&__meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: @spacing-50;
+		color: @color-subtle;
+	}
+
+	&__tags {
+		// Inline-flex, so the chips keep a gap only between the visible ones while the
+		// span itself still sits in the meta text flow on narrow screens.
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: @spacing-50;
+
+		a {
+			color: inherit;
+		}
+	}
+
+	&__toggle {
+		display: flex;
+		align-items: center;
+		gap: @spacing-25;
+		color: @color-progressive;
+		font-weight: bold;
+		white-space: nowrap;
+
+		&::before {
+			// .cdx-mixin-css-icon() sets everything but content, which this needs to render.
+			content: '';
+			.cdx-mixin-css-icon( @cdx-icon-expand, @color-progressive, @size-icon-small );
+		}
+	}
+
+	&__details[ open ] &__toggle::before {
+		.cdx-mixin-css-icon-background-image( @cdx-icon-collapse, @color-progressive );
+	}
+
+	&__details:not( [ open ] ) &__toggle-label--hide,
+	&__details[ open ] &__toggle-label--show {
+		display: none;
+	}
+
+	&__content {
+		padding: 0 @spacing-100 @spacing-100;
+	}
+
+	&__summary {
+		margin-top: @spacing-100;
+	}
+
+	&__changes-header {
+		display: flex;
+		justify-content: space-between;
+		gap: @spacing-100;
+		margin-top: @spacing-100;
+		margin-bottom: @spacing-50;
+	}
+
+	&__full-diff {
+		display: flex;
+		align-items: center;
+		gap: @spacing-25;
+		font-weight: bold;
+
+		&::after {
+			// .cdx-mixin-css-icon() sets everything but content, which this needs to render.
+			content: '';
+			.cdx-mixin-css-icon( @cdx-icon-link-external, @color-progressive, @size-icon-small );
+		}
+	}
+
+	&__diff {
+		border: @border-width-base @border-style-base @border-color-muted;
+		padding: @spacing-25;
+	}
+
+	&__diff-removed,
+	&__diff-added {
+		// The bottom padding gives back the descent the font reserves under the baseline,
+		// which the eye reads as slack.
+		padding: @spacing-50 @spacing-50 @spacing-25;
+		font-family: @font-family-monospace;
+		// pre-wrap breaks at whitespace, which a flagged URL does not have, and the table
+		// is fixed-layout, so an unbroken run would push the page sideways instead.
+		// break-word would leave min-content whole, so the column would not narrow.
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		line-height: @line-height-x-small;
+	}
+
+	&__diff-removed {
+		background-color: @background-color-error-subtle--active;
+		margin-bottom: @spacing-50;
+	}
+
+	// Codex carries one subtle green, #dff2eb, which reads mint beside the design's, and
+	// no --active variant to sit at the weight the removed side uses. So the pair is spelt
+	// out, the dark one chosen to match that side's contrast: 6.1 against its 5.9.
+	&__diff-added {
+		background-color: #d1e9d2;
+
+		.darkmode-override( {
+			background-color: #35603c;
+		} );
+	}
+}
+
+// The spinner shares the heading's line, out of flow so it displaces nothing.
+.mw-wikimediaantiabuse-abuse-review-actions-heading {
+	display: flex;
+	align-items: center;
+	position: relative;
+	min-height: @size-150;
+
+	> .cdx-progress-indicator {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate( -50%, -50% );
+	}
+}
+
+// Closes off the actions before the edit summary starts.
+.mw-wikimediaantiabuse-abuse-review-row-actions-app {
+	border-bottom: @border-width-base @border-style-base @border-color-muted;
+	padding-bottom: @spacing-100;
+}
+
+// Stacked by default; a percentage basis here would inflate the flex container's
+// intrinsic width and widen the fixed-layout cell holding it.
+.mw-wikimediaantiabuse-abuse-review-actions-groups {
+	display: flex;
+	flex-direction: column;
+	gap: @spacing-50;
+}
+
+// Wide enough for the actions to run across the row rather than stacked.
+@media screen and ( min-width: @min-width-breakpoint-tablet ) {
+	.mw-wikimediaantiabuse-abuse-review-actions-groups {
+		flex-flow: row wrap;
+
+		.mw-wikimediaantiabuse-abuse-review-actions-heading {
+			flex-basis: 100%;
+		}
+
+		// The groups stop boxing their buttons, so every button wraps on its own.
+		// Boxed, a whole group drops to the next line as soon as the two no longer
+		// fit across, leaving the one it holds alone on a line of its own.
+		.mw-wikimediaantiabuse-abuse-review-actions {
+			display: contents;
+		}
+	}
+}
 
 .mw-wikimediaantiabuse-abuse-review-actions {
 	display: flex;
-	align-items: center;
-	// Let the suppressed note drop to its own line rather than shrinking the buttons.
-	flex-wrap: wrap;
-	gap: @spacing-25;
-}
-
-// Separate the tags when more than one is visible; hidden tags leave no gap.
-.mw-wikimediaantiabuse-abuse-review-tags {
-	display: flex;
 	flex-wrap: wrap;
 	gap: @spacing-50;
+
+	// Each keeps its label's width and they split what is left over. A zero basis would
+	// divide the row evenly and clip the longer labels, which cannot wrap.
+	> .cdx-button {
+		flex: 1 1 auto;
+		min-width: 10em;
+
+		// Across a row, a third of it each rather than each label's own width, so the
+		// buttons line up in columns whatever a translation makes of the labels. The
+		// floor stays the label itself, a Codex button clipping what will not fit on
+		// its one line: one too long for its third widens instead, taking the row
+		// down to two.
+		@media screen and ( min-width: @min-width-breakpoint-tablet ) {
+			flex: 0 1 calc( ( 100% - @spacing-50 * 2 ) / 3 );
+			min-width: max-content;
+		}
+	}
 }
 
 .mw-wikimediaantiabuse-abuse-review-suppressed-note {
 	color: @color-subtle;
+	// A line of its own; sharing it with the actions above clips their labels.
+	flex-basis: 100%;
 }
 
-// Scoped under the row so the two-class selector out-specifies Codex's own
-// `.cdx-button { display: inline-flex }` without needing !important.
+// Two classes, to out-specify Codex's own `.cdx-button { display: inline-flex }`.
 .mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-hidden {
 	display: none;
+}
+
+// Narrow screens lay each row on a subtle surface, leaving only the cards inside it white.
+@media screen and ( max-width: @max-width-breakpoint-mobile ) {
+	.mw-wikimediaantiabuse-abuse-review-row > td {
+		background-color: @background-color-interactive-subtle;
+	}
+
+	// No room for two columns, so the cells stack into one and the timestamp heads the
+	// block it belongs to. Its heading then sorts the whole table, leaving the review
+	// column's empty header nothing to label.
+	.mw-wikimediaantiabuse-abuse-review-table {
+		.cdx-table-pager__col--timestamp {
+			width: auto;
+		}
+
+		thead .cdx-table-pager__col--revision {
+			display: none;
+		}
+
+		.mw-wikimediaantiabuse-abuse-review-row > td {
+			display: block;
+		}
+
+		// The title below it opens the block, so the date only needs the room above.
+		.mw-wikimediaantiabuse-abuse-review-row > .cdx-table-pager__col--timestamp {
+			padding: @spacing-75 @spacing-100 0;
+		}
+
+		// Codex separates rows with a border on top of every cell. Stacked, the second
+		// one would rule the date off from the block it heads.
+		.mw-wikimediaantiabuse-abuse-review-row > .cdx-table-pager__col--revision {
+			border-top: 0;
+		}
+	}
+
+	// Two classes, to out-specify Codex's own `.cdx-message--notice` background.
+	// With no box left to inset against, its padding would only read as slack.
+	.mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-abuse-review-row__summary {
+		background-color: transparent;
+		border: 0;
+		padding: 0;
+	}
+
+	// The named groups already separate the actions from the summary here.
+	.mw-wikimediaantiabuse-abuse-review-row-actions-app {
+		border-bottom: 0;
+		padding-bottom: 0;
+	}
+
+	// The heading joins the diff inside one card, so their shared edge is dropped.
+	.mw-wikimediaantiabuse-abuse-review-row__changes-header {
+		border: @border-width-base @border-style-base @border-color-muted;
+		border-bottom: 0;
+		margin-bottom: 0;
+		padding: @spacing-50;
+	}
+
+	.mw-wikimediaantiabuse-abuse-review-row__diff {
+		border-top: 0;
+	}
+
+	// Title, meta and toggle each take a line of their own.
+	.mw-wikimediaantiabuse-abuse-review-row__details > summary {
+		flex-direction: column;
+		gap: @spacing-25;
+	}
+
+	// One text flow, so a long tag wraps as prose instead of dropping to a line of
+	// its own with the rule stranded at the start of it.
+	.mw-wikimediaantiabuse-abuse-review-row__meta {
+		display: block;
+	}
+
+	.mw-wikimediaantiabuse-abuse-review-row__tags {
+		margin-left: @spacing-50;
+	}
+
+	// A floor in em is read against the button's own font, which is wider than the
+	// page's; halving the row keeps a group's buttons paired whatever that font
+	// turns out to be.
+	.mw-wikimediaantiabuse-abuse-review-actions > .cdx-button {
+		min-width: calc( 50% - @spacing-25 );
+	}
 }

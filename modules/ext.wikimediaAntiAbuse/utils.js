@@ -1,23 +1,27 @@
 'use strict';
 
 const HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
+const FALSE_POSITIVE_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--false-positive';
+const NOT_FALSE_POSITIVE_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive';
+const NO_FURTHER_ACTION_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--no-further-action';
 
 /**
- * Flip the visibility of a row's controls and tags after a successful
- * mark/unmark: within the given toggle scope, the showing elements hide
- * and the hidden ones show.
+ * Show the tag chips matching the row's new verdict and hide the rest. Set from the state
+ * rather than toggled, so it cannot drift if it ever runs twice for one change.
  *
  * @param {HTMLElement} row The review row whose state changed
- * @param {string} toggleClass Marks the controls/tags of the action that changed
+ * @param {string|null} verdict The row's verdict, or null where it now carries none
  */
-function updateRowToggles( row, toggleClass ) {
-	Array.prototype.forEach.call( row.querySelectorAll( '.' + toggleClass ), ( el ) => {
-		// The following classes are used here:
-		// * mw-wikimediaantiabuse-hidden
-		// * mw-wikimediaantiabuse-abuse-review-toggle-false-positive
-		// * mw-wikimediaantiabuse-abuse-review-toggle-no-further-action
-		el.classList.toggle( HIDDEN_CLASS );
-	} );
+function setRowVerdict( row, verdict ) {
+	const show = ( className, visible ) => {
+		Array.prototype.forEach.call( row.querySelectorAll( '.' + className ), ( el ) => {
+			el.classList.toggle( HIDDEN_CLASS, !visible );
+		} );
+	};
+
+	show( NOT_FALSE_POSITIVE_TAG_CLASS, verdict !== 'falsePositive' );
+	show( FALSE_POSITIVE_TAG_CLASS, verdict === 'falsePositive' );
+	show( NO_FURTHER_ACTION_TAG_CLASS, verdict === 'noFurtherAction' );
 }
 
 /**
@@ -37,4 +41,4 @@ function actionErrorMessage( error ) {
 	return mw.msg( 'wikimediaantiabuse-special-abuse-review-action-error' );
 }
 
-module.exports = { updateRowToggles, actionErrorMessage };
+module.exports = { setRowVerdict, actionErrorMessage };

@@ -1,7 +1,7 @@
 'use strict';
 
 const { markAsFalsePositive, unmarkAsFalsePositive, markNoFurtherAction, unmarkNoFurtherAction } =
-	require( '../../modules/ext.wikimediaAntiAbuse/rest.js' );
+	require( 'ext.wikimediaAntiAbuse/rest.js' );
 
 const TAG = 'mw-private-personal-info';
 

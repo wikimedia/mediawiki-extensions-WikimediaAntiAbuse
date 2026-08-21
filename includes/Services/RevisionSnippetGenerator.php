@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Services;
 
 use MediaWiki\Content\TextContent;
 use MediaWiki\Extension\WikimediaAntiAbuse\Diff\DifflibUnifiedDiffFormatter;
+use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\SlotRecord;
@@ -25,6 +26,7 @@ class RevisionSnippetGenerator {
 
 	public function __construct(
 		private readonly RevisionLookup $revisionLookup,
+		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly TitleFormatter $titleFormatter,
 	) {
 	}
@@ -134,9 +136,12 @@ class RevisionSnippetGenerator {
 			return null;
 		}
 
-		// Fall back to the primary so replica lag does not make the edit look like a page creation
+		// Fall back to the primary so replica lag does not make the edit look like a page
+		// creation, then to the archive table, which holds the parent of a deleted page's
+		// revision.
 		$parentRevision = $this->revisionLookup->getRevisionById( $parentId )
-			?? $this->revisionLookup->getRevisionById( $parentId, IDBAccessObject::READ_LATEST );
+			?? $this->revisionLookup->getRevisionById( $parentId, IDBAccessObject::READ_LATEST )
+			?? $this->archivedRevisionLookup->getArchivedRevisionRecord( $revisionRecord->getPage(), $parentId );
 
 		return $parentRevision ? $this->getRevisionText( $parentRevision ) : null;
 	}

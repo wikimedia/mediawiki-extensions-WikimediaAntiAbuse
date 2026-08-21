@@ -83,6 +83,7 @@ return [
 		MediaWikiServices $services
 	) => new RevisionSnippetGenerator(
 		$services->getRevisionLookup(),
+		$services->getArchivedRevisionLookup(),
 		$services->getTitleFormatter()
 	),
 ];

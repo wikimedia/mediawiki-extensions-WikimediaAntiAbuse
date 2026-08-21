@@ -6,6 +6,8 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Tests\Specials\SpecialPageTestBase;
 use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\DOM\Document;
+use Wikimedia\Parsoid\DOM\Element;
 use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
@@ -51,51 +53,39 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 
 		$tablePagerCaption = $this->assertSelectorMatchesOneElementInNode( $tablePager, 'caption', true );
 		$this->assertStringContainsString(
-			'(cdx-table-sort-caption: (wikimediaantiabuse-special-abuse-review-caption))',
+			'(wikimediaantiabuse-special-abuse-review-caption)',
 			$tablePagerCaption
 		);
 
-		$timestampColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
-			$tablePager,
-			'th.cdx-table-pager__col--timestamp',
-			true
+		// Rows are rendered as blocks in the second, unlabelled column, so only the
+		// timestamp column takes a heading and only it is sortable.
+		$this->assertCount(
+			2,
+			DOMCompat::querySelectorAll( $tablePager, 'thead th' )
+		);
+		$sortButton = $this->assertSelectorMatchesOneElementInNode(
+			$tablePager, '.cdx-table__table__sort-button', true
 		);
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-heading-revision)',
-			$timestampColumnHeaderHtml
-		);
-
-		$authorColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
-			$tablePager,
-			'th.cdx-table-pager__col--user_text',
-			true
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-heading-author)',
-			$authorColumnHeaderHtml
-		);
-
-		$tagsColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
-			$tablePager,
-			'th.cdx-table-pager__col--ts_tags',
-			true
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-heading-tags)',
-			$tagsColumnHeaderHtml
-		);
-
-		$actionsColumnHeaderHtml = $this->assertSelectorMatchesOneElementInNode(
-			$tablePager,
-			'th.cdx-table-pager__col--actions',
-			true
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-heading-actions)',
-			$actionsColumnHeaderHtml
+			$sortButton,
+			'only the revision timestamp column should be sortable'
 		);
 
 		return DOMCompat::getOuterHTML( $tablePager );
+	}
+
+	/**
+	 * Returns the row the pager rendered for one revision, to assert on the parts of it a test cares
+	 * about.
+	 */
+	protected function getRowForRevision( Document|Element $node, int $revId ): Element {
+		foreach ( DOMCompat::querySelectorAll( $node, 'tbody tr' ) as $tableRow ) {
+			if ( (int)DOMCompat::getAttribute( $tableRow, 'data-rev-id' ) === $revId ) {
+				return $tableRow;
+			}
+		}
+		$this->fail( "No row was rendered for revision $revId" );
 	}
 
 	/** @inheritDoc */

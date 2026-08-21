@@ -1,17 +1,13 @@
 'use strict';
 
-const { updateRowToggles, actionErrorMessage } =
-	require( '../../modules/ext.wikimediaAntiAbuse/utils.js' );
+const { setRowVerdict, actionErrorMessage } =
+	require( 'ext.wikimediaAntiAbuse/utils.js' );
 
 const HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
-const FALSE_POSITIVE_TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle-false-positive';
-const NO_FURTHER_ACTION_TOGGLE_CLASS = 'mw-wikimediaantiabuse-abuse-review-toggle-no-further-action';
-const MARK_BUTTON_CLASS = 'mw-wikimediaantiabuse-abuse-review-mark-button';
-const UNMARK_BUTTON_CLASS = 'mw-wikimediaantiabuse-abuse-review-unmark-button';
-const MARK_NO_FURTHER_ACTION_BUTTON_CLASS =
-	'mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button';
-const UNMARK_NO_FURTHER_ACTION_BUTTON_CLASS =
-	'mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button';
+const PAGE_CLASS = 'mw-wikimediaantiabuse-abuse-review-row__page';
+const CHANGES_HEADER_CLASS = 'mw-wikimediaantiabuse-abuse-review-row__changes-header';
+const DIFF_CLASS = 'mw-wikimediaantiabuse-abuse-review-row__diff';
+const SUMMARY_CLASS = 'mw-wikimediaantiabuse-abuse-review-row__summary';
 const FALSE_POSITIVE_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--false-positive';
 const NOT_FALSE_POSITIVE_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive';
 const NO_FURTHER_ACTION_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--no-further-action';
@@ -19,142 +15,98 @@ const NO_FURTHER_ACTION_TAG_CLASS = 'mw-wikimediaantiabuse-abuse-review-tag--no-
 QUnit.module( 'ext.wikimediaAntiAbuse.utils', QUnit.newMwEnvironment() );
 
 /**
- * Build a review row as the pager renders it: a mark button belongs to both toggle
- * scopes, because a row holds one verdict at a time and either verdict changing
- * decides whether that button is offered. An unmark button follows its own verdict.
+ * A review row shaped the way the pager renders one.
  *
- * @param {number} revId
- * @param {boolean} falsePositive Initial false-positive state of the row
- * @param {boolean} noFurtherAction Initial no-further-action state of the row
+ * @param {string|null} verdict The verdict the row starts with, or null for none
  * @return {HTMLElement}
  */
-function makeRow( revId, falsePositive, noFurtherAction ) {
+function makeRow( verdict ) {
 	const row = document.createElement( 'tr' );
-	// The following classes are used here:
-	// * mw-wikimediaantiabuse-abuse-review-row
 	row.className = 'mw-wikimediaantiabuse-abuse-review-row';
-	row.setAttribute( 'data-rev-id', String( revId ) );
 
-	const hasVerdict = falsePositive || noFurtherAction;
-	const bothScopes = FALSE_POSITIVE_TOGGLE_CLASS + ' ' + NO_FURTHER_ACTION_TOGGLE_CLASS;
-
-	const add = ( className, toggleClasses, hidden ) => {
+	const add = ( className, hidden ) => {
 		const el = document.createElement( 'span' );
 		// The following classes are used here:
 		// * mw-wikimediaantiabuse-hidden
-		// * mw-wikimediaantiabuse-abuse-review-toggle-false-positive
-		// * mw-wikimediaantiabuse-abuse-review-toggle-no-further-action
-		// * mw-wikimediaantiabuse-abuse-review-mark-button
-		// * mw-wikimediaantiabuse-abuse-review-unmark-button
-		// * mw-wikimediaantiabuse-abuse-review-mark-no-further-action-button
-		// * mw-wikimediaantiabuse-abuse-review-unmark-no-further-action-button
+		// * mw-wikimediaantiabuse-abuse-review-row__page
+		// * mw-wikimediaantiabuse-abuse-review-row__summary
+		// * mw-wikimediaantiabuse-abuse-review-row__changes-header
+		// * mw-wikimediaantiabuse-abuse-review-row__diff
 		// * mw-wikimediaantiabuse-abuse-review-tag--false-positive
 		// * mw-wikimediaantiabuse-abuse-review-tag--not-false-positive
 		// * mw-wikimediaantiabuse-abuse-review-tag--no-further-action
-		el.className = className + ' ' + toggleClasses + ( hidden ? ' ' + HIDDEN_CLASS : '' );
+		el.className = className + ( hidden ? ' ' + HIDDEN_CLASS : '' );
 		row.appendChild( el );
 	};
-	add( MARK_BUTTON_CLASS, bothScopes, hasVerdict );
-	add( MARK_NO_FURTHER_ACTION_BUTTON_CLASS, bothScopes, hasVerdict );
-	add( UNMARK_BUTTON_CLASS, FALSE_POSITIVE_TOGGLE_CLASS, !falsePositive );
-	add( UNMARK_NO_FURTHER_ACTION_BUTTON_CLASS, NO_FURTHER_ACTION_TOGGLE_CLASS, !noFurtherAction );
-	add( FALSE_POSITIVE_TAG_CLASS, FALSE_POSITIVE_TOGGLE_CLASS, !falsePositive );
-	add( NOT_FALSE_POSITIVE_TAG_CLASS, FALSE_POSITIVE_TOGGLE_CLASS, falsePositive );
-	add( NO_FURTHER_ACTION_TAG_CLASS, NO_FURTHER_ACTION_TOGGLE_CLASS, !noFurtherAction );
+	add( PAGE_CLASS, false );
+	add( NOT_FALSE_POSITIVE_TAG_CLASS, verdict === 'falsePositive' );
+	add( FALSE_POSITIVE_TAG_CLASS, verdict !== 'falsePositive' );
+	add( NO_FURTHER_ACTION_TAG_CLASS, verdict !== 'noFurtherAction' );
+	add( SUMMARY_CLASS, false );
+	add( CHANGES_HEADER_CLASS, false );
+	add( DIFF_CLASS, false );
 
 	document.getElementById( 'qunit-fixture' ).appendChild( row );
 	return row;
 }
 
-/**
- * @param {HTMLElement} row
- * @param {string} className
- * @return {boolean} Whether the element with that class is hidden
- */
-function isHidden( row, className ) {
-	return row.querySelector( '.' + className ).classList.contains( HIDDEN_CLASS );
-}
+const isHidden = ( row, className ) => row.querySelector( '.' + className ).classList.contains( HIDDEN_CLASS );
 
-QUnit.test( 'marks a not-false-positive row as a false positive', ( assert ) => {
-	const row = makeRow( 10, false, false );
+QUnit.test( 'showing a row as a false positive shows the matching tag only', ( assert ) => {
+	const row = makeRow( null );
 
-	updateRowToggles( row, FALSE_POSITIVE_TOGGLE_CLASS );
-	assert.true( isHidden( row, MARK_BUTTON_CLASS ), 'mark button hidden' );
-	assert.false( isHidden( row, UNMARK_BUTTON_CLASS ), 'unmark button shown' );
+	setRowVerdict( row, 'falsePositive' );
 	assert.false( isHidden( row, FALSE_POSITIVE_TAG_CLASS ), 'false-positive tag shown' );
 	assert.true( isHidden( row, NOT_FALSE_POSITIVE_TAG_CLASS ), 'not-false-positive tag hidden' );
-	assert.true(
-		isHidden( row, MARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'the row now has a verdict, so the other verdict is no longer offered'
-	);
-	assert.true( isHidden( row, NO_FURTHER_ACTION_TAG_CLASS ), 'no-further-action tag untouched' );
-	assert.true(
-		isHidden( row, UNMARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'the other verdict cannot be unmarked, it was never set'
-	);
-} );
-
-QUnit.test( 'unmarks a false-positive row', ( assert ) => {
-	const row = makeRow( 11, true, false );
-
-	updateRowToggles( row, FALSE_POSITIVE_TOGGLE_CLASS );
-	assert.false( isHidden( row, MARK_BUTTON_CLASS ), 'mark button shown' );
-	assert.true( isHidden( row, UNMARK_BUTTON_CLASS ), 'unmark button hidden' );
-	assert.true( isHidden( row, FALSE_POSITIVE_TAG_CLASS ), 'false-positive tag hidden' );
-	assert.false( isHidden( row, NOT_FALSE_POSITIVE_TAG_CLASS ), 'not-false-positive tag shown' );
-	assert.false(
-		isHidden( row, MARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'the verdict is gone, so the other verdict is offered again'
-	);
-} );
-
-QUnit.test( 'marks a row as needing no further action', ( assert ) => {
-	const row = makeRow( 12, false, false );
-
-	updateRowToggles( row, NO_FURTHER_ACTION_TOGGLE_CLASS );
-	assert.true(
-		isHidden( row, MARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'mark no-further-action button hidden'
-	);
-	assert.false(
-		isHidden( row, UNMARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'unmark no-further-action button shown'
-	);
-	assert.false( isHidden( row, NO_FURTHER_ACTION_TAG_CLASS ), 'no-further-action tag shown' );
-	assert.true(
-		isHidden( row, MARK_BUTTON_CLASS ),
-		'the row now has a verdict, so the other verdict is no longer offered'
-	);
-	assert.true( isHidden( row, FALSE_POSITIVE_TAG_CLASS ), 'false-positive tag untouched' );
-} );
-
-QUnit.test( 'unmarks a no-further-action row', ( assert ) => {
-	const row = makeRow( 13, false, true );
-
-	updateRowToggles( row, NO_FURTHER_ACTION_TOGGLE_CLASS );
-	assert.false(
-		isHidden( row, MARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'mark no-further-action button shown'
-	);
-	assert.true(
-		isHidden( row, UNMARK_NO_FURTHER_ACTION_BUTTON_CLASS ),
-		'unmark no-further-action button hidden'
-	);
 	assert.true( isHidden( row, NO_FURTHER_ACTION_TAG_CLASS ), 'no-further-action tag hidden' );
+} );
+
+QUnit.test( 'showing a row as needing no further action shows the matching tag only', ( assert ) => {
+	const row = makeRow( null );
+
+	setRowVerdict( row, 'noFurtherAction' );
+	assert.false( isHidden( row, NO_FURTHER_ACTION_TAG_CLASS ), 'no-further-action tag shown' );
+	assert.true( isHidden( row, FALSE_POSITIVE_TAG_CLASS ), 'false-positive tag hidden' );
 	assert.false(
-		isHidden( row, MARK_BUTTON_CLASS ),
-		'the verdict is gone, so the other verdict is offered again'
+		isHidden( row, NOT_FALSE_POSITIVE_TAG_CLASS ),
+		'the flag itself stays, the verdict standing beside it'
 	);
 } );
 
-QUnit.test( 'flips only the given row, leaving others untouched', ( assert ) => {
-	const target = makeRow( 20, false, false );
-	const other = makeRow( 21, false, false );
+QUnit.test( 'clearing a verdict restores the original tag alone', ( assert ) => {
+	[ 'falsePositive', 'noFurtherAction' ].forEach( ( verdict ) => {
+		const row = makeRow( verdict );
 
-	updateRowToggles( target, FALSE_POSITIVE_TOGGLE_CLASS );
+		setRowVerdict( row, null );
+		assert.false(
+			isHidden( row, NOT_FALSE_POSITIVE_TAG_CLASS ),
+			'not-false-positive tag shown after clearing ' + verdict
+		);
+		assert.true( isHidden( row, FALSE_POSITIVE_TAG_CLASS ), 'false-positive tag hidden' );
+		assert.true( isHidden( row, NO_FURTHER_ACTION_TAG_CLASS ), 'no-further-action tag hidden' );
+	} );
+} );
 
-	assert.true( isHidden( target, MARK_BUTTON_CLASS ), 'target row updated' );
-	assert.false( isHidden( other, MARK_BUTTON_CLASS ), 'other row untouched' );
+QUnit.test( 'it sets the state rather than flipping it, so repeats cannot drift', ( assert ) => {
+	const row = makeRow( null );
+
+	setRowVerdict( row, 'falsePositive' );
+	setRowVerdict( row, 'falsePositive' );
+	assert.false(
+		isHidden( row, FALSE_POSITIVE_TAG_CLASS ),
+		'still showing the false-positive tag after a repeated call'
+	);
+	assert.true( isHidden( row, NOT_FALSE_POSITIVE_TAG_CLASS ), 'still hiding the not-false-positive tag after a repeated call' );
+} );
+
+QUnit.test( 'it touches only the given row', ( assert ) => {
+	const target = makeRow( null );
+	const other = makeRow( null );
+
+	setRowVerdict( target, 'falsePositive' );
+
+	assert.false( isHidden( target, FALSE_POSITIVE_TAG_CLASS ), 'target row updated' );
+	assert.true( isHidden( other, FALSE_POSITIVE_TAG_CLASS ), 'other row untouched' );
 } );
 
 QUnit.module( 'ext.wikimediaAntiAbuse.utils.actionErrorMessage', QUnit.newMwEnvironment( {
