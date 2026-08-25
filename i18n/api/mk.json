@@ -1,0 +1,14 @@
+{
+	"@metadata": {
+		"authors": [
+			"Bjankuloski06"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "Ја немате дозволата да менувате статус на прегледаност на оваа преработка.",
+	"wikimediaantiabuse-api-review-not-flagged": "Оваа преработка не е означена со ознака за преглед на злоупотреба.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Оваа преработка е веќе има поинаква одлука во прегледот. Отстранете ја таа одлука пред да ја запишете оваа.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Оваа преработка не е означена како погрешен погодок.",
+	"wikimediaantiabuse-api-review-disabled": "Овој REST-приложник не е овозможен на ова вики.",
+	"wikimediaantiabuse-api-review-unknown-tag": "Ознаката „$1“ не е прегледлива.",
+	"wikimediaantiabuse-api-review-blocked": "Не можете да го користите овој приложник додека ви е забрането да уредувате."
+}

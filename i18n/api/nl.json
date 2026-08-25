@@ -1,0 +1,17 @@
+{
+	"@metadata": {
+		"authors": [
+			"McDutchie",
+			"Siebrand"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "U hebt geen toestemming om de beoordelingsstatus van deze versie te wijzigen.",
+	"wikimediaantiabuse-api-review-not-flagged": "Deze versie is niet gemarkeerd met een label voor misbruikbeoordeling.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "Deze versie heeft al een andere beoordeling. Verwijder die beoordeling voordat u deze vastlegt.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "Deze versie is niet als foutpositief gemarkeerd.",
+	"wikimediaantiabuse-api-review-disabled": "Deze REST-API is niet ingeschakeld op deze wiki.",
+	"wikimediaantiabuse-api-review-unknown-tag": "Het label “$1” kan niet beoordeeld worden.",
+	"wikimediaantiabuse-api-review-blocked": "U kunt deze API niet gebruiken terwijl u bent geblokkeerd voor het bewerken.",
+	"wikimediaantiabuse-api-review-mark-description": "Registreert een beoordeling voor een versie. Bij de beoordeling `false-positive` wordt het label `reviewable` verwijderd en wordt de foutpositief-versie ervan toegevoegd, zodat het label `mw-private-personal-info` verandert in het label `mw-private-personal-info-false-positive`. Bij de beoordeling `no-further-action` wordt de ‘geen verdere stappen’-versie van het label toegevoegd en blijft het label behouden waarmee de versie was gemarkeerd. Hiervoor is het nodig dat u het label kunt zien dat u wijzigt.",
+	"wikimediaantiabuse-api-review-unmark-description": "Verwijdert een beoordeling uit een versie. Als u de beoordeling `false-positive` verwijdert, wordt het label tag `reviewable` hersteld in plaats van de foutpositief-versie. Als u de beoordeling `no-further-action` verwijdert, wordt de ‘geen verdere stappen’-versie van de tag verwijderd, waardoor de versie in de beoordelingswachtrij wordt teruggezet. Hiervoor moet het label kunnen zien dat u wijzigt."
+}
