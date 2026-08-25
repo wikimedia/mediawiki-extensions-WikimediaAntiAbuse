@@ -311,6 +311,68 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
+	public function testMarkFalsePositiveHidesTheFlagNotification(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->markFalsePositive( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'Marking a false positive must hide the flag notification'
+		);
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkFalsePositive( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertFalse(
+			$this->isEventHidden( $eventId ),
+			'Unmarking puts the revision back in the queue, so the notification comes back'
+		);
+	}
+
+	public function testMarkFalsePositiveHidesTheNotificationWhenAlreadyMarked(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->markFalsePositive( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'Marking an already-marked revision still hides a notification which slipped through'
+		);
+	}
+
+	public function testUnmarkFalsePositiveLeavesASuppressedRevisionHidden(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+		( new EventMapper() )->toggleDeleted( [ $eventId ], true );
+		$this->suppressRevision( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkFalsePositive( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'A suppressed revision needs no action, so its notification stays hidden'
+		);
+	}
+
 	public function testMarkNoFurtherActionHidesTheFlagNotification(): void {
 		$this->enableFlagNotifications();
 

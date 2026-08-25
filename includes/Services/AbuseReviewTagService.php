@@ -40,6 +40,8 @@ class AbuseReviewTagService {
 	}
 
 	/**
+	 * Tag a flagged revision as a false positive, and hide its flag notification.
+	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag to review, not its false-positive variant
@@ -51,6 +53,7 @@ class AbuseReviewTagService {
 			return $status;
 		}
 
+		$revision = $status->getValue();
 		$falsePositiveTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'];
 		$tags = $this->getTags( $revisionId );
 
@@ -66,12 +69,15 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			// Follow-up: dismiss the outstanding flag notification here once that code lands.
+			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
+			// Idempotent: an earlier mark may have run before the notification existed.
+			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+
 			return StatusValue::newGood();
 		}
 
@@ -82,6 +88,9 @@ class AbuseReviewTagService {
 	}
 
 	/**
+	 * Put a false positive back in the review queue. The flag notification comes back
+	 * with it, unless the revision is suppressed.
+	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag to restore, not its false-positive variant
@@ -103,6 +112,8 @@ class AbuseReviewTagService {
 				'tag' => $tag,
 				'performer' => $authority->getUser()->getName(),
 			] );
+
+			$this->notificationModerator->restoreForRevision( $status->getValue() );
 
 			return StatusValue::newGood();
 		}
