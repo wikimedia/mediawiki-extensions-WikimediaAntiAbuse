@@ -5,6 +5,7 @@ declare( strict_types=1 );
 use MediaWiki\Config\ServiceOptions;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
@@ -38,6 +39,7 @@ return [
 			$services->getRevisionLookup(),
 			$services->getArchivedRevisionLookup(),
 			$services->getReadOnlyMode(),
+			$services->get( 'WikimediaAntiAbusePersonalInfoFlagNotificationModerator' ),
 			$services->get( 'WikimediaAntiAbuseLogger' )
 		);
 	},
@@ -74,6 +76,13 @@ return [
 	) => new HookRunner( $services->getHookContainer() ),
 
 	'WikimediaAntiAbuseLogger' => static fn () => LoggerFactory::getInstance( 'WikimediaAntiAbuse' ),
+
+	'WikimediaAntiAbusePersonalInfoFlagNotificationModerator' => static fn (
+		MediaWikiServices $services
+	) => new PersonalInfoFlagNotificationModerator(
+		$services->getMainConfig()->get( 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' )
+			&& $services->getExtensionRegistry()->isLoaded( 'Echo' )
+	),
 
 	'WikimediaAntiAbusePersonalInfoFlagNotifier' => static fn (
 		MediaWikiServices $services

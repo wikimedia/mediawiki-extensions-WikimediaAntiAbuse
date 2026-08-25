@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Services;
 use MediaWiki\Block\AbstractBlock;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
@@ -33,6 +34,7 @@ class AbuseReviewTagService {
 		private readonly RevisionLookup $revisionLookup,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly ReadOnlyMode $readOnlyMode,
+		private readonly PersonalInfoFlagNotificationModerator $notificationModerator,
 		private readonly LoggerInterface $logger,
 	) {
 	}
@@ -120,6 +122,7 @@ class AbuseReviewTagService {
 	 * - Keep the tag that flagged the revision for review, as "no further action"
 	 *   is indicative of a true positive
 	 * - Throw an error if "false positive" is already set on the revision
+	 * - Hide the flag notification, as the revision no longer needs a reviewer
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -133,10 +136,14 @@ class AbuseReviewTagService {
 			return $status;
 		}
 
+		$revision = $status->getValue();
 		$noFurtherActionTag = ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'];
 		$tags = $this->getTags( $revisionId );
 
 		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
+			// Idempotent: an earlier mark may have run before the notification existed.
+			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+
 			return StatusValue::newGood();
 		}
 
@@ -158,11 +165,14 @@ class AbuseReviewTagService {
 			'performer' => $authority->getUser()->getName(),
 		] );
 
+		$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+
 		return StatusValue::newGood();
 	}
 
 	/**
 	 * Remove the no-further-action tag from a revision, putting it back in the review queue.
+	 * The flag notification comes back with it, unless the revision is suppressed.
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -186,6 +196,8 @@ class AbuseReviewTagService {
 				'tag' => $tag,
 				'performer' => $authority->getUser()->getName(),
 			] );
+
+			$this->notificationModerator->restoreForRevision( $status->getValue() );
 
 			return StatusValue::newGood();
 		}
@@ -214,6 +226,10 @@ class AbuseReviewTagService {
 		);
 	}
 
+	/**
+	 * @return StatusValue Good, with the looked-up revision as its value, on success;
+	 *   a fatal whose value is the HTTP status code on failure.
+	 */
 	private function assertReviewable( Authority $authority, int $revisionId, string $tag ): StatusValue {
 		if ( !isset( ChangeTagsHandler::REVIEWABLE_TAGS[$tag] ) ) {
 			return $this->fatal(
@@ -258,7 +274,7 @@ class AbuseReviewTagService {
 			return $this->fatal( self::HTTP_FORBIDDEN, 'wikimediaantiabuse-api-review-blocked' );
 		}
 
-		return StatusValue::newGood();
+		return StatusValue::newGood( $revision );
 	}
 
 	private function fatal( int $httpCode, string $messageKey, array $params = [] ): StatusValue {

@@ -75,10 +75,8 @@
 		},
 		"RevisionVisibilityHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler",
-			"factory": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler::factory",
 			"services": [
-				"MainConfig",
-				"ExtensionRegistry"
+				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator"
 			]
 		},
 		"EchoHooksHandler": {

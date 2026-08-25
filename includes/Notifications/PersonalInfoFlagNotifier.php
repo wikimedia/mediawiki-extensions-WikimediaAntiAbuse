@@ -13,6 +13,9 @@ class PersonalInfoFlagNotifier {
 	public const string EVENT_TYPE = 'personal-info-flagged';
 	public const string CATEGORY = 'personal-info';
 
+	// The bits which are both set when the revision text is suppressed.
+	public const int SUPPRESSED_BITS = RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED;
+
 	public function __construct(
 		private readonly bool $notificationsEnabled,
 		private readonly NotificationService $notificationService,
@@ -27,7 +30,7 @@ class PersonalInfoFlagNotifier {
 
 		// Edits which have their text suppressed don't need further action, and so the notification is skipped.
 		// We still notify if the edit text is only normally revision-deleted, as the edit likely needs suppression.
-		if ( $revision->isDeleted( RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED ) ) {
+		if ( $revision->isDeleted( self::SUPPRESSED_BITS ) ) {
 			return;
 		}
 

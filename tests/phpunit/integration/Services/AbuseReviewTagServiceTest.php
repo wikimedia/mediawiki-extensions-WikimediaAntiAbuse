@@ -5,9 +5,14 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 
 use MediaWiki\Block\DatabaseBlock;
+use MediaWiki\Extension\Notifications\Mapper\EventMapper;
+use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Permissions\Authority;
+use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
+use MediaWiki\Title\Title;
 use MediaWiki\User\UserIdentityValue;
 use MediaWikiIntegrationTestCase;
 
@@ -22,11 +27,43 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 	private const string PERSONAL_INFO_TAG = 'mw-private-personal-info';
 	private const string PERSONAL_INFO_FALSE_POSITIVE_TAG = 'mw-private-personal-info-false-positive';
 	private const string PERSONAL_INFO_NO_FURTHER_ACTION_TAG = 'mw-private-personal-info-no-further-action';
+	private const string PAGE_NAME = 'Abuse review verdict test page';
+
+	private ?bool $originalAlwaysInsert = null;
 
 	protected function setUp(): void {
 		parent::setUp();
 
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', true );
+	}
+
+	protected function tearDown(): void {
+		if ( $this->originalAlwaysInsert !== null ) {
+			Event::$alwaysInsert = $this->originalAlwaysInsert;
+		}
+
+		parent::tearDown();
+	}
+
+	private function enableFlagNotifications(): void {
+		$this->markTestSkippedIfExtensionNotLoaded( 'Echo' );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => true,
+			'EchoUseJobQueue' => false,
+			'EchoNotifications' => [
+				PersonalInfoFlagNotifier::EVENT_TYPE => [ 'category' => 'system' ],
+			],
+		] );
+		$this->originalAlwaysInsert = Event::$alwaysInsert;
+		Event::$alwaysInsert = true;
+	}
+
+	private function createFlagEvent( int $revId ): int {
+		return Event::create( [
+			'type' => PersonalInfoFlagNotifier::EVENT_TYPE,
+			'title' => Title::newFromText( self::PAGE_NAME ),
+			'extra' => [ 'revisionId' => $revId ],
+		] )->getId();
 	}
 
 	private function getService(): AbuseReviewTagService {
@@ -38,7 +75,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 	}
 
 	private function createRevisionId(): int {
-		return $this->editPage( 'False positive test page', 'test content' )
+		return $this->editPage( self::PAGE_NAME, 'test content' )
 			->getNewRevision()
 			->getId();
 	}
@@ -94,7 +131,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 	public function testMarkReturnsErrorWhenUserCannotSeeDeletedRevision(): void {
 		$authority = $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed' ] );
 		$revId = $this->createRevisionId();
-		$this->deletePage( 'False positive test page' );
+		$this->deletePage( self::PAGE_NAME );
 
 		$status = $this->getService()->markFalsePositive( $authority, $revId, self::PERSONAL_INFO_TAG );
 		$this->assertStatusError( 'rest-nonexistent-revision', $status );
@@ -167,7 +204,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame( [ self::PERSONAL_INFO_TAG ], $this->getTags( $revId ) );
 
 		if ( $pageIsDeleted ) {
-			$this->deletePage( 'False positive test page' );
+			$this->deletePage( self::PAGE_NAME );
 		}
 
 		$this->assertStatusGood(
@@ -250,7 +287,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
 
 		if ( $pageIsDeleted ) {
-			$this->deletePage( 'False positive test page' );
+			$this->deletePage( self::PAGE_NAME );
 		}
 
 		$this->assertStatusGood(
@@ -272,6 +309,108 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 			$this->getTags( $revId ),
 			'Unmarking must remove only the no-further-action tag'
 		);
+	}
+
+	public function testMarkNoFurtherActionHidesTheFlagNotification(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->markNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'Marking no further action must hide the flag notification'
+		);
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertFalse(
+			$this->isEventHidden( $eventId ),
+			'Unmarking puts the revision back in the queue, so the notification comes back'
+		);
+	}
+
+	public function testUnmarkNoFurtherActionLeavesASuppressedRevisionHidden(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+		( new EventMapper() )->toggleDeleted( [ $eventId ], true );
+		$this->suppressRevision( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->unmarkNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'A suppressed revision needs no action, so its notification stays hidden'
+		);
+	}
+
+	public function testMarkNoFurtherActionHidesTheNotificationWhenAlreadyMarked(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+
+		$this->assertStatusGood(
+			$this->getService()->markNoFurtherAction( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'Marking an already-marked revision still hides a notification which slipped through'
+		);
+	}
+
+	public function testUnmarkNoFurtherActionLeavesAnArchivedRevisionHidden(): void {
+		$this->enableFlagNotifications();
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG );
+		$eventId = $this->createFlagEvent( $revId );
+		$this->deletePage( self::PAGE_NAME );
+		$this->runDeferredUpdates();
+
+		$reviewer = $this->mockRegisteredAuthorityWithPermissions(
+			[ 'viewsuppressed', 'deletedhistory' ]
+		);
+		$this->assertStatusGood(
+			$this->getService()->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->runDeferredUpdates();
+
+		$this->assertTrue(
+			$this->isEventHidden( $eventId ),
+			'Echo hid the notification when the page went, so the unmark must leave it alone'
+		);
+	}
+
+	private function suppressRevision( int $revId ): void {
+		$suppressed = RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED;
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'revision' )
+			->set( [ 'rev_deleted' => $suppressed ] )
+			->where( [ 'rev_id' => $revId ] )
+			->caller( __METHOD__ )->execute();
+	}
+
+	private function isEventHidden( int $eventId ): bool {
+		return ( new EventMapper() )->fetchById( $eventId, true )->isDeleted();
 	}
 
 	/**

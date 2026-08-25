@@ -4,13 +4,12 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Hooks\Handlers;
 
-use MediaWiki\Config\HashConfig;
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\RevisionVisibilityHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Page\WikiPage;
-use MediaWiki\Registration\ExtensionRegistry;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWikiIntegrationTestCase;
 
@@ -22,7 +21,7 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 
 	private const OTHER_EVENT_TYPE = 'wikimedia-anti-abuse-test-other';
 
-	private bool $originalAlwaysInsert;
+	private ?bool $originalAlwaysInsert = null;
 	private RevisionVisibilityHandler $handler;
 	private WikiPage $page;
 
@@ -44,14 +43,16 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		Event::$alwaysInsert = true;
 
 		$this->handler = new RevisionVisibilityHandler(
-			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => true ] ),
-			true
+			new PersonalInfoFlagNotificationModerator( true )
 		);
 		$this->page = $this->getExistingTestPage( 'WikimediaAntiAbuse visibility test page' );
 	}
 
 	protected function tearDown(): void {
-		Event::$alwaysInsert = $this->originalAlwaysInsert;
+		// setUp() can skip before this is set, and tearDown() still runs.
+		if ( $this->originalAlwaysInsert !== null ) {
+			Event::$alwaysInsert = $this->originalAlwaysInsert;
+		}
 
 		parent::tearDown();
 	}
@@ -126,34 +127,6 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		$this->assertEventDeleted( $targetEventId, true, 'The event for the suppressed revision must be moderated' );
 		$this->assertEventDeleted( $otherRevisionEventId, false, 'An event for a different revision is untouched' );
 		$this->assertEventDeleted( $otherTypeEventId, false, 'An event of a different type is untouched' );
-	}
-
-	public function testNoOpWhenDisabled(): void {
-		$revisionId = 1001;
-		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $revisionId );
-
-		$handler = new RevisionVisibilityHandler(
-			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => false ] ),
-			true
-		);
-		$handler->onArticleRevisionVisibilitySet(
-			$this->page->getTitle(),
-			[ $revisionId ],
-			[ $revisionId => [
-				'oldBits' => 0,
-				'newBits' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
-			] ]
-		);
-
-		$this->assertEventDeleted( $eventId, false );
-	}
-
-	public function testFactory(): void {
-		$handler = RevisionVisibilityHandler::factory(
-			new HashConfig( [ 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' => true ] ),
-			ExtensionRegistry::getInstance()
-		);
-		$this->assertInstanceOf( RevisionVisibilityHandler::class, $handler );
 	}
 
 	private function createEvent( string $type, int $revisionId ): int {

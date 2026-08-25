@@ -21,7 +21,7 @@ class PersonalInfoFlagPresentationModel extends EchoEventPresentationModel {
 	/**
 	 * Recipients are frozen when the notification is created, so re-check at display time and hide it
 	 * if the user can no longer view the flagged edit or its tag.
-	 * The notification is deleted in RevisionVisibilityHandler once the text is suppressed.
+	 * PersonalInfoFlagNotificationModerator hides it outright on suppression and on a verdict.
 	 *
 	 * @inheritDoc
 	 */
