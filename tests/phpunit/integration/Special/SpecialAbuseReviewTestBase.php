@@ -22,34 +22,69 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	}
 
 	/**
-	 * Verifies the filter form at the top of the special page has the right structure
+	 * Verifies that the filter button is present in the form
 	 */
-	protected function verifyFilterForm( string $html ): void {
-		$filterFormHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-htmlform' );
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-show-false-positives)',
-			$filterFormHtml
+	protected function verifyFilterButtonPresent( string $html, int $numberOfFiltersApplied ): void {
+		$filterButtons = DOMCompat::querySelectorAll(
+			DOMUtils::parseHTML( $html ),
+			'.mw-wikimediaantiabuse-abuse-review-filter-button'
 		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-show-handled-revisions)',
-			$filterFormHtml
+		$this->assertGreaterThan(
+			0,
+			count( $filterButtons ),
+			'The filter button should be present in the form'
 		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-filter-submit)',
-			$filterFormHtml
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-filter-legend)',
-			$filterFormHtml
-		);
+		foreach ( $filterButtons as $filterButton ) {
+			$filterButtonHtml = DOMCompat::getInnerHTML( $filterButton );
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-filter-open-button)',
+				$filterButtonHtml,
+				'The filter button should have the correct label'
+			);
+			$this->assertSelectorMatchesOneElementInNode(
+				$filterButton,
+				'.mw-wikimediaantiabuse-abuse-review-icon-filter'
+			);
+			if ( $numberOfFiltersApplied === 0 ) {
+				$this->assertStringNotContainsString(
+					'mw-wikimediaantiabuse-abuse-review-filter-button-filters-applied-chip',
+					$filterButtonHtml
+				);
+			} else {
+				$chip = $this->assertSelectorMatchesOneElementInNode(
+					$filterButton,
+					'.mw-wikimediaantiabuse-abuse-review-filter-button-filters-applied-chip'
+				);
+				$chipText = $this->assertSelectorMatchesOneElementInNode(
+					$chip,
+					'.cdx-info-chip__text'
+				);
+				$this->assertSame(
+					(string)$numberOfFiltersApplied,
+					DOMCompat::getInnerHTML( $chipText ),
+					'The chip should show the number of filters applied'
+				);
+			}
+		}
 	}
 
 	/**
 	 * Verifies the structure of the table pager for assertions that are common to all tests
 	 */
-	protected function commonVerifyTablePager( string $html ): string {
+	protected function commonVerifyTablePager( string $html, bool $shouldHaveRows ): string {
 		$htmlAsNode = DOMUtils::parseHTML( $html );
-		$tablePager = $this->assertSelectorMatchesOneElementInNode( $htmlAsNode, '.cdx-table__table' );
+		$tablePager = $this->assertSelectorMatchesOneElementInNode(
+			$htmlAsNode,
+			'.cdx-table__table.mw-wikimediaantiabuse-abuse-review-table'
+		);
+		if ( $shouldHaveRows ) {
+			$this->assertTrue(
+				DOMCompat::getClassList( $tablePager )->contains(
+					'mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar'
+				),
+				'The table should have the navigation bar class when it has rows'
+			);
+		}
 
 		$tablePagerCaption = $this->assertSelectorMatchesOneElementInNode( $tablePager, 'caption', true );
 		$this->assertStringContainsString(

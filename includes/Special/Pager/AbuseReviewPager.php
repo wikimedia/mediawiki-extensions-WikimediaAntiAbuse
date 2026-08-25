@@ -12,8 +12,10 @@ use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Context\IContextSource;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
 use MediaWiki\Html\Html;
 use MediaWiki\Linker\LinkRenderer;
+use MediaWiki\Navigation\CodexPagerNavigationBuilder;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Pager\CodexTablePager;
 use MediaWiki\Pager\IndexPager;
@@ -65,6 +67,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly RevisionSnippetGenerator $revisionSnippetGenerator,
 		private readonly array $tagsFilter,
 		private readonly bool $includeHandledRevisions,
+		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
 			$context->msg( 'wikimediaantiabuse-special-abuse-review-caption' )->text(),
@@ -1025,7 +1028,13 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/** @inheritDoc */
 	protected function getTableClass(): string {
-		return 'cdx-table__table mw-wikimediaantiabuse-abuse-review-table';
+		$tableClasses = [
+			'mw-wikimediaantiabuse-abuse-review-table',
+		];
+		if ( $this->isNavigationBarShown() ) {
+			$tableClasses[] = 'mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar';
+		}
+		return parent::getTableClass() . ' ' . implode( ' ', $tableClasses );
 	}
 
 	/**
@@ -1145,5 +1154,42 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	protected function isNavigationBarShown(): bool {
 		return $this->getNumRows() > 0;
+	}
+
+	/**
+	 * Renders the button used to open the filters dialog along with the table caption
+	 *
+	 * @inheritDoc
+	 */
+	protected function getHeader(): string {
+		$tableCaption = Html::element(
+			'div',
+			[ 'class' => 'cdx-table__header__caption', 'aria-hidden' => 'true' ],
+			$this->mCaption
+		);
+
+		return Html::rawElement(
+			'div',
+			[ 'class' => 'cdx-table__header' ],
+			$tableCaption . $this->getNavigationBuilder()->getFilterButton()
+		);
+	}
+
+	protected function createNavigationBuilder(): CodexPagerNavigationBuilder {
+		$builder = new AbuseReviewPagerNavigationBuilder(
+			$this->getContext(),
+			$this->getRequest()->getValues(),
+			$this->numberOfFiltersApplied
+		);
+		$builder->setNavClass( $this->getNavClass() );
+		return $builder;
+	}
+
+	/**
+	 * @return AbuseReviewPagerNavigationBuilder
+	 */
+	public function getNavigationBuilder(): AbuseReviewPagerNavigationBuilder {
+		// @phan-suppress-next-line PhanTypeMismatchReturnSuperType
+		return parent::getNavigationBuilder();
 	}
 }

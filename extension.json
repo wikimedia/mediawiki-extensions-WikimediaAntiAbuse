@@ -138,7 +138,8 @@
 				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
-				"CdxCheckbox"
+				"CdxCheckbox",
+				"CdxInfoChip"
 			],
 			"styles": [
 				"special.abuseReview.less"
@@ -164,6 +165,7 @@
 				"rest.js",
 				"utils.js",
 				"components/FilterDialog.vue",
+				"mountFilterDialog.js",
 				{
 					"name": "icons.json",
 					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
@@ -188,7 +190,8 @@
 				"wikimediaantiabuse-special-abuse-review-filter-legend",
 				"wikimediaantiabuse-special-abuse-review-show-false-positives",
 				"wikimediaantiabuse-special-abuse-review-show-handled-revisions",
-				"wikimediaantiabuse-special-abuse-review-filter-submit"
+				"wikimediaantiabuse-special-abuse-review-filter-submit",
+				"wikimediaantiabuse-special-abuse-review-filter-open-button"
 			]
 		}
 	},
@@ -201,7 +204,8 @@
 			"tests/qunit/rest.test.js",
 			"tests/qunit/components/RowActions.test.js",
 			"tests/qunit/utils.test.js",
-			"tests/qunit/components/FilterDialog.test.js"
+			"tests/qunit/components/FilterDialog.test.js",
+			"tests/qunit/mountFilterDialog.test.js"
 		],
 		"dependencies": [
 			"mediawiki.qunit-testrunner",

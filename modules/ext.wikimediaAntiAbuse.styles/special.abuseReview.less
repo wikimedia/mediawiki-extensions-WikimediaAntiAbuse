@@ -7,6 +7,66 @@ html {
 	scrollbar-gutter: stable;
 }
 
+.mw-wikimediaantiabuse-abuse-review-icon-filter {
+	.cdx-mixin-css-icon( @cdx-icon-funnel );
+}
+
+// Make the "Filter" button info chip look more like a progressive button to match the design spec
+.mw-wikimediaantiabuse-abuse-review-filter-button {
+	.mw-wikimediaantiabuse-abuse-review-filter-button-filters-applied-chip {
+		background-color: @background-color-progressive;
+		border: 0;
+
+		.cdx-info-chip__text {
+			color: @color-inverted-fixed;
+		}
+	}
+}
+
+// Hide the mobile "Filter" button when screen is wide enough and hide the desktop
+// "Filter" button when showing the mobile button
+// Additionally, hide the table caption when on mobile to reduce vertical space before
+// the first case
+.cdx-table:has( .mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar ) {
+	.cdx-table-pager__start .mw-wikimediaantiabuse-abuse-review-filter-button {
+		float: right;
+	}
+
+	@media all and ( min-width: calc( @max-width-breakpoint-mobile + 1px ) ) {
+		.cdx-table-pager__start .mw-wikimediaantiabuse-abuse-review-filter-button {
+			display: none;
+		}
+	}
+
+	@media all and ( max-width: @max-width-breakpoint-mobile ) {
+		.cdx-table__header {
+			display: none;
+		}
+
+		.cdx-table-pager__start {
+			display: flex;
+			flex: auto;
+			justify-content: space-between;
+		}
+	}
+}
+
+.cdx-table:not( :has( .mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar ) ) {
+	@media all and ( max-width: @max-width-breakpoint-mobile ) {
+		.cdx-table__header__caption {
+			display: none;
+		}
+
+		.cdx-table__header {
+			display: block;
+		}
+
+		.mw-wikimediaantiabuse-abuse-review-filter-button {
+			float: right;
+		}
+	}
+}
+
 .mw-wikimediaantiabuse-abuse-review-table {
 	table-layout: fixed;
 	width: 100%;

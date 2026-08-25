@@ -11,22 +11,26 @@ use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
-use MediaWiki\HTMLForm\HTMLForm;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionStore;
-use MediaWiki\SpecialPage\FormSpecialPage;
+use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\User\User;
 
-class SpecialAbuseReview extends FormSpecialPage {
+class SpecialAbuseReview extends SpecialPage {
 
 	// The paging and ordering the pager reads out of the query string.
 	private const array PAGER_STATE_PARAMS = [ 'limit', 'sort', 'asc', 'desc' ];
 
 	private array $tagsFilter;
 	private bool $includeHandledRevisions;
+
+	/**
+	 * @var int The number of filters applied (counting all filters present in the filters dialog)
+	 */
+	private int $numberOfFiltersApplied = 0;
 
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
@@ -41,53 +45,32 @@ class SpecialAbuseReview extends FormSpecialPage {
 	}
 
 	/** @inheritDoc */
-	public function execute( $par ): void {
-		parent::execute( $par );
+	public function execute( $subPage ): void {
+		parent::execute( $subPage );
 		$this->addHelpLink( 'Extension:WikimediaAntiAbuse' );
 		$this->getOutput()->addModuleStyles( [
 			'ext.wikimediaAntiAbuse.styles',
 			'mediawiki.interface.helpers.styles',
 		] );
 		$this->getOutput()->addModules( 'ext.wikimediaAntiAbuse' );
+		$this->getOutput()->addHtml( '<div id="mw-wikimediaantiabuse-abuse-review-filter-app"></div>' );
+
+		$this->parseFilters();
+		$this->displayPager();
 	}
 
-	/** @inheritDoc */
-	protected function getFormFields(): array {
-		return [
-			'ShowFalsePositives' => [
-				'type' => 'check',
-				'label-message' => 'wikimediaantiabuse-special-abuse-review-show-false-positives',
-			],
-			'ShowHandledRevisions' => [
-				'type' => 'check',
-				'label-message' => 'wikimediaantiabuse-special-abuse-review-show-handled-revisions',
-			],
-		];
-	}
+	/**
+	 * Parse the filters from the request
+	 */
+	private function parseFilters(): void {
+		$showFalsePositives = $this->getRequest()->getBool( 'wpShowFalsePositives' );
+		$showHandledRevisions = $this->getRequest()->getBool( 'wpShowHandledRevisions' );
 
-	/** @inheritDoc */
-	protected function alterForm( HTMLForm $form ): void {
-		$form->setSubmitTextMsg( 'wikimediaantiabuse-special-abuse-review-filter-submit' )
-			->setWrapperLegendMsg( 'wikimediaantiabuse-special-abuse-review-filter-legend' );
-
-		// Submitting the form replaces the whole query string, so the pager's own state
-		// rides along in it. The offset is left behind: a filtered list is a different
-		// one, and the page it named is not the page the reviewer would land on.
-		foreach ( self::PAGER_STATE_PARAMS as $param ) {
-			$value = $this->getRequest()->getRawVal( $param );
-			if ( $value !== null ) {
-				$form->addHiddenField( $param, $value );
-			}
-		}
-	}
-
-	/** @inheritDoc */
-	public function onSubmit( array $data ) {
 		$this->tagsFilter = $this->changeTagsStore->filterViewableTags(
 			array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
 			$this->getAuthority()
 		);
-		if ( $data['ShowFalsePositives'] ) {
+		if ( $showFalsePositives ) {
 			$this->tagsFilter = array_merge(
 				$this->tagsFilter,
 				$this->changeTagsStore->filterViewableTags(
@@ -95,13 +78,26 @@ class SpecialAbuseReview extends FormSpecialPage {
 					$this->getAuthority()
 				)
 			);
+			$this->numberOfFiltersApplied++;
 		}
-		$this->includeHandledRevisions = $data['ShowHandledRevisions'];
+		$this->includeHandledRevisions = $showHandledRevisions;
+		if ( $this->includeHandledRevisions ) {
+			$this->numberOfFiltersApplied++;
+		}
 
-		return true;
+		$this->getOutput()->addJsConfigVars(
+			'wgWikimediaAntiAbuseActiveFilters',
+			[
+				'showFalsePositives' => $showFalsePositives,
+				'showHandledRevisions' => $showHandledRevisions,
+			]
+		);
 	}
 
-	public function onSuccess(): void {
+	/**
+	 * Displays the abuse review pager
+	 */
+	private function displayPager(): void {
 		$pager = new AbuseReviewPager(
 			$this->getContext(),
 			$this->getLinkRenderer(),
@@ -113,22 +109,13 @@ class SpecialAbuseReview extends FormSpecialPage {
 			$this->rowCommentFormatter,
 			$this->revisionSnippetGenerator,
 			$this->tagsFilter,
-			$this->includeHandledRevisions
+			$this->includeHandledRevisions,
+			$this->numberOfFiltersApplied
 		);
 		$this->getOutput()->addParserOutputContent(
 			$pager->getFullOutput(),
 			ParserOptions::newFromContext( $this->getContext() )
 		);
-	}
-
-	/** @inheritDoc */
-	protected function getShowAlways(): bool {
-		return true;
-	}
-
-	/** @inheritDoc */
-	protected function getDisplayFormat(): string {
-		return 'ooui';
 	}
 
 	/** @inheritDoc */
@@ -139,11 +126,6 @@ class SpecialAbuseReview extends FormSpecialPage {
 	/** @inheritDoc */
 	protected function outputHeader( $summaryMessageKey = '' ): void {
 		parent::outputHeader( 'wikimediaantiabuse-special-abuse-review-summary' );
-	}
-
-	/** @inheritDoc */
-	public function requiresPost(): bool {
-		return false;
 	}
 
 	/** @inheritDoc */

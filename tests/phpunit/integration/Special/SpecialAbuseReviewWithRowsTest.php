@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Title\Title;
@@ -58,7 +59,23 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$data['asc'] = '1';
 		}
 		$data = array_merge( $data, $extraQueryParamsCallback() );
-		[ $html ] = $this->executeSpecialPage( '', new FauxRequest( $data ), null, $testUser );
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( $data ) );
+		$context->setUser( $testUser );
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$expectedActiveFiltersArray = [
+			'showFalsePositives' => $includeFalsePositiveRevisions,
+			'showHandledRevisions' => $includeHandledRevisions,
+		];
+		$this->assertArrayEquals(
+			$expectedActiveFiltersArray,
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
+			false,
+			true
+		);
 
 		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );
 		$this->assertStringContainsString(
@@ -66,9 +83,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$specialPageSummaryHtml
 		);
 
-		$this->verifyFilterForm( $html );
+		$this->verifyFilterButtonPresent( $html, count( array_filter( $expectedActiveFiltersArray ) ) );
 
-		$tablePagerHtml = $this->commonVerifyTablePager( $html );
+		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
 
 		$expectedRevIds = $expectedRevIdsCallback();
 		$tableRows = DOMCompat::querySelectorAll( DOMUtils::parseHTML( $tablePagerHtml ), 'tbody tr' );
