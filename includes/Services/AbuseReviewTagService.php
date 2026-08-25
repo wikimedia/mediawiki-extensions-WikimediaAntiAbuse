@@ -7,7 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Services;
 use MediaWiki\Block\AbstractBlock;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
@@ -34,7 +34,7 @@ class AbuseReviewTagService {
 		private readonly RevisionLookup $revisionLookup,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly ReadOnlyMode $readOnlyMode,
-		private readonly PersonalInfoFlagNotificationModerator $notificationModerator,
+		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator,
 		private readonly LoggerInterface $logger,
 	) {
 	}

@@ -6,16 +6,16 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Notifications
 
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Page\WikiPage;
 use MediaWikiIntegrationTestCase;
 
 /**
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator
  * @group Database
  */
-class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTestCase {
+class EchoPersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTestCase {
 
 	private const string OTHER_EVENT_TYPE = 'wikimedia-anti-abuse-test-other';
 	private const string PAGE_NAME = 'WikimediaAntiAbuse notification moderator test page';
@@ -61,7 +61,7 @@ class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTest
 		$otherRevisionEventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $untouchedRevisionId );
 		$otherTypeEventId = $this->createEvent( self::OTHER_EVENT_TYPE, $firstRevisionId );
 
-		( new PersonalInfoFlagNotificationModerator( true ) )->hideForRevisions(
+		$this->newModerator()->hideForRevisions(
 			$this->page->getId(),
 			[ $firstRevisionId, $secondRevisionId ]
 		);
@@ -73,22 +73,11 @@ class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTest
 		$this->assertEventDeleted( $otherTypeEventId, false, 'An event of another type is untouched' );
 	}
 
-	public function testNoOpWhenNotificationsAreDisabled(): void {
-		$revisionId = 1001;
-		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $revisionId );
-
-		( new PersonalInfoFlagNotificationModerator( false ) )
-			->hideForRevisions( $this->page->getId(), [ $revisionId ] );
-		$this->runDeferredUpdates();
-
-		$this->assertEventDeleted( $eventId, false );
-	}
-
 	/** @dataProvider provideNothingToHide */
 	public function testNoOpWhenThereIsNothingToHide( bool $pageIsKnown, array $revisionIds ): void {
 		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, 1001 );
 
-		( new PersonalInfoFlagNotificationModerator( true ) )
+		$this->newModerator()
 			->hideForRevisions( $pageIsKnown ? $this->page->getId() : 0, $revisionIds );
 		$this->runDeferredUpdates();
 
@@ -107,7 +96,7 @@ class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTest
 		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $revision->getId() );
 		( new EventMapper() )->toggleDeleted( [ $eventId ], true );
 
-		( new PersonalInfoFlagNotificationModerator( true ) )->restoreForRevision( $revision );
+		$this->newModerator()->restoreForRevision( $revision );
 		$this->runDeferredUpdates();
 
 		$this->assertEventDeleted( $eventId, false, 'The notification comes back for a live revision' );
@@ -125,21 +114,10 @@ class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTest
 			->caller( __METHOD__ )->execute();
 		$revision = $this->getServiceContainer()->getRevisionLookup()->getRevisionById( $revisionId );
 
-		( new PersonalInfoFlagNotificationModerator( true ) )->restoreForRevision( $revision );
+		$this->newModerator()->restoreForRevision( $revision );
 		$this->runDeferredUpdates();
 
 		$this->assertEventDeleted( $eventId, true, 'A suppressed revision keeps its notification hidden' );
-	}
-
-	public function testRestoreNoOpWhenNotificationsAreDisabled(): void {
-		$revision = $this->page->getRevisionRecord();
-		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $revision->getId() );
-		( new EventMapper() )->toggleDeleted( [ $eventId ], true );
-
-		( new PersonalInfoFlagNotificationModerator( false ) )->restoreForRevision( $revision );
-		$this->runDeferredUpdates();
-
-		$this->assertEventDeleted( $eventId, true );
 	}
 
 	public function testRestoreLeavesAnArchivedRevisionHidden(): void {
@@ -151,13 +129,19 @@ class PersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTest
 		$revision = $this->getServiceContainer()->getArchivedRevisionLookup()
 			->getArchivedRevisionRecord( null, $revisionId );
 
-		( new PersonalInfoFlagNotificationModerator( true ) )->restoreForRevision( $revision );
+		$this->newModerator()->restoreForRevision( $revision );
 		$this->runDeferredUpdates();
 
 		$this->assertEventDeleted(
 			$eventId,
 			true,
 			'Echo owns the notifications of a deleted page, so the restore must not touch them'
+		);
+	}
+
+	private function newModerator(): EchoPersonalInfoFlagNotificationModerator {
+		return new EchoPersonalInfoFlagNotificationModerator(
+			$this->getServiceContainer()->get( 'EchoEventMapper' )
 		);
 	}
 

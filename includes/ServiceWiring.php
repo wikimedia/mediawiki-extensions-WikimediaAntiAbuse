@@ -5,7 +5,8 @@ declare( strict_types=1 );
 use MediaWiki\Config\ServiceOptions;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
@@ -77,12 +78,16 @@ return [
 
 	'WikimediaAntiAbuseLogger' => static fn () => LoggerFactory::getInstance( 'WikimediaAntiAbuse' ),
 
-	'WikimediaAntiAbusePersonalInfoFlagNotificationModerator' => static fn (
+	'WikimediaAntiAbusePersonalInfoFlagNotificationModerator' => static function (
 		MediaWikiServices $services
-	) => new PersonalInfoFlagNotificationModerator(
-		$services->getMainConfig()->get( 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' )
-			&& $services->getExtensionRegistry()->isLoaded( 'Echo' )
-	),
+	) {
+		$enabled = $services->getMainConfig()->get( 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' )
+			&& $services->getExtensionRegistry()->isLoaded( 'Echo' );
+
+		return $enabled
+			? new EchoPersonalInfoFlagNotificationModerator( $services->get( 'EchoEventMapper' ) )
+			: new NullPersonalInfoFlagNotificationModerator();
+	},
 
 	'WikimediaAntiAbusePersonalInfoFlagNotifier' => static fn (
 		MediaWikiServices $services

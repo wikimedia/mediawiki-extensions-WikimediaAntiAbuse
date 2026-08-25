@@ -11,18 +11,20 @@ use MediaWiki\Revision\RevisionArchiveRecord;
 use MediaWiki\Revision\RevisionRecord;
 
 /**
- * Shows or hides the personal-info flag notification, to follow what the revision still needs.
- * Read state survives, so a restored notification is unread only for users who never read it.
+ * Moderates the notification through Echo. Read state survives moderation, so a restored
+ * notification is unread only for users who never read it.
  */
-class PersonalInfoFlagNotificationModerator {
+class EchoPersonalInfoFlagNotificationModerator implements IPersonalInfoFlagNotificationModerator {
 
-	public function __construct( private readonly bool $notificationsEnabled ) {
+	public function __construct( private readonly EventMapper $eventMapper ) {
 	}
 
+	/** @inheritDoc */
 	public function hideForRevisions( int $pageId, array $revisionIds ): void {
 		$this->moderate( $pageId, $revisionIds, true );
 	}
 
+	/** @inheritDoc */
 	public function restoreForRevision( RevisionRecord $revision ): void {
 		// Echo moderates a deleted page's events itself, on both delete and undelete.
 		if ( $revision instanceof RevisionArchiveRecord ) {
@@ -38,15 +40,17 @@ class PersonalInfoFlagNotificationModerator {
 	}
 
 	private function moderate( int $pageId, array $revisionIds, bool $hide ): void {
-		if ( !$this->notificationsEnabled || !$pageId || !$revisionIds ) {
+		if ( !$pageId || !$revisionIds ) {
 			return;
 		}
 
+		$eventMapper = $this->eventMapper;
+
 		// Defer, so the tag or visibility change commits before the counts are recomputed.
 		DeferredUpdates::addCallableUpdate(
-			static function () use ( $pageId, $revisionIds, $hide ): void {
+			static function () use ( $eventMapper, $pageId, $revisionIds, $hide ): void {
 				$eventIds = [];
-				foreach ( ( new EventMapper() )->fetchByPage( $pageId ) as $event ) {
+				foreach ( $eventMapper->fetchByPage( $pageId ) as $event ) {
 					if ( $event->getType() === PersonalInfoFlagNotifier::EVENT_TYPE
 						&& in_array( $event->getExtraParam( 'revisionId' ), $revisionIds, true )
 					) {

@@ -4,14 +4,14 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\RevisionDelete\Hook\ArticleRevisionVisibilitySetHook;
 
 class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 
 	public function __construct(
-		private readonly PersonalInfoFlagNotificationModerator $notificationModerator
+		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator
 	) {
 	}
 

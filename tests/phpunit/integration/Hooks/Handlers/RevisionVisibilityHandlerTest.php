@@ -7,7 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Hooks\Handler
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\RevisionVisibilityHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Page\WikiPage;
 use MediaWiki\Revision\RevisionRecord;
@@ -43,7 +43,9 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		Event::$alwaysInsert = true;
 
 		$this->handler = new RevisionVisibilityHandler(
-			new PersonalInfoFlagNotificationModerator( true )
+			new EchoPersonalInfoFlagNotificationModerator(
+				$this->getServiceContainer()->get( 'EchoEventMapper' )
+			)
 		);
 		$this->page = $this->getExistingTestPage( 'WikimediaAntiAbuse visibility test page' );
 	}
