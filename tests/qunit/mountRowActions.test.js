@@ -4,6 +4,10 @@ const { flushPromises } = require( 'vue-test-utils' );
 const { mountRowActions } = require( 'ext.wikimediaAntiAbuse/mountRowActions.js' );
 
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
+const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
+	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
+const UNMARK_BUTTON_LABEL =
+	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
 
 QUnit.module( 'ext.wikimediaAntiAbuse.mountRowActions', QUnit.newMwEnvironment() );
 
@@ -59,6 +63,26 @@ const payloadFor = ( overrides ) => Object.assign( {
 	isSuppressed: false
 }, overrides );
 
+const isOpen = ( row ) => row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__details' ).open;
+
+/**
+ * Click the row's control carrying the given name. The buttons carry an icon rather than
+ * a label, so the accessible name is what tells them apart.
+ *
+ * @param {HTMLElement} row
+ * @param {string} label
+ */
+function clickButton( row, label ) {
+	const buttons = Array.prototype.filter.call(
+		row.querySelectorAll( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ),
+		( button ) => button.getAttribute( 'aria-label' ) === label
+	);
+	if ( buttons.length !== 1 ) {
+		throw new Error( 'Expected one "' + label + '" control, found ' + buttons.length );
+	}
+	buttons[ 0 ].click();
+}
+
 QUnit.test( 'it mounts an app into every row', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
@@ -93,6 +117,95 @@ QUnit.test( 'only the open row can be judged', async ( assert ) => {
 		second.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
 		'a closed one cannot'
 	);
+} );
+
+QUnit.test( 'a verdict closes its row and opens the next one waiting', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const first = makeRow( 1, payloadFor(), true );
+	const second = makeRow( 2, payloadFor(), false );
+	const third = makeRow( 3, payloadFor(), false );
+	mountRowActions();
+	await flushPromises();
+
+	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.false( isOpen( first ), 'the row just judged is closed' );
+	assert.true( isOpen( second ), 'the next row is opened' );
+	assert.false( isOpen( third ), 'and only that one' );
+} );
+
+QUnit.test( 'a verdict skips a row that is already open', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const first = makeRow( 1, payloadFor(), true );
+	const second = makeRow( 2, payloadFor(), true );
+	const third = makeRow( 3, payloadFor(), false );
+	mountRowActions();
+	await flushPromises();
+
+	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.true( isOpen( second ), 'the row already open is left open' );
+	assert.true( isOpen( third ), 'and the next closed one is the one opened' );
+} );
+
+QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const first = makeRow( 1, payloadFor(), true );
+	const judged = makeRow( 2, payloadFor( { isNoFurtherAction: true } ), false );
+	const suppressed = makeRow( 3, payloadFor( { isSuppressed: true } ), false );
+	const waiting = makeRow( 4, payloadFor(), false );
+	mountRowActions();
+	await flushPromises();
+
+	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.false( isOpen( judged ), 'the row holding a verdict is stepped over' );
+	assert.false( isOpen( suppressed ), 'so is the one already suppressed' );
+	assert.true( isOpen( waiting ), 'and the next row waiting for review is opened' );
+} );
+
+QUnit.test( 'clearing a verdict does not advance the queue', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const first = makeRow( 1, payloadFor( { isFalsePositive: true } ), true );
+	const second = makeRow( 2, payloadFor(), false );
+	mountRowActions();
+	await flushPromises();
+
+	clickButton( first, UNMARK_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.true( isOpen( first ), 'the row put back in the queue stays open' );
+	assert.false( isOpen( second ), 'and nothing else is opened' );
+} );
+
+QUnit.test( 'a verdict on the last row opens nothing', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const only = makeRow( 1, payloadFor(), true );
+	mountRowActions();
+	await flushPromises();
+
+	clickButton( only, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.false( isOpen( only ), 'the row is closed, there being nothing after it' );
 } );
 
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {
