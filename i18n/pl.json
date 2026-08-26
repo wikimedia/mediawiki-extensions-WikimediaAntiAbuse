@@ -1,0 +1,11 @@
+{
+	"@metadata": {
+		"authors": [
+			"PanWor"
+		]
+	},
+	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Nie są wymagane dalsze działania",
+	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Wymagane dalsze działania",
+	"tag-mw-private-personal-info-no-further-action": "Nie są wymagane dalsze działania (dane osobowe)",
+	"tag-mw-private-personal-info-no-further-action-description": "Zmiany automatycznie oznaczone jako zawierające dane osobowe i zaklasyfikowane jako niewymagające dalszych działań"
+}
