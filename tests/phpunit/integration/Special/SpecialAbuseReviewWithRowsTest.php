@@ -20,6 +20,11 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
  */
 class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
+	private const string SUPPRESS_LABEL = '(wikimediaantiabuse-special-abuse-review-action-suppress)';
+	private const string REVISION_DELETE_LABEL =
+		'(wikimediaantiabuse-special-abuse-review-action-revision-delete)';
+	private const string REVERT_LABEL = '(wikimediaantiabuse-special-abuse-review-action-revert)';
+
 	private static int $suppressedContentRevId;
 	private static int $notTaggedContentRevId;
 	private static int $taggedContentRevId;
@@ -328,12 +333,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				str_contains( $noFurtherActionTagClass, 'mw-wikimediaantiabuse-hidden' )
 			);
 
-			// The action bar is mounted client-side, so what the server owes the row is the
-			// state on the mount point rather than rendered controls.
-			$actions = $this->getActionsPayload( $tableRow );
+			// The verdict controls are mounted client-side, so what the server owes the row
+			// is the state on the mount point rather than rendered controls.
+			$verdicts = $this->getVerdictsPayload( $tableRow );
 			$this->assertSame(
 				'mw-private-personal-info',
-				$actions['tag'],
+				$verdicts['tag'],
 				'the tag the mark and unmark actions operate on'
 			);
 
@@ -345,9 +350,21 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			);
 			$this->assertSame(
 				$isSuppressedRow,
-				$actions['isSuppressed'],
+				$verdicts['isSuppressed'],
 				'a suppressed revision is reported as already handled'
 			);
+			$this->assertSame(
+				$isFalsePositiveRow,
+				$verdicts['isFalsePositive'],
+				'the row reports whether its flag has already been called a false positive'
+			);
+			$this->assertSame(
+				$isNoFurtherActionRow,
+				$verdicts['isNoFurtherAction'],
+				'the row reports whether it has already been marked as needing no further action'
+			);
+
+			$actionLinks = $this->getActionLinks( $tableRow );
 
 			// Special:RevisionDelete resolves a type=revision id against the live revision
 			// table, so an archived row is not offered the link at all.
@@ -355,13 +372,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				&& in_array( 'deleterevision', $authorityRights, true );
 			$this->assertSame(
 				$expectsRevisionDelete,
-				$actions['revisionDeleteUrl'] !== null,
+				isset( $actionLinks[self::REVISION_DELETE_LABEL] ),
 				'revision deletion offered only on a live revision to a user who may delete revisions'
 			);
 			if ( $expectsRevisionDelete ) {
 				$this->assertStringContainsString(
 					'ids=' . $actualRevId,
-					$actions['revisionDeleteUrl']
+					$actionLinks[self::REVISION_DELETE_LABEL]
 				);
 			}
 
@@ -371,48 +388,36 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$isRevertableRow = $actualRevId === static::$revertableTaggedContentRevId;
 			$this->assertSame(
 				$isRevertableRow,
-				$actions['revertUrl'] !== null,
+				isset( $actionLinks[self::REVERT_LABEL] ),
 				'revert is offered only where the undo can succeed'
 			);
 			if ( $isRevertableRow ) {
 				$this->assertStringContainsString(
 					'action=edit&undoafter=' . static::$revertableTaggedContentParentRevId .
 						'&undo=' . static::$revertableTaggedContentRevId,
-					$actions['revertUrl']
+					$actionLinks[self::REVERT_LABEL]
 				);
 			}
 
-			$this->assertSame(
-				$isFalsePositiveRow,
-				$actions['isFalsePositive'],
-				'the row reports whether its flag has already been called a false positive'
-			);
-			$this->assertSame(
-				$isNoFurtherActionRow,
-				$actions['isNoFurtherAction'],
-				'the row reports whether it has already been marked as needing no further action'
-			);
-
 			// The history offers its visibility checkboxes to a holder of deleterevision, so
 			// suppressrevision alone would reach a page with nothing to tick.
+			$expectsSuppress = !$isArchivedRevision
+				&& in_array( 'deleterevision', $authorityRights, true )
+				&& in_array( 'suppressrevision', $authorityRights, true );
 			$this->assertSame(
-				!$isArchivedRevision
-					&& in_array( 'deleterevision', $authorityRights, true )
-					&& in_array( 'suppressrevision', $authorityRights, true ),
-				$actions['suppressUrl'] !== null,
+				$expectsSuppress,
+				isset( $actionLinks[self::SUPPRESS_LABEL] ),
 				'suppression offered only where the history will let the reviewer act'
 			);
 
-			// Suppression, revert and revision deletion are plain navigations, so the server
-			// renders them as links inside the mount point too: Vue empties the mount point
-			// when it takes over, which leaves them working without JavaScript at no cost.
 			$this->assertSame(
-				array_values( array_filter(
-					[ $actions['suppressUrl'], $actions['revisionDeleteUrl'], $actions['revertUrl'] ],
-					static fn ( $url ) => $url !== null
-				) ),
-				$this->getFallbackLinkHrefs( $tableRow ),
-				'every navigable action is also a server-rendered link, and nothing else is'
+				array_values( array_filter( [
+					$expectsSuppress ? self::SUPPRESS_LABEL : null,
+					$expectsRevisionDelete ? self::REVISION_DELETE_LABEL : null,
+					$isRevertableRow ? self::REVERT_LABEL : null,
+				] ) ),
+				array_keys( $actionLinks ),
+				'every action the viewer is offered is a link, in that order, and nothing else is'
 			);
 		}
 
@@ -632,30 +637,30 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	}
 
 	/**
-	 * The action bar is rendered client-side, so the server's side of the contract is the
-	 * state it hands over on the mount point.
+	 * The verdict controls are rendered client-side, so the server's side of the contract is
+	 * the state it hands over on the mount point.
 	 */
-	private function getActionsPayload( Document|Element $node ): array {
+	private function getVerdictsPayload( Document|Element $node ): array {
 		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
 			$node,
-			'.mw-wikimediaantiabuse-abuse-review-row-actions-app'
+			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
 		);
 
-		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-actions' ), true );
+		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-verdicts' ), true );
 		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
 		return $payload;
 	}
 
-	/** @return string[] The hrefs of the no-JS links the mount point starts out holding */
-	private function getFallbackLinkHrefs( Document|Element $node ): array {
+	/** @return array<string,string> The href of each rendered revision action, by its label */
+	private function getActionLinks( Document|Element $node ): array {
 		$links = DOMCompat::querySelectorAll(
 			$node,
-			'.mw-wikimediaantiabuse-abuse-review-row-actions-app a'
+			'.mw-wikimediaantiabuse-abuse-review-actions a'
 		);
 
 		$hrefs = [];
 		foreach ( $links as $link ) {
-			$hrefs[] = DOMCompat::getAttribute( $link, 'href' );
+			$hrefs[DOMCompat::getInnerHTML( $link )] = DOMCompat::getAttribute( $link, 'href' );
 		}
 		return $hrefs;
 	}

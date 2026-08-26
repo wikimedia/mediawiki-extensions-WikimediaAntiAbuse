@@ -1,48 +1,5 @@
 <template>
 	<div class="mw-wikimediaantiabuse-abuse-review-actions-groups">
-		<template v-if="suppressUrl || revisionDeleteUrl || revertUrl">
-			<div class="mw-wikimediaantiabuse-abuse-review-actions-heading">
-				<h4>
-					{{ $i18n(
-						'wikimediaantiabuse-special-abuse-review-actions-heading'
-					).text() }}
-				</h4>
-			</div>
-			<div
-				class="mw-wikimediaantiabuse-abuse-review-actions
-					mw-wikimediaantiabuse-abuse-review-actions--edit"
-			>
-				<a
-					v-if="suppressUrl"
-					class="cdx-button cdx-button--fake-button cdx-button--fake-button--enabled"
-					:href="suppressUrl"
-					target="_blank"
-				>
-					{{ $i18n( 'wikimediaantiabuse-special-abuse-review-action-suppress' ).text() }}
-				</a>
-
-				<a
-					v-if="revisionDeleteUrl"
-					class="cdx-button cdx-button--fake-button cdx-button--fake-button--enabled"
-					:href="revisionDeleteUrl"
-					target="_blank"
-				>
-					{{ $i18n(
-						'wikimediaantiabuse-special-abuse-review-action-revision-delete'
-					).text() }}
-				</a>
-
-				<a
-					v-if="revertUrl"
-					class="cdx-button cdx-button--fake-button cdx-button--fake-button--enabled"
-					:href="revertUrl"
-					target="_blank"
-				>
-					{{ $i18n( 'wikimediaantiabuse-special-abuse-review-action-revert' ).text() }}
-				</a>
-			</div>
-		</template>
-
 		<template v-if="tag || isSuppressed">
 			<div class="mw-wikimediaantiabuse-abuse-review-actions-heading">
 				<h4>
@@ -119,9 +76,6 @@ module.exports = exports = defineComponent( {
 	components: { CdxButton, CdxProgressIndicator },
 	props: {
 		revId: { type: Number, required: true },
-		suppressUrl: { type: String, default: null },
-		revisionDeleteUrl: { type: String, default: null },
-		revertUrl: { type: String, default: null },
 		tag: { type: String, default: null },
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },

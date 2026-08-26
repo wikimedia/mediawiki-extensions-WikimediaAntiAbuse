@@ -143,7 +143,8 @@ class AbuseReviewPager extends CodexTablePager {
 		$tag = $this->getFirstReviewableTag( $row->ts_tags );
 
 		$summary = Html::rawElement( 'summary', [], $this->buildSummary( $title, $row, $tag ) );
-		$actions = $this->buildActions( $title, $row, $tag );
+		$actions = $this->buildRevisionActions( $title, $row )
+			. $this->buildVerdictsApp( $row, $tag );
 		$editSummary = $this->buildEditSummary( $title, $row );
 		$changes = $this->buildChanges( $title, $row );
 		$content = Html::rawElement(
@@ -319,9 +320,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $userLink );
 	}
 
-	private function buildActions( Title $title, stdClass $row, ?string $tag ): string {
-		$isSuppressed = $this->isSuppressedRow( $row );
-
+	private function buildRevisionActions( Title $title, stdClass $row ): string {
 		// Special:RevisionDelete addresses an archived revision as type=archive keyed on
 		// ar_timestamp, so a type=revision link built from ar_rev_id resolves to nothing.
 		$revisionDeleteUrl = null;
@@ -359,15 +358,6 @@ class AbuseReviewPager extends CodexTablePager {
 			] );
 		}
 
-		if ( $suppressUrl === null && $revisionDeleteUrl === null && $revertUrl === null
-			&& $tag === null
-		) {
-			return '';
-		}
-
-		// All three are plain navigations, so they are rendered here as links too: Vue
-		// empties the mount point when it takes over, which leaves them as a no-JS
-		// fallback for free.
 		// A URL is either null or a real one, so the default filter drops exactly the
 		// actions this viewer is not offered.
 		$actionUrls = array_filter( [
@@ -375,37 +365,46 @@ class AbuseReviewPager extends CodexTablePager {
 			'wikimediaantiabuse-special-abuse-review-action-revision-delete' => $revisionDeleteUrl,
 			'wikimediaantiabuse-special-abuse-review-action-revert' => $revertUrl,
 		] );
-
-		$fallbackLinks = '';
-		foreach ( $actionUrls as $messageKey => $url ) {
-			$fallbackLinks .= $this->buildActionLink( $url, $messageKey );
+		if ( !$actionUrls ) {
+			return '';
 		}
-		if ( $fallbackLinks !== '' ) {
-			// The heading and container the app renders, so the links are laid out the same
-			// way and are still labelled where the app never mounts.
-			$heading = Html::rawElement(
-				'div',
-				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions-heading' ],
-				Html::element(
-					'h4',
-					[],
-					$this->msg( 'wikimediaantiabuse-special-abuse-review-actions-heading' )->text()
-				)
-			);
-			$container = Html::rawElement(
-				'div',
-				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions' ],
-				$fallbackLinks
-			);
-			$fallbackLinks = $heading . $container;
+
+		$links = '';
+		foreach ( $actionUrls as $messageKey => $url ) {
+			$links .= $this->buildActionLink( $url, $messageKey );
+		}
+
+		$heading = Html::rawElement(
+			'div',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions-heading' ],
+			Html::element(
+				'h4',
+				[],
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-actions-heading' )->text()
+			)
+		);
+		$container = Html::rawElement(
+			'div',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions' ],
+			$links
+		);
+
+		return $heading . $container;
+	}
+
+	/**
+	 * The mount point the verdict controls are rendered into. A row with no reviewable tag
+	 * and nothing suppressed has no verdict to offer, so it gets none.
+	 */
+	private function buildVerdictsApp( stdClass $row, ?string $tag ): string {
+		$isSuppressed = $this->isSuppressedRow( $row );
+		if ( $tag === null && !$isSuppressed ) {
+			return '';
 		}
 
 		return Html::rawElement( 'div', [
-			'class' => 'mw-wikimediaantiabuse-abuse-review-row-actions-app',
-			'data-actions' => json_encode( [
-				'suppressUrl' => $suppressUrl,
-				'revisionDeleteUrl' => $revisionDeleteUrl,
-				'revertUrl' => $revertUrl,
+			'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
+			'data-verdicts' => json_encode( [
 				'tag' => $tag,
 				'isFalsePositive' => $tag !== null
 					&& $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' ),
@@ -413,7 +412,7 @@ class AbuseReviewPager extends CodexTablePager {
 					&& $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' ),
 				'isSuppressed' => $isSuppressed,
 			], JSON_THROW_ON_ERROR ),
-		], $fallbackLinks );
+		] );
 	}
 
 	/**

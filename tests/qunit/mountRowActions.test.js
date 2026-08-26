@@ -3,7 +3,7 @@
 const { flushPromises } = require( 'vue-test-utils' );
 const { mountRowActions } = require( 'ext.wikimediaAntiAbuse/mountRowActions.js' );
 
-const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-row-actions-app';
+const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
 const FALSE_POSITIVE_TAG = 'mw-wikimediaantiabuse-abuse-review-tag--false-positive';
 const NOT_FALSE_POSITIVE_TAG = 'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive';
@@ -20,10 +20,10 @@ QUnit.module( 'ext.wikimediaAntiAbuse.mountRowActions', QUnit.newMwEnvironment( 
 } ) );
 
 /**
- * A review row shaped the way the pager renders one, no-JS links and all.
+ * A review row shaped the way the pager renders one.
  *
  * @param {number|null} revId Null omits the row's data-rev-id attribute
- * @param {Object|null} payload Null omits the data-actions attribute entirely
+ * @param {Object|null} payload Null omits the data-verdicts attribute entirely
  * @return {HTMLElement}
  */
 function makeRow( revId, payload ) {
@@ -37,7 +37,7 @@ function makeRow( revId, payload ) {
 		const node = document.createElement( tag );
 		// The following classes are used here:
 		// * mw-wikimediaantiabuse-hidden
-		// * mw-wikimediaantiabuse-abuse-review-row-actions-app
+		// * mw-wikimediaantiabuse-abuse-review-verdicts-app
 		// * mw-wikimediaantiabuse-abuse-review-tag--false-positive
 		// * mw-wikimediaantiabuse-abuse-review-tag--not-false-positive
 		// * mw-wikimediaantiabuse-abuse-review-tag--no-further-action
@@ -57,12 +57,7 @@ function makeRow( revId, payload ) {
 
 	const mountPoint = el( 'div', APP_CLASS, false );
 	if ( payload !== null ) {
-		mountPoint.setAttribute( 'data-actions', JSON.stringify( payload ) );
-		if ( payload.revertUrl ) {
-			const link = document.createElement( 'a' );
-			link.href = payload.revertUrl;
-			mountPoint.appendChild( link );
-		}
+		mountPoint.setAttribute( 'data-verdicts', JSON.stringify( payload ) );
 	}
 
 	content.appendChild( mountPoint );
@@ -72,8 +67,6 @@ function makeRow( revId, payload ) {
 }
 
 const payloadFor = ( revId, overrides ) => Object.assign( {
-	revisionDeleteUrl: null,
-	revertUrl: '/wiki/Page?action=edit&undo=' + revId,
 	tag: 'mw-private-personal-info',
 	isFalsePositive: false,
 	isNoFurtherAction: false,
@@ -119,47 +112,20 @@ QUnit.test( 'it mounts an app into every row', async ( assert ) => {
 	);
 } );
 
-QUnit.test( 'the no-JS links are replaced rather than left beside the app', async ( assert ) => {
-	const row = makeRow( 1, payloadFor( 1 ) );
-	const mountPoint = row.querySelector( '.' + APP_CLASS );
-
-	assert.strictEqual(
-		mountPoint.querySelectorAll( 'a' ).length,
-		1,
-		'the server rendered a link inside the mount point'
-	);
-
-	mountRowActions();
-	await flushPromises();
-
-	assert.strictEqual(
-		mountPoint.querySelectorAll( 'a' ).length,
-		1,
-		'mounting leaves one, the app emptying the container it took over'
-	);
-	assert.notStrictEqual(
-		mountPoint.querySelector( 'button' ),
-		null,
-		'the link there now being the app\'s own, beside its controls'
-	);
-} );
-
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {
 	const broken = makeRow( 1, payloadFor( 1 ) );
-	broken.querySelector( '.' + APP_CLASS ).setAttribute( 'data-actions', '{not json' );
+	broken.querySelector( '.' + APP_CLASS ).setAttribute( 'data-verdicts', '{not json' );
 	const missing = makeRow( 2, null );
-	const anonymous = makeRow( null, payloadFor( 4, { revertUrl: null } ) );
+	const anonymous = makeRow( null, payloadFor( 4 ) );
 	const healthy = makeRow( 3, payloadFor( 3 ) );
 
 	mountRowActions();
 	await flushPromises();
 
-	const brokenChildren = broken.querySelector( '.' + APP_CLASS ).children;
-	assert.strictEqual( brokenChildren.length, 1, 'the malformed row keeps what it arrived with' );
 	assert.strictEqual(
-		brokenChildren[ 0 ].tagName,
-		'A',
-		'namely its no-JS link, so no app was mounted over it'
+		broken.querySelector( '.' + APP_CLASS ).children.length,
+		0,
+		'the malformed row gets no app mounted over it'
 	);
 	assert.strictEqual(
 		missing.querySelector( '.' + APP_CLASS ).children.length,
@@ -183,8 +149,8 @@ QUnit.test( 'marking a false positive flips the server-rendered tag chips', asyn
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
-	const row = makeRow( 1, payloadFor( 1, { revertUrl: null } ) );
-	const other = makeRow( 2, payloadFor( 2, { revertUrl: null } ) );
+	const row = makeRow( 1, payloadFor( 1 ) );
+	const other = makeRow( 2, payloadFor( 2 ) );
 	mountRowActions();
 	await flushPromises();
 
@@ -210,7 +176,7 @@ QUnit.test( 'marking as needing no further action flips its own chip', async fun
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
-	const row = makeRow( 1, payloadFor( 1, { revertUrl: null } ) );
+	const row = makeRow( 1, payloadFor( 1 ) );
 	mountRowActions();
 	await flushPromises();
 

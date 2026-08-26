@@ -149,6 +149,13 @@
 		padding: 0 @spacing-100 @spacing-100;
 	}
 
+	// The links heading sits here rather than in the app's flex column, which is what
+	// spaces the headings inside the app from the buttons under them.
+	&__content > .mw-wikimediaantiabuse-abuse-review-actions-heading {
+		margin-top: @spacing-100;
+		margin-bottom: @spacing-50;
+	}
+
 	&__summary {
 		margin-top: @spacing-100;
 	}
@@ -225,8 +232,8 @@
 	}
 }
 
-// Closes off the actions before the edit summary starts.
-.mw-wikimediaantiabuse-abuse-review-row-actions-app {
+// Closes off the verdicts before the edit summary starts.
+.mw-wikimediaantiabuse-abuse-review-verdicts-app {
 	border-bottom: @border-width-base @border-style-base @border-color-muted;
 	padding-bottom: @spacing-100;
 }
@@ -334,7 +341,7 @@
 	}
 
 	// The named groups already separate the actions from the summary here.
-	.mw-wikimediaantiabuse-abuse-review-row-actions-app {
+	.mw-wikimediaantiabuse-abuse-review-verdicts-app {
 		border-bottom: 0;
 		padding-bottom: 0;
 	}

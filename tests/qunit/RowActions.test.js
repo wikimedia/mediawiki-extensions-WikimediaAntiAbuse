@@ -30,8 +30,6 @@ const mountRow = ( props, options ) => {
 		global: { mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) } },
 		props: Object.assign( {
 			revId: 991,
-			revisionDeleteUrl: '/wiki/Special:RevisionDelete?ids=991',
-			revertUrl: '/wiki/Page?action=edit&undo=991',
 			tag: 'mw-private-personal-info',
 			isFalsePositive: false,
 			isNoFurtherAction: false,
@@ -113,30 +111,6 @@ QUnit.test( 'a suppressed revision that was called a false positive can still be
 		unmark.attributes( 'aria-describedby' ),
 		undefined,
 		'the undo control is undescribed, the note explaining a disabled control'
-	);
-} );
-
-QUnit.test( 'an in-flight request takes only the verdicts out of reach', async function ( assert ) {
-	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restPending() );
-	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
-
-	const wrapper = mountRow();
-	const hrefsBefore = wrapper.findAll( 'a' ).map( ( link ) => link.attributes( 'href' ) );
-	hrefsBefore.forEach( ( href ) => {
-		assert.notStrictEqual( href, undefined, 'links start navigable' );
-	} );
-
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
-	await flushPromises();
-
-	assert.true(
-		buttonWithText( wrapper, 'No action needed' ).element.disabled,
-		'the control that started the request cannot be pressed again'
-	);
-	assert.deepEqual(
-		wrapper.findAll( 'a' ).map( ( link ) => link.attributes( 'href' ) ),
-		hrefsBefore,
-		'the actions stay navigable, being links the request has no business touching'
 	);
 } );
 
@@ -307,27 +281,5 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 		wrapper.emitted( 'verdict-changed' ),
 		undefined,
 		'nothing is reported for a change that did not happen'
-	);
-} );
-
-QUnit.test( 'a row offers only the actions its payload allows', ( assert ) => {
-	const bare = mountRow( {
-		revisionDeleteUrl: null,
-		revertUrl: null,
-		tag: null
-	} );
-
-	assert.strictEqual( bare.findAll( 'a' ).length, 0, 'no revision-delete or revert links' );
-	assert.strictEqual(
-		bare.findAll( 'button' ).length,
-		0,
-		'no verdict controls, there being no tag to mark'
-	);
-
-	const revertOnly = mountRow( { revisionDeleteUrl: null, tag: null } );
-	assert.strictEqual(
-		revertOnly.findAll( 'a' ).length,
-		1,
-		'a row with only a revert URL offers only that link'
 	);
 } );
