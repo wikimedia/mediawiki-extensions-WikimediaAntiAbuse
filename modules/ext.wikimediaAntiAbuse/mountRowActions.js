@@ -1,7 +1,7 @@
 'use strict';
 
 const Vue = require( 'vue' );
-const RowActions = require( './RowActions.vue' );
+const RowActions = require( './components/RowActions.vue' );
 const { setRowVerdict } = require( './utils.js' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';

@@ -150,7 +150,7 @@
 			"packageFiles": [
 				"dispatcher.js",
 				"mountRowActions.js",
-				"RowActions.vue",
+				"components/RowActions.vue",
 				"rest.js",
 				"utils.js"
 			],
@@ -180,7 +180,7 @@
 			"tests/qunit/index.js",
 			"tests/qunit/mountRowActions.test.js",
 			"tests/qunit/rest.test.js",
-			"tests/qunit/RowActions.test.js",
+			"tests/qunit/components/RowActions.test.js",
 			"tests/qunit/utils.test.js"
 		],
 		"dependencies": [

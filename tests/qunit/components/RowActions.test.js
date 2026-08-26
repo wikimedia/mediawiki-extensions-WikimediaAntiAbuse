@@ -3,7 +3,7 @@
 const { mount, flushPromises } = require( 'vue-test-utils' );
 // Reached by module name: the component requires the synthetic codex.js that only exists
 // inside its own CodexModule.
-const RowActions = require( 'ext.wikimediaAntiAbuse/RowActions.vue' );
+const RowActions = require( 'ext.wikimediaAntiAbuse/components/RowActions.vue' );
 
 const mounted = [];
 

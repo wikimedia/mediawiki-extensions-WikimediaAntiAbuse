@@ -55,14 +55,14 @@
 const { defineComponent, ref, computed } = require( 'vue' );
 // CodexModule's codexComponents option injects this synthetic file; requiring
 // '@wikimedia/codex' directly only works for a full-library dependency.
-const { CdxButton, CdxProgressIndicator } = require( './codex.js' );
+const { CdxButton, CdxProgressIndicator } = require( './../codex.js' );
 const {
 	markAsFalsePositive,
 	unmarkAsFalsePositive,
 	markNoFurtherAction,
 	unmarkNoFurtherAction
-} = require( './rest.js' );
-const { actionErrorMessage } = require( './utils.js' );
+} = require( './../rest.js' );
+const { actionErrorMessage } = require( './../utils.js' );
 
 // Each verdict, and the calls that set and clear it.
 const REQUESTS = {
