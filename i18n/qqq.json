@@ -10,6 +10,7 @@
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "A filter that when checked also shows revisions that have already been handled (suppressed or marked as needing no further action), in addition to the pending revisions.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "The submit button for the form on [[Special:AbuseReview]] that allows filtering the revisions that are shown.",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "The legend text for the form on [[Special:AbuseReview]] that allows filtering the revisions that are shown.",
+	"wikimediaantiabuse-special-abuse-review-filter-close": "The label for a button that closes the filter dialog on [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Column heading on [[Special:AbuseReview]] for the column that shows the page a flagged edit was made to and the user who made it.",
 	"wikimediaantiabuse-special-abuse-review-heading-flags": "Column heading on [[Special:AbuseReview]] for the column that shows which flag an edit was tagged with.",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Column heading on [[Special:AbuseReview]] for the column that shows the timestamp the revision was made at, which is linked to the revision itself.",

@@ -132,7 +132,10 @@
 			"codexStyleOnly": true,
 			"codexComponents": [
 				"CdxMessage",
-				"CdxProgressIndicator"
+				"CdxProgressIndicator",
+				"CdxDialog",
+				"CdxField",
+				"CdxCheckbox"
 			],
 			"styles": [
 				"special.abuseReview.less"
@@ -144,7 +147,10 @@
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
 			"codexComponents": [
 				"CdxButton",
-				"CdxProgressIndicator"
+				"CdxProgressIndicator",
+				"CdxDialog",
+				"CdxField",
+				"CdxCheckbox"
 			],
 			"codexScriptOnly": true,
 			"packageFiles": [
@@ -152,7 +158,8 @@
 				"mountRowActions.js",
 				"components/RowActions.vue",
 				"rest.js",
-				"utils.js"
+				"utils.js",
+				"components/FilterDialog.vue"
 			],
 			"dependencies": [
 				"mediawiki.api"
@@ -169,7 +176,12 @@
 				"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action",
 				"wikimediaantiabuse-special-abuse-review-already-suppressed-note",
 				"wikimediaantiabuse-special-abuse-review-action-in-progress",
-				"wikimediaantiabuse-special-abuse-review-action-error"
+				"wikimediaantiabuse-special-abuse-review-action-error",
+				"wikimediaantiabuse-special-abuse-review-filter-close",
+				"wikimediaantiabuse-special-abuse-review-filter-legend",
+				"wikimediaantiabuse-special-abuse-review-show-false-positives",
+				"wikimediaantiabuse-special-abuse-review-show-handled-revisions",
+				"wikimediaantiabuse-special-abuse-review-filter-submit"
 			]
 		}
 	},
@@ -181,7 +193,8 @@
 			"tests/qunit/mountRowActions.test.js",
 			"tests/qunit/rest.test.js",
 			"tests/qunit/components/RowActions.test.js",
-			"tests/qunit/utils.test.js"
+			"tests/qunit/utils.test.js",
+			"tests/qunit/components/FilterDialog.test.js"
 		],
 		"dependencies": [
 			"mediawiki.qunit-testrunner",
