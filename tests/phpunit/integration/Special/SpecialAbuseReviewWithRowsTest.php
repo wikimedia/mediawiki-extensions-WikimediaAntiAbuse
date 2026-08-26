@@ -136,10 +136,15 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
 			}
 
-			$detailsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+			$detailsCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.mw-wikimediaantiabuse-abuse-review-row__details',
-				true
+				'.mw-wikimediaantiabuse-abuse-review-row__details'
+			);
+			$detailsCellHtml = DOMCompat::getOuterHTML( $detailsCellNode );
+			$this->assertSame(
+				$tableRowIndex === 0,
+				DOMCompat::getAttribute( $detailsCellNode, 'open' ) !== null,
+				'only the first row arrives open'
 			);
 
 			// The row header names the edited page and offers the show/hide toggle.

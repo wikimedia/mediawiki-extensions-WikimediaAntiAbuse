@@ -43,6 +43,9 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private const int MAX_DIFF_LINES = 10;
 
+	/** @var bool Whether a row has been rendered yet; used to make first row expanded by default */
+	private bool $rowRendered = false;
+
 	/** @var true Always default to paging in a descending order */
 	public $mDefaultDirection = IndexPager::DIR_DESCENDING;
 
@@ -145,9 +148,15 @@ class AbuseReviewPager extends CodexTablePager {
 			);
 		}
 
+		$detailsAttribs = [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ];
+		if ( !$this->rowRendered ) {
+			$detailsAttribs['open'] = '';
+		}
+		$this->rowRendered = true;
+
 		$details = Html::rawElement(
 			'details',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ],
+			$detailsAttribs,
 			Html::rawElement( 'summary', [], $columns ) . $this->buildRowContent( $row )
 		);
 
