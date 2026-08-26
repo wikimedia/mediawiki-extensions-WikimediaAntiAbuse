@@ -41,4 +41,29 @@ function actionErrorMessage( error ) {
 	return mw.msg( 'wikimediaantiabuse-special-abuse-review-action-error' );
 }
 
-module.exports = { setRowVerdict, actionErrorMessage };
+/**
+ * Updates the filters on the current page by redirecting the user to a view with
+ * the provided filters.
+ *
+ * @param {*} filters A list of filters in a format acceptable for
+ *   the params parameter for `mw.util.getUrl`
+ * @param {window} win
+ */
+function updateFiltersOnPage( filters, win ) {
+	// Keep the pager state params, except the offset (so the first page is shown again)
+	const pagerStateParamsToKeep = [ 'limit', 'sort', 'dir' ];
+	const urlParams = new URLSearchParams( win.location.search );
+
+	pagerStateParamsToKeep.forEach( ( param ) => {
+		const paramValue = urlParams.get( param );
+		if ( paramValue ) {
+			filters[ param ] = paramValue;
+		}
+	} );
+
+	let newUrl = mw.config.get( 'wgServer' );
+	newUrl += mw.util.getUrl( mw.config.get( 'wgPageName' ), filters );
+	win.location.replace( newUrl );
+}
+
+module.exports = { setRowVerdict, actionErrorMessage, updateFiltersOnPage };
