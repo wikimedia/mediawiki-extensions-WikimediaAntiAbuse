@@ -25,6 +25,7 @@ use MediaWiki\Title\Title;
 use MediaWiki\User\UserIdentityValue;
 use stdClass;
 use Wikimedia\Codex\Component\HtmlSnippet;
+use Wikimedia\Codex\Localization\MediaWikiLocalization;
 use Wikimedia\Codex\Utility\Codex;
 use Wikimedia\Rdbms\FakeResultWrapper;
 use Wikimedia\Rdbms\IResultWrapper;
@@ -468,7 +469,7 @@ class AbuseReviewPager extends CodexTablePager {
 			return '';
 		}
 
-		return ( new Codex() )->message()
+		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )->message()
 			->setType( 'notice' )
 			->setContentHtml( new HtmlSnippet(
 				Html::element(
@@ -573,7 +574,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$suppressed = ( (int)$row->deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0
 			|| ( $parent !== null && $parent->isDeleted( RevisionRecord::DELETED_RESTRICTED ) );
 
-		return ( new Codex() )->message()
+		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )->message()
 			->setType( 'warning' )
 			->setContentHtml( new HtmlSnippet(
 				// The page the deletion log is linked for, rather than this special page.
