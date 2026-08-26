@@ -3,7 +3,7 @@
 const { mount, flushPromises } = require( 'vue-test-utils' );
 // Reached by module name: the component requires the synthetic codex.js that only exists
 // inside its own CodexModule.
-const RowActions = require( 'ext.wikimediaAntiAbuse/components/RowActions.vue' );
+const RowVerdicts = require( 'ext.wikimediaAntiAbuse/components/RowVerdicts.vue' );
 
 const MARK_FALSE_POSITIVE =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)';
@@ -18,7 +18,7 @@ const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-not
 
 const mounted = [];
 
-QUnit.module( 'ext.wikimediaAntiAbuse.RowActions', QUnit.newMwEnvironment( {
+QUnit.module( 'ext.wikimediaAntiAbuse.RowVerdicts', QUnit.newMwEnvironment( {
 	afterEach() {
 		// Left mounted, wrappers accumulate across the module and eventually wedge the runner.
 		while ( mounted.length ) {
@@ -54,7 +54,7 @@ const mountRow = ( given, options ) => {
 	}
 	delete props.isOpen;
 
-	const wrapper = mount( RowActions, Object.assign( {
+	const wrapper = mount( RowVerdicts, Object.assign( {
 		// $i18n is installed by createMwApp, which mounting the component directly bypasses.
 		global: { mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) } },
 		props

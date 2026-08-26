@@ -3,13 +3,13 @@
 ( function () {
 	switch ( mw.config.get( 'wgCanonicalSpecialPageName' ) ) {
 		case 'AbuseReview': {
-			const { mountRowActions } = require( './mountRowActions.js' );
+			const { mountRowVerdicts } = require( './mountRowVerdicts.js' );
 			const { mountFilterDialog } = require( './mountFilterDialog.js' );
 			// This module can run before the queue exists, so mount once the DOM is ready.
 			if ( document.readyState === 'loading' ) {
-				document.addEventListener( 'DOMContentLoaded', mountRowActions );
+				document.addEventListener( 'DOMContentLoaded', mountRowVerdicts );
 			} else {
-				mountRowActions();
+				mountRowVerdicts();
 			}
 			mountFilterDialog();
 			break;

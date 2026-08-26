@@ -1,7 +1,7 @@
 'use strict';
 
 const { flushPromises } = require( 'vue-test-utils' );
-const { mountRowActions } = require( 'ext.wikimediaAntiAbuse/mountRowActions.js' );
+const { mountRowVerdicts } = require( 'ext.wikimediaAntiAbuse/mountRowVerdicts.js' );
 
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
@@ -9,7 +9,7 @@ const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
 const UNMARK_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
 
-QUnit.module( 'ext.wikimediaAntiAbuse.mountRowActions', QUnit.newMwEnvironment() );
+QUnit.module( 'ext.wikimediaAntiAbuse.mountRowVerdicts', QUnit.newMwEnvironment() );
 
 /**
  * A review row shaped the way the pager renders one: a details element holding the flag
@@ -87,7 +87,7 @@ QUnit.test( 'it mounts an app into every row', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
 
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	assert.notStrictEqual(
@@ -106,7 +106,7 @@ QUnit.test( 'only the open row can be judged', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
 
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	assert.false(
@@ -127,7 +127,7 @@ QUnit.test( 'a verdict closes its row and opens the next one waiting', async fun
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
 	const third = makeRow( 3, payloadFor(), false );
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
@@ -146,7 +146,7 @@ QUnit.test( 'a verdict skips a row that is already open', async function ( asser
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), true );
 	const third = makeRow( 3, payloadFor(), false );
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
@@ -165,7 +165,7 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	const judged = makeRow( 2, payloadFor( { isNoFurtherAction: true } ), false );
 	const suppressed = makeRow( 3, payloadFor( { isSuppressed: true } ), false );
 	const waiting = makeRow( 4, payloadFor(), false );
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
@@ -183,7 +183,7 @@ QUnit.test( 'clearing a verdict does not advance the queue', async function ( as
 
 	const first = makeRow( 1, payloadFor( { isFalsePositive: true } ), true );
 	const second = makeRow( 2, payloadFor(), false );
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	clickButton( first, UNMARK_BUTTON_LABEL );
@@ -199,7 +199,7 @@ QUnit.test( 'a verdict on the last row opens nothing', async function ( assert )
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const only = makeRow( 1, payloadFor(), true );
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	clickButton( only, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
@@ -215,7 +215,7 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 	const anonymous = makeRow( null, payloadFor(), false );
 	const healthy = makeRow( 3, payloadFor(), false );
 
-	mountRowActions();
+	mountRowVerdicts();
 	await flushPromises();
 
 	assert.strictEqual(

@@ -160,8 +160,8 @@
 			"codexScriptOnly": true,
 			"packageFiles": [
 				"dispatcher.js",
-				"mountRowActions.js",
-				"components/RowActions.vue",
+				"mountRowVerdicts.js",
+				"components/RowVerdicts.vue",
 				"rest.js",
 				"utils.js",
 				"components/FilterDialog.vue",
@@ -201,9 +201,9 @@
 		"remoteExtPath": "WikimediaAntiAbuse",
 		"packageFiles": [
 			"tests/qunit/index.js",
-			"tests/qunit/mountRowActions.test.js",
+			"tests/qunit/mountRowVerdicts.test.js",
 			"tests/qunit/rest.test.js",
-			"tests/qunit/components/RowActions.test.js",
+			"tests/qunit/components/RowVerdicts.test.js",
 			"tests/qunit/utils.test.js",
 			"tests/qunit/components/FilterDialog.test.js",
 			"tests/qunit/mountFilterDialog.test.js"

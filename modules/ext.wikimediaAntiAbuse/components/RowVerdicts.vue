@@ -61,7 +61,7 @@ const LABEL_KEYS = {
 
 // @vue/component
 module.exports = exports = defineComponent( {
-	name: 'RowActions',
+	name: 'RowVerdicts',
 	components: { CdxIcon, CdxProgressIndicator, CdxToggleButton },
 	props: {
 		revId: { type: Number, required: true },

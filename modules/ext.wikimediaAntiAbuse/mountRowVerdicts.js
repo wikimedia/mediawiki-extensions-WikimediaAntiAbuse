@@ -1,7 +1,7 @@
 'use strict';
 
 const Vue = require( 'vue' );
-const RowActions = require( './components/RowActions.vue' );
+const RowVerdicts = require( './components/RowVerdicts.vue' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
@@ -57,7 +57,7 @@ function advanceQueue( row, verdict, suppressedRows ) {
  * Mount one app per row. Only a row's verdict buttons are Vue; the rest of the queue
  * arrives as HTML from the server.
  */
-function mountRowActions() {
+function mountRowVerdicts() {
 	const suppressedRows = new Set();
 	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
@@ -86,7 +86,7 @@ function mountRowActions() {
 		}
 
 		const details = row.querySelector( DETAILS_SELECTOR );
-		const app = Vue.createMwApp( RowActions, Object.assign( {}, props, {
+		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
 			detailsElement: details,
 			onVerdictChanged: ( verdict ) => {
@@ -99,4 +99,4 @@ function mountRowActions() {
 	} );
 }
 
-module.exports = { mountRowActions };
+module.exports = { mountRowVerdicts };
