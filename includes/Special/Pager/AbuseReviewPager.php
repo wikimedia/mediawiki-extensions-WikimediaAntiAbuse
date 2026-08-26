@@ -35,11 +35,11 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private const string HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
 
-	// The sortable column, showing when the flagged revision was made.
+	private const string TARGET_FIELD = 'target';
+	private const string FLAGS_FIELD = 'flags';
 	private const string TIMESTAMP_FIELD = 'timestamp';
-
-	// The unlabelled column, whose every cell holds the body of one review row.
-	private const string FIELD = 'revision';
+	private const string DETAILS_FIELD = 'details';
+	private const array ROW_DATA_FIELDS = [ self::TARGET_FIELD, self::FLAGS_FIELD, self::TIMESTAMP_FIELD ];
 
 	private const int MAX_DIFF_LINES = 10;
 
@@ -74,13 +74,14 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/** @inheritDoc */
 	protected function getFieldNames(): array {
-		// The review column is left unlabelled: each of its cells is a block, not a
-		// single value. Only the timestamp column takes a heading, which also carries
-		// the sort control.
 		return [
-			self::TIMESTAMP_FIELD =>
+			self::TARGET_FIELD =>
 				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-revision' )->text(),
-			self::FIELD => '',
+			self::FLAGS_FIELD =>
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-flags' )->text(),
+			self::TIMESTAMP_FIELD =>
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-timestamp' )->text(),
+			self::DETAILS_FIELD => '',
 		];
 	}
 
@@ -125,47 +126,83 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * @param string $name
-	 * @param string|null $value
-	 * @return string
+	 * A `details` element cannot span table cells, so each row is one spanning cell
+	 * with the columns laid out inside the row's `summary`.
+	 *
+	 * @inheritDoc
+	 */
+	public function formatRow( $row ): string {
+		$this->mCurrentRow = $row;
+
+		$fields = array_keys( $this->getFieldNames() );
+		$columns = '';
+		foreach ( $fields as $field ) {
+			$value = $row->$field ?? null;
+			$columns .= Html::rawElement(
+				'div',
+				$this->getCellAttrs( $field, $value ),
+				$this->formatValue( $field, $value )
+			);
+		}
+
+		$details = Html::rawElement(
+			'details',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ],
+			Html::rawElement( 'summary', [], $columns ) . $this->buildRowContent( $row )
+		);
+
+		return Html::rawElement(
+			'tr',
+			$this->getRowAttrs( $row ),
+			Html::rawElement(
+				'td',
+				[
+					'class' => 'mw-wikimediaantiabuse-abuse-review-row__cell',
+					'colspan' => count( $fields ),
+				],
+				$details
+			)
+		) . "\n";
+	}
+
+	/**
+	 * The value is not used.
+	 *
+	 * @inheritDoc
 	 */
 	public function formatValue( $name, $value ): string {
-		if ( $name !== self::TIMESTAMP_FIELD && $name !== self::FIELD ) {
+		if ( $name === self::DETAILS_FIELD ) {
+			return $this->buildToggle();
+		}
+
+		if ( !in_array( $name, self::ROW_DATA_FIELDS, true ) ) {
 			throw new InvalidArgumentException( "Unable to format $name" );
 		}
 
 		$row = $this->mCurrentRow;
 		$title = Title::makeTitle( $row->namespace, $row->title );
 
-		if ( $name === self::TIMESTAMP_FIELD ) {
-			return $this->buildTimestamp( $title, $row );
-		}
+		return match ( $name ) {
+			self::TARGET_FIELD => $this->buildTarget( $title, $row ),
+			self::FLAGS_FIELD => $this->buildFlags( $row ),
+			self::TIMESTAMP_FIELD => $this->buildTimestamp( $title, $row ),
+		};
+	}
 
+	private function buildRowContent( stdClass $row ): string {
+		$title = Title::makeTitle( $row->namespace, $row->title );
 		$tag = $this->getFirstReviewableTag( $row->ts_tags );
 
-		$summary = Html::rawElement( 'summary', [], $this->buildSummary( $title, $row, $tag ) );
-		$actions = $this->buildRevisionActions( $title, $row )
-			. $this->buildVerdictsApp( $row, $tag );
-		$editSummary = $this->buildEditSummary( $title, $row );
-		$changes = $this->buildChanges( $title, $row );
-		$content = Html::rawElement(
+		return Html::rawElement(
 			'div',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__content' ],
-			$actions . $editSummary . $changes
-		);
-
-		return Html::rawElement(
-			'details',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ],
-			$summary . $content
+			$this->buildRevisionActions( $title, $row )
+				. $this->buildVerdictsApp( $row, $tag )
+				. $this->buildEditSummary( $title, $row )
+				. $this->buildChanges( $title, $row )
 		);
 	}
 
-	/**
-	 * When the flagged revision was made, linking to its diff. A revision the viewer may
-	 * not see the text of is left unlinked, and one whose text is deleted is struck
-	 * through, doubly for a suppressed one, matching Special:Contributions.
-	 */
 	private function buildTimestamp( Title $title, stdClass $row ): string {
 		$timestamp = $this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() );
 
@@ -201,54 +238,59 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * The always-visible part of a row: page title, author, tag and the show/hide toggle.
-	 *
 	 * The title is this column's primary link. Strike the title of a revision whose text
 	 * is deleted, doubly for a suppressed one, so a reviewer can see what has already
 	 * been hidden without opening the row.
 	 */
-	private function buildSummary( Title $title, stdClass $row, ?string $tag ): string {
+	private function buildTarget( Title $title, stdClass $row ): string {
 		$pageClasses = array_merge(
 			[ 'mw-wikimediaantiabuse-abuse-review-row__page' ],
 			$this->visibilityClasses( (int)$row->deleted, RevisionRecord::DELETED_TEXT )
 		);
 
-		$pageLink = Html::rawElement(
+		return Html::rawElement(
 			'span',
 			[ 'class' => $pageClasses ],
 			$this->buildPageLink( $title, $row )
-		);
-
-		$meta = Html::rawElement(
+		) . Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__author' ],
 			$this->buildAuthor( $title, $row )
 		);
-		if ( $tag !== null ) {
-			// Render every tag state; the ones not matching the row's state start hidden.
-			$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
-			$flagChip = $this->renderTag(
-				$tag,
-				'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
-				$isFalsePositive
-			);
-			$falsePositiveChip = $this->renderTag(
-				ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'],
-				'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
-				!$isFalsePositive
-			);
-			$noFurtherActionChip = $this->renderTag(
-				ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'],
-				'mw-wikimediaantiabuse-abuse-review-tag--no-further-action',
-				!$this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' )
-			);
-			$meta .= Html::rawElement(
-				'span',
-				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
-				$flagChip . $falsePositiveChip . $noFurtherActionChip
-			);
+	}
+
+	private function buildFlags( stdClass $row ): string {
+		$tag = $this->getFirstReviewableTag( $row->ts_tags );
+		if ( $tag === null ) {
+			return '';
 		}
 
+		// Render every tag state; the ones not matching the row's state start hidden.
+		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
+		$flagChip = $this->renderTag(
+			$tag,
+			'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
+			$isFalsePositive
+		);
+		$falsePositiveChip = $this->renderTag(
+			ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'],
+			'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
+			!$isFalsePositive
+		);
+		$noFurtherActionChip = $this->renderTag(
+			ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'],
+			'mw-wikimediaantiabuse-abuse-review-tag--no-further-action',
+			!$this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' )
+		);
+
+		return Html::rawElement(
+			'span',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
+			$flagChip . $falsePositiveChip . $noFurtherActionChip
+		);
+	}
+
+	private function buildToggle(): string {
 		$showLabel = Html::element(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__toggle-label--show' ],
@@ -259,21 +301,12 @@ class AbuseReviewPager extends CodexTablePager {
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__toggle-label--hide' ],
 			$this->msg( 'wikimediaantiabuse-special-abuse-review-hide-details' )->text()
 		);
-		$toggle = Html::rawElement(
+
+		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__toggle' ],
 			$showLabel . $hideLabel
 		);
-
-		return Html::rawElement(
-			'span',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__info' ],
-			$pageLink . Html::rawElement(
-				'span',
-				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__meta' ],
-				$meta
-			)
-		) . $toggle;
 	}
 
 	/**
@@ -476,7 +509,7 @@ class AbuseReviewPager extends CodexTablePager {
 					'strong',
 					[],
 					$this->msg( 'wikimediaantiabuse-special-abuse-review-edit-summary' )->text()
-				) . ' ' . $comment
+				) . Html::rawElement( 'div', [], $comment )
 			) )
 			->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__summary' ] )
 			->build()

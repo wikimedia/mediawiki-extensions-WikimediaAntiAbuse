@@ -57,19 +57,28 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 			$tablePagerCaption
 		);
 
-		// Rows are rendered as blocks in the second, unlabelled column, so only the
-		// timestamp column takes a heading and only it is sortable.
-		$this->assertCount(
-			2,
-			DOMCompat::querySelectorAll( $tablePager, 'thead th' )
+		// Three labelled columns and the unlabelled one holding the show/hide toggle.
+		$headings = DOMCompat::querySelectorAll( $tablePager, 'thead th' );
+		$this->assertCount( 4, $headings );
+		// The timestamp heading sits inside the sort control, asserted below.
+		$this->assertSame(
+			[
+				'(wikimediaantiabuse-special-abuse-review-heading-revision)',
+				'(wikimediaantiabuse-special-abuse-review-heading-flags)',
+			],
+			array_map(
+				static fn ( $heading ) => trim( DOMCompat::getInnerHTML( $heading ) ),
+				array_slice( iterator_to_array( $headings ), 0, 2 )
+			),
+			'the columns are labelled in the order the design shows them'
 		);
 		$sortButton = $this->assertSelectorMatchesOneElementInNode(
 			$tablePager, '.cdx-table__table__sort-button', true
 		);
 		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-heading-revision)',
+			'(wikimediaantiabuse-special-abuse-review-heading-timestamp)',
 			$sortButton,
-			'only the revision timestamp column should be sortable'
+			'only the timestamp column should be sortable'
 		);
 
 		return DOMCompat::getOuterHTML( $tablePager );

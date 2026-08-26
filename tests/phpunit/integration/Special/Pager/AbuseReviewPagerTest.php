@@ -86,14 +86,14 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		$this->assertCount( 1, $tableRows );
 		$tableRow = $tableRows[0];
 
-		$revisionCellHtml = $this->assertSelectorMatchesOneElementInNode(
+		$flagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
 			$tableRow,
-			'.cdx-table-pager__col--revision',
+			'.cdx-table-pager__col--flags',
 			true
 		);
 		$this->assertStringNotContainsString(
 			'mw-reverted',
-			$revisionCellHtml,
+			$flagsCellHtml,
 			'Only abuse review tags should be displayed'
 		);
 
