@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration;
 
+use MediaWiki\Extension\WikimediaAntiAbuse\Jobs\CheckRevisionJob;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ActionsToTake;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\CoPEModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\IModelResponse;
@@ -53,7 +54,7 @@ class ModelCheckPipelineTest extends MediaWikiIntegrationTestCase {
 			->getNewRevision()
 			->getId();
 
-		$this->runJobs();
+		$this->runJobs( [], [ 'type' => CheckRevisionJob::TYPE ] );
 
 		$tags = $this->getServiceContainer()->getChangeTagsStore()->getTags( $this->getDb(), null, $revisionId );
 		$this->assertSame( [ 'test-tag-name' ], $tags,
