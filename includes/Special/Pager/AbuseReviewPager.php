@@ -471,13 +471,12 @@ class AbuseReviewPager extends CodexTablePager {
 
 		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )->message()
 			->setType( 'notice' )
-			->setContentHtml( new HtmlSnippet(
+			->setContent( new HtmlSnippet(
 				Html::element(
 					'strong',
 					[],
 					$this->msg( 'wikimediaantiabuse-special-abuse-review-edit-summary' )->text()
-				) . ' ' . $comment,
-				[]
+				) . ' ' . $comment
 			) )
 			->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__summary' ] )
 			->build()
@@ -576,12 +575,11 @@ class AbuseReviewPager extends CodexTablePager {
 
 		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )->message()
 			->setType( 'warning' )
-			->setContentHtml( new HtmlSnippet(
+			->setContent( new HtmlSnippet(
 				// The page the deletion log is linked for, rather than this special page.
 				$this->msg( $suppressed ? 'rev-suppressed-no-diff' : 'rev-deleted-no-diff' )
 					->page( $title )
-					->parse(),
-				[]
+					->parse()
 			) )
 			->setAttributes( [
 				'class' => 'mw-wikimediaantiabuse-abuse-review-row__withheld-diff plainlinks',
