@@ -9,9 +9,10 @@ use LogicException;
 use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
+use MediaWiki\Context\DerivativeContext;
 use MediaWiki\Context\IContextSource;
+use MediaWiki\Diff\DifferenceEngine;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
 use MediaWiki\Html\Html;
 use MediaWiki\Linker\LinkRenderer;
@@ -20,8 +21,10 @@ use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Pager\CodexTablePager;
 use MediaWiki\Pager\IndexPager;
 use MediaWiki\Revision\ArchivedRevisionLookup;
+use MediaWiki\Revision\MutableRevisionRecord;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\RevisionStore;
+use MediaWiki\Revision\SlotRecord;
 use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
 use MediaWiki\User\UserIdentityValue;
@@ -41,7 +44,7 @@ class AbuseReviewPager extends CodexTablePager {
 	private const string DETAILS_FIELD = 'details';
 	private const array ROW_DATA_FIELDS = [ self::TARGET_FIELD, self::FLAGS_FIELD, self::TIMESTAMP_FIELD ];
 
-	private const int MAX_DIFF_LINES = 10;
+	private const int MAX_DIFF_BYTES = 8192;
 
 	/** @var bool Whether a row has been rendered yet; used to make first row expanded by default */
 	private bool $rowRendered = false;
@@ -64,7 +67,6 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
-		private readonly RevisionSnippetGenerator $revisionSnippetGenerator,
 		private readonly array $tagsFilter,
 		private readonly bool $includeHandledRevisions,
 		private readonly int $numberOfFiltersApplied,
@@ -629,10 +631,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 		$header = $this->buildChangesHeader( $title, $row );
 
-		// Both sides of a diff are derived from both revisions: the lines the edit left alone
-		// are the parent's text as much as this revision's. Showing one side alone would let
-		// the rest of a parent the viewer may not see be read off the side that was shown, so
-		// core withholds the whole diff, and so must this preview.
+		$parent = null;
 		$parentId = $revision->getParentId();
 		if ( $parentId ) {
 			$parent = $this->lookUpRevision( $title, $parentId );
@@ -641,16 +640,13 @@ class AbuseReviewPager extends CodexTablePager {
 			}
 		}
 
-		$removedBlock = $this->renderDiffBlock(
-			$this->revisionSnippetGenerator->getRemovedLines( $revision ) ?? '', '-', 'removed'
-		);
-		$addedBlock = $this->renderDiffBlock(
-			$this->revisionSnippetGenerator->getAddedLines( $revision ) ?? '', '+', 'added'
-		);
-		$blocks = $removedBlock . $addedBlock;
+		$diff = $this->buildDiffTable( $title, $revision, $parent );
+		if ( strlen( $diff ) > self::MAX_DIFF_BYTES ) {
+			return $header . $this->buildOversizeDiffNotice();
+		}
 
 		// The link stays even with nothing to preview, that being when it is most wanted.
-		if ( $blocks === '' ) {
+		if ( $diff === '' ) {
 			return $header;
 		}
 
@@ -666,7 +662,7 @@ class AbuseReviewPager extends CodexTablePager {
 				'lang' => $pageLanguage->getHtmlCode(),
 				'dir' => $pageLanguage->getDir(),
 			],
-			$blocks
+			$diff
 		);
 	}
 
@@ -713,6 +709,15 @@ class AbuseReviewPager extends CodexTablePager {
 			->setAttributes( [
 				'class' => 'mw-wikimediaantiabuse-abuse-review-row__withheld-diff plainlinks',
 			] )
+			->build()
+			->getHtml();
+	}
+
+	private function buildOversizeDiffNotice(): string {
+		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )->message()
+			->setType( 'notice' )
+			->setContent( $this->msg( 'wikimediaantiabuse-special-abuse-review-diff-too-large' )->text() )
+			->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__oversize-diff' ] )
 			->build()
 			->getHtml();
 	}
@@ -765,13 +770,6 @@ class AbuseReviewPager extends CodexTablePager {
 		return $this->archivedRevisionLookup->getArchivedRevisionRecord( $title, $revisionId );
 	}
 
-	/**
-	 * Whether the viewer may see a revision's text.
-	 *
-	 * A revision that could not be loaded counts as one they may not: RevisionSnippetGenerator
-	 * falls back to the primary and then to the archive table, so it can still diff against a
-	 * parent this gate did not find, and a parent it cannot see is one it must not permit.
-	 */
 	private function canSeeText( ?RevisionRecord $revision, Title $title ): bool {
 		return $revision !== null && RevisionRecord::userCanBitfield(
 			$revision->getVisibility(),
@@ -781,29 +779,30 @@ class AbuseReviewPager extends CodexTablePager {
 		);
 	}
 
-	private function renderDiffBlock( string $lines, string $prefix, string $modifier ): string {
-		if ( $lines === '' ) {
+	/** @return string Empty string when there is no diff to show */
+	private function buildDiffTable( Title $title, RevisionRecord $revision, ?RevisionRecord $parent ): string {
+		if ( $parent === null ) {
+			$content = $revision->getContent( SlotRecord::MAIN, RevisionRecord::RAW );
+			if ( $content === null ) {
+				return '';
+			}
+			$parent = new MutableRevisionRecord( $title );
+			$parent->setContent( SlotRecord::MAIN, $content->getContentHandler()->makeEmptyContent() );
+		}
+
+		$context = new DerivativeContext( $this->getContext() );
+		$context->setTitle( $title );
+
+		$differenceEngine = new DifferenceEngine( $context );
+		$differenceEngine->setSlotDiffOptions( [ 'diff-type' => 'inline' ] );
+		$differenceEngine->setRevisions( $parent, $revision );
+
+		$body = $differenceEngine->getDiffBody();
+		if ( !$body ) {
 			return '';
 		}
 
-		$allLines = explode( "\n", $lines );
-		$shownLines = array_slice( $allLines, 0, self::MAX_DIFF_LINES );
-		$text = implode(
-			"\n",
-			array_map( static fn ( string $line ): string => "$prefix $line", $shownLines )
-		);
-
-		$remaining = count( $allLines ) - count( $shownLines );
-		if ( $remaining > 0 ) {
-			$text .= "\n" . $this->msg( 'wikimediaantiabuse-special-abuse-review-diff-truncated' )
-				->numParams( $remaining )->text();
-		}
-
-		return Html::element(
-			'div',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__diff-' . $modifier ],
-			$text
-		);
+		return $differenceEngine->addHeader( $body, '', '' );
 	}
 
 	/** @inheritDoc */

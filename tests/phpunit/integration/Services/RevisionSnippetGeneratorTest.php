@@ -145,44 +145,10 @@ class RevisionSnippetGeneratorTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
-	/** @dataProvider provideAddedAndRemovedLines */
-	public function testGetAddedAndRemovedLines(
-		array $contents,
-		string $expectedAdded,
-		string $expectedRemoved
-	): void {
-		$revisionRecord = $this->makeRevision( $contents );
-
-		$this->assertSame( $expectedAdded, $this->getGenerator()->getAddedLines( $revisionRecord ) );
-		$this->assertSame( $expectedRemoved, $this->getGenerator()->getRemovedLines( $revisionRecord ) );
-	}
-
-	public static function provideAddedAndRemovedLines(): array {
-		return [
-			'changed and added lines' => [
-				'contents' => [ "Kept line.\nOld line.", "Kept line.\nNew line.\nExtra line." ],
-				'expectedAdded' => "New line.\nExtra line.",
-				'expectedRemoved' => 'Old line.',
-			],
-			'page creation' => [
-				'contents' => [ "First line.\nSecond line." ],
-				'expectedAdded' => "First line.\nSecond line.",
-				'expectedRemoved' => '',
-			],
-			'blanked revision' => [
-				'contents' => [ 'Some text.', '' ],
-				'expectedAdded' => '',
-				'expectedRemoved' => 'Some text.',
-			],
-		];
-	}
-
 	public function testNonTextContentYieldsNull(): void {
 		$revisionRecord = new MutableRevisionRecord( $this->getExistingTestPage()->getTitle() );
 		$revisionRecord->setContent( SlotRecord::MAIN, new FallbackContent( '{}', 'agr-unknown' ) );
 
 		$this->assertNull( $this->getGenerator()->getUnifiedDiff( $revisionRecord ) );
-		$this->assertNull( $this->getGenerator()->getAddedLines( $revisionRecord ) );
-		$this->assertNull( $this->getGenerator()->getRemovedLines( $revisionRecord ) );
 	}
 }

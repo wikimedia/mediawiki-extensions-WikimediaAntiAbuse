@@ -31,7 +31,6 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getArchivedRevisionLookup(),
 			$this->getServiceContainer()->getLinkBatchFactory(),
 			$this->getServiceContainer()->getRowCommentFormatter(),
-			$this->getServiceContainer()->get( 'WikimediaAntiAbuseRevisionSnippetGenerator' ),
 			$tagsFilter,
 			false,
 			0
@@ -83,7 +82,9 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		$objectUnderTest = $this->getObjectUnderTest( [ 'mw-reverted' ] );
 		$actualPagerHtml = $objectUnderTest->getBody();
 
-		$tableRows = DOMCompat::querySelectorAll( DOMUtils::parseHTML( $actualPagerHtml ), 'tbody tr' );
+		$tableRows = DOMCompat::querySelectorAll(
+			DOMUtils::parseHTML( $actualPagerHtml ), 'tbody tr.mw-wikimediaantiabuse-abuse-review-row'
+		);
 		$this->assertCount( 1, $tableRows );
 		$tableRow = $tableRows[0];
 

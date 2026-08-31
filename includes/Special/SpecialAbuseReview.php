@@ -9,7 +9,6 @@ use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
@@ -39,7 +38,6 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
-		private readonly RevisionSnippetGenerator $revisionSnippetGenerator,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -50,6 +48,7 @@ class SpecialAbuseReview extends SpecialPage {
 		$this->addHelpLink( 'Extension:WikimediaAntiAbuse' );
 		$this->getOutput()->addModuleStyles( [
 			'ext.wikimediaAntiAbuse.styles',
+			'mediawiki.diff.styles',
 			'mediawiki.interface.helpers.styles',
 		] );
 		$this->getOutput()->addModules( 'ext.wikimediaAntiAbuse' );
@@ -107,7 +106,6 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->archivedRevisionLookup,
 			$this->linkBatchFactory,
 			$this->rowCommentFormatter,
-			$this->revisionSnippetGenerator,
 			$this->tagsFilter,
 			$this->includeHandledRevisions,
 			$this->numberOfFiltersApplied

@@ -88,7 +88,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
 
 		$expectedRevIds = $expectedRevIdsCallback();
-		$tableRows = DOMCompat::querySelectorAll( DOMUtils::parseHTML( $tablePagerHtml ), 'tbody tr' );
+		$tableRows = DOMCompat::querySelectorAll(
+			DOMUtils::parseHTML( $tablePagerHtml ), self::ROW_SELECTOR
+		);
 		$this->assertSameSize( $expectedRevIds, $tableRows );
 
 		$revisionStore = $this->getServiceContainer()->getRevisionStore();
@@ -588,14 +590,14 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			DOMUtils::parseHTML( $htmlForViewerWithAccess ),
 			static::$falsePositiveRevId
 		);
-		$this->assertSelectorMatchesOneElementInNode(
-			$row,
-			'.mw-wikimediaantiabuse-abuse-review-row__diff-removed'
-		);
 		$this->assertStringContainsString(
-			'Tagged content',
-			DOMCompat::getOuterHTML( $row ),
-			'a viewer who can see the parent gets the removed lines'
+			'Tagged',
+			$this->assertSelectorMatchesOneElementInNode(
+				$row,
+				'.mw-wikimediaantiabuse-abuse-review-row__diff del',
+				true
+			),
+			'a viewer who can see the parent gets the words the edit removed'
 		);
 
 		[ $htmlForViewerWithoutAccess ] = $this->executeSpecialPage(
@@ -607,12 +609,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 		$rowHtml = DOMCompat::getOuterHTML( $row );
 		$this->assertStringNotContainsString(
-			'Tagged content',
+			'Tagged',
 			$rowHtml,
 			'a viewer who cannot see the parent gets none of its text'
 		);
 		$this->assertStringNotContainsString(
-			'False positive tagged content',
+			'False positive tagged',
 			$rowHtml,
 			'nor the revision\'s own text, which would give the rest of the parent away'
 		);

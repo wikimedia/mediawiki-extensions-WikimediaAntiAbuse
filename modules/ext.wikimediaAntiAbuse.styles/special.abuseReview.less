@@ -236,34 +236,24 @@ html {
 	}
 
 	&__diff {
+		max-height: 25em;
+		overflow-y: auto;
 		border: @border-width-base @border-style-base @border-color-muted;
 		padding: @spacing-25;
-	}
 
-	&__diff-removed,
-	&__diff-added {
-		padding: @spacing-50 @spacing-50 @spacing-25;
-		font-family: @font-family-monospace;
-		// pre-wrap breaks at whitespace, which a flagged URL does not have, and the table
-		// is fixed-layout, so an unbroken run would push the page sideways instead.
-		// break-word would leave min-content whole, so the column would not narrow.
-		white-space: pre-wrap;
-		overflow-wrap: anywhere;
-		line-height: @line-height-x-small;
-	}
+		// Codex styles every cell of the pager's table, so core's diff values are restated.
+		.diff td {
+			padding: 0.33em 0.5em;
+		}
 
-	&__diff-removed {
-		background-color: @background-color-error-subtle--active;
-		margin-bottom: @spacing-50;
-	}
+		.diff td.diff-marker {
+			border-top: 0;
+			vertical-align: middle;
+		}
 
-	// Codex has no green token at this weight, so both shades are hardcoded to the design.
-	&__diff-added {
-		background-color: #d1e9d2;
-
-		.darkmode-override( {
-			background-color: #35603c;
-		} );
+		.diff td div {
+			overflow-wrap: anywhere;
+		}
 	}
 }
 
