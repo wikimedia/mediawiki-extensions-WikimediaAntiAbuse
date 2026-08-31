@@ -12,6 +12,20 @@ const UNMARK_BUTTON_LABEL =
 QUnit.module( 'ext.wikimediaAntiAbuse.mountRowVerdicts', QUnit.newMwEnvironment() );
 
 /**
+ * The buttons the pager renders into the mount point, which the app replaces. What they
+ * hold does not matter here, only that a test can tell a replaced one from a fresh one.
+ *
+ * @return {HTMLElement}
+ */
+function makeServerVerdicts() {
+	const verdicts = document.createElement( 'span' );
+	verdicts.className = 'mw-wikimediaantiabuse-abuse-review-verdicts';
+	verdicts.appendChild( document.createElement( 'button' ) );
+	verdicts.appendChild( document.createElement( 'button' ) );
+	return verdicts;
+}
+
+/**
  * A review row shaped the way the pager renders one: a details element holding the flag
  * and the mount point.
  *
@@ -39,6 +53,7 @@ function makeRow( revId, payload, open ) {
 	mountPoint.className = APP_CLASS;
 	if ( payload !== null ) {
 		mountPoint.setAttribute( 'data-verdicts', JSON.stringify( payload ) );
+		mountPoint.appendChild( makeServerVerdicts() );
 	}
 	summary.appendChild( mountPoint );
 	details.appendChild( summary );
@@ -83,22 +98,22 @@ function clickButton( row, label ) {
 	buttons[ 0 ].click();
 }
 
-QUnit.test( 'it mounts an app into every row', async ( assert ) => {
+QUnit.test( 'it mounts an app over the buttons the pager rendered', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
+	const serverRendered = first.querySelector( 'button' );
 
 	mountRowVerdicts();
 	await flushPromises();
 
-	assert.notStrictEqual(
-		first.querySelector( 'button' ),
-		null,
-		'the first row gained its controls'
+	assert.false(
+		first.contains( serverRendered ),
+		'the app takes the place of the buttons that came from the server'
 	);
-	assert.notStrictEqual(
-		second.querySelector( 'button' ),
-		null,
-		'the second row mounted too'
+	assert.strictEqual(
+		second.querySelectorAll( 'button' ).length,
+		2,
+		'and the second row still offers two buttons, not four'
 	);
 } );
 
@@ -214,13 +229,16 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 	const missing = makeRow( 2, null, false );
 	const anonymous = makeRow( null, payloadFor(), false );
 	const healthy = makeRow( 3, payloadFor(), false );
+	// A skipped row keeps the buttons the server sent, so identity is the signal here.
+	const brokenButton = broken.querySelector( 'button' );
+	const anonymousButton = anonymous.querySelector( 'button' );
+	const healthyButton = healthy.querySelector( 'button' );
 
 	mountRowVerdicts();
 	await flushPromises();
 
-	assert.strictEqual(
-		broken.querySelector( '.' + APP_CLASS ).children.length,
-		0,
+	assert.true(
+		broken.contains( brokenButton ),
 		'the malformed row gets no app mounted over it'
 	);
 	assert.strictEqual(
@@ -228,14 +246,12 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 		0,
 		'the row with no payload gets no app either, rather than one with no props'
 	);
-	assert.strictEqual(
-		anonymous.querySelector( '.' + APP_CLASS ).children.length,
-		0,
+	assert.true(
+		anonymous.contains( anonymousButton ),
 		'nor does a row that names no revision, the app having nothing to act on'
 	);
-	assert.notStrictEqual(
-		healthy.querySelector( 'button' ),
-		null,
+	assert.false(
+		healthy.contains( healthyButton ),
 		'the healthy row still mounts, which is the point of the guard'
 	);
 } );
