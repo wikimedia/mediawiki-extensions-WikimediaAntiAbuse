@@ -1,10 +1,16 @@
 {
 	"@metadata": {
 		"authors": [
-			"Samoasambia"
+			"Samoasambia",
+			"Wikipeedikko"
 		]
 	},
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Suodatin",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Suodata versioita",
-	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versio"
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versio",
+	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Aikaleima",
+	"wikimediaantiabuse-special-abuse-review-show-details": "Näytä tiedot",
+	"wikimediaantiabuse-special-abuse-review-hide-details": "Piilota tiedot",
+	"wikimediaantiabuse-special-abuse-review-edit-summary": "Muokkausyhteenveto",
+	"wikimediaantiabuse-special-abuse-review-changes-made": "Tehdyt muutokset:"
 }

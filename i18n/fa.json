@@ -1,0 +1,25 @@
+{
+	"@metadata": {
+		"authors": [
+			"Jeeputer"
+		]
+	},
+	"wikimediaantiabuse-special-abuse-review-filter-close": "بستن",
+	"wikimediaantiabuse-special-abuse-review-heading-flags": "پرچم‌ها",
+	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "برچسب زمان",
+	"wikimediaantiabuse-special-abuse-review-empty-title": "هیچ ویرایش برچسب‌خورده‌ای موجود نیست",
+	"wikimediaantiabuse-special-abuse-review-empty-description": "در حال حاضر هیچ ویرایشی در انتظار بازبینی سیاست محتوا نیست.",
+	"wikimediaantiabuse-special-abuse-review-empty-hint": "هرگاه ویرایش‌ها به‌طور خودکار برچسب بخورند، هیچ ویرایشی در اینجا نمایش داده نمی‌شود.",
+	"wikimediaantiabuse-special-abuse-review-show-details": "نمایش جزئیات",
+	"wikimediaantiabuse-special-abuse-review-hide-details": "نهفتن جزئیات",
+	"wikimediaantiabuse-special-abuse-review-actions-heading": "کنش‌ها برای این ویرایش",
+	"wikimediaantiabuse-special-abuse-review-verdicts-heading": "حکم‌ها",
+	"wikimediaantiabuse-special-abuse-review-edit-summary": "خلاصهٔ ویرایش",
+	"wikimediaantiabuse-special-abuse-review-changes-made": "تغییرات اعمال‌شده:",
+	"wikimediaantiabuse-special-abuse-review-open-full-diff": "گشودن تفاوت کامل",
+	"wikimediaantiabuse-special-abuse-review-diff-truncated": "… و $1 {{PLURAL:$1|سطر}} بیشتر",
+	"wikimediaantiabuse-special-abuse-review-action-in-progress": "در دست انجام…",
+	"wikimediaantiabuse-special-abuse-review-action-suppress": "فرونشانی…",
+	"wikimediaantiabuse-special-abuse-review-action-revision-delete": "حذف نسخه…",
+	"wikimediaantiabuse-special-abuse-review-action-revert": "تنها برگردانی"
+}
