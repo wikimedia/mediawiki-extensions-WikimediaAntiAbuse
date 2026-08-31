@@ -297,7 +297,9 @@ class AbuseReviewPager extends CodexTablePager {
 				(int)$row->rev_id,
 				$isFalsePositive,
 				$isNoFurtherAction,
-				$isSuppressed
+				$isSuppressed,
+				// The first row arrives open, all others do not
+				!$this->rowRendered
 			)
 		);
 
@@ -312,14 +314,20 @@ class AbuseReviewPager extends CodexTablePager {
 		int $revId,
 		bool $isFalsePositive,
 		bool $isNoFurtherAction,
-		bool $isSuppressed
+		bool $isSuppressed,
+		bool $isOpen
 	): string {
 		// A suppressed revision takes no new verdict, but one it holds can be cleared.
 		$suppressedBlocksMark = $isSuppressed && !$isFalsePositive && !$isNoFurtherAction;
+		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
+		$rowRefuses = $suppressedBlocksMark || !$isOpen;
 
-		$noteMessage = $suppressedBlocksMark
-			? 'wikimediaantiabuse-special-abuse-review-already-suppressed-note'
-			: null;
+		$noteMessage = null;
+		if ( $suppressedBlocksMark ) {
+			$noteMessage = 'wikimediaantiabuse-special-abuse-review-already-suppressed-note';
+		} elseif ( !$isOpen ) {
+			$noteMessage = 'wikimediaantiabuse-special-abuse-review-closed-row-note';
+		}
 
 		$note = '';
 		$noteId = null;
@@ -338,14 +346,14 @@ class AbuseReviewPager extends CodexTablePager {
 			$this->buildVerdictButton(
 				'no-further-action',
 				$isNoFurtherAction,
-				$suppressedBlocksMark,
+				$rowRefuses,
 				$isFalsePositive,
 				$noteId,
 				$noteMessage
 			) . $this->buildVerdictButton(
 				'false-positive',
 				$isFalsePositive,
-				$suppressedBlocksMark,
+				$rowRefuses,
 				$isNoFurtherAction,
 				$noteId,
 				$noteMessage

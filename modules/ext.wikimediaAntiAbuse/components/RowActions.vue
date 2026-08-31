@@ -30,7 +30,7 @@
 </template>
 
 <script>
-const { defineComponent, ref, computed } = require( 'vue' );
+const { defineComponent, ref, computed, onMounted, onUnmounted } = require( 'vue' );
 // CodexModule's codexComponents option injects this synthetic file; requiring
 // '@wikimedia/codex' directly only works for a full-library dependency.
 const { CdxIcon, CdxProgressIndicator, CdxToggleButton } = require( './../codex.js' );
@@ -68,7 +68,8 @@ module.exports = exports = defineComponent( {
 		tag: { type: String, required: true },
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
-		isSuppressed: { type: Boolean, default: false }
+		isSuppressed: { type: Boolean, default: false },
+		detailsElement: { type: Object, default: null }
 	},
 	emits: [ 'verdict-changed' ],
 	setup( props, { emit } ) {
@@ -80,13 +81,32 @@ module.exports = exports = defineComponent( {
 			verdict.value = 'noFurtherAction';
 		}
 
+		const isOpen = ref( !!props.detailsElement && props.detailsElement.open );
+		if ( props.detailsElement ) {
+			const followRow = () => {
+				isOpen.value = props.detailsElement.open;
+			};
+			// The toggle event does not bubble, so it is taken from the element itself.
+			onMounted( () => props.detailsElement.addEventListener( 'toggle', followRow ) );
+			onUnmounted( () => props.detailsElement.removeEventListener( 'toggle', followRow ) );
+		}
+
 		const suppressedBlocksMark = computed(
 			() => props.isSuppressed && verdict.value === null
 		);
 
-		const disabledNote = computed( () => suppressedBlocksMark.value ?
-			mw.msg( 'wikimediaantiabuse-special-abuse-review-already-suppressed-note' ) :
-			null
+		const disabledNote = computed( () => {
+			if ( suppressedBlocksMark.value ) {
+				return mw.msg( 'wikimediaantiabuse-special-abuse-review-already-suppressed-note' );
+			}
+			return isOpen.value ?
+				null :
+				mw.msg( 'wikimediaantiabuse-special-abuse-review-closed-row-note' );
+		} );
+
+		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
+		const rowRefuses = computed(
+			() => suppressedBlocksMark.value || !isOpen.value
 		);
 
 		/**
@@ -97,8 +117,7 @@ module.exports = exports = defineComponent( {
 		 * @return {boolean}
 		 */
 		function isDisabled( own ) {
-			return suppressedBlocksMark.value ||
-				( verdict.value !== null && verdict.value !== own );
+			return rowRefuses.value || ( verdict.value !== null && verdict.value !== own );
 		}
 
 		/**

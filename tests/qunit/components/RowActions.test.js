@@ -14,6 +14,7 @@ const MARK_NO_FURTHER_ACTION =
 const UNMARK_NO_FURTHER_ACTION =
 	'(wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action)';
 const SUPPRESSED_NOTE = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
+const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 
 const mounted = [];
 
@@ -26,17 +27,37 @@ QUnit.module( 'ext.wikimediaAntiAbuse.RowActions', QUnit.newMwEnvironment( {
 	}
 } ) );
 
-const mountRow = ( props, options ) => {
+/**
+ * The details element the component follows. A test that toggles the row brings its own.
+ *
+ * @param {boolean} open
+ * @return {HTMLElement}
+ */
+function makeDetails( open ) {
+	const details = document.createElement( 'details' );
+	details.open = open;
+	document.getElementById( 'qunit-fixture' ).appendChild( details );
+	return details;
+}
+
+const mountRow = ( given, options ) => {
+	const props = Object.assign( {
+		revId: 991,
+		tag: 'mw-private-personal-info',
+		isFalsePositive: false,
+		isNoFurtherAction: false,
+		isSuppressed: false
+	}, given );
+	if ( !props.detailsElement ) {
+		// Only an open row is judged, and most of these tests are about judging.
+		props.detailsElement = makeDetails( props.isOpen !== false );
+	}
+	delete props.isOpen;
+
 	const wrapper = mount( RowActions, Object.assign( {
 		// $i18n is installed by createMwApp, which mounting the component directly bypasses.
 		global: { mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) } },
-		props: Object.assign( {
-			revId: 991,
-			tag: 'mw-private-personal-info',
-			isFalsePositive: false,
-			isNoFurtherAction: false,
-			isSuppressed: false
-		}, props )
+		props
 	}, options ) );
 	mounted.push( wrapper );
 	return wrapper;
@@ -304,6 +325,82 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 		wrapper.emitted( 'verdict-changed' ),
 		undefined,
 		'nothing is reported for a change that did not happen'
+	);
+} );
+
+QUnit.test( 'a closed row cannot be judged, and says so', ( assert ) => {
+	const wrapper = mountRow( { isOpen: false } );
+
+	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
+		const button = buttonWithLabel( wrapper, label );
+		assert.true( button.element.disabled, '"' + label + '" is out of reach' );
+		assert.strictEqual(
+			button.attributes( 'title' ),
+			CLOSED_ROW_NOTE,
+			'"' + label + '" says why on hover, rather than what it would have done'
+		);
+		assert.strictEqual(
+			button.attributes( 'aria-describedby' ),
+			'mw-wikimediaantiabuse-abuse-review-disabled-note-991',
+			'"' + label + '" points at the note saying so'
+		);
+	} );
+} );
+
+QUnit.test( 'a closed row cannot clear the verdict it holds', ( assert ) => {
+	const wrapper = mountRow( { isOpen: false, isNoFurtherAction: true } );
+
+	const held = buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION );
+	assert.strictEqual( held.attributes( 'aria-pressed' ), 'true', 'the verdict reads as pressed' );
+	assert.true(
+		held.element.disabled,
+		'but is out of reach, a verdict changing only on a row the reviewer has opened'
+	);
+	assert.strictEqual(
+		held.attributes( 'title' ),
+		CLOSED_ROW_NOTE,
+		'and says why on hover, rather than what clearing it would do'
+	);
+	const other = buttonWithLabel( wrapper, MARK_FALSE_POSITIVE );
+	assert.true( other.element.disabled, 'the verdict the row does not hold is out of reach too' );
+	assert.strictEqual(
+		other.attributes( 'title' ),
+		CLOSED_ROW_NOTE,
+		'and says why on hover too'
+	);
+} );
+
+QUnit.test( 'opening the row brings its buttons into reach', async ( assert ) => {
+	const details = document.createElement( 'details' );
+	document.getElementById( 'qunit-fixture' ).appendChild( details );
+	const wrapper = mountRow( { detailsElement: details } );
+
+	assert.true(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
+		'out of reach while the row is closed'
+	);
+
+	details.open = true;
+	details.dispatchEvent( new Event( 'toggle' ) );
+	await wrapper.vm.$nextTick();
+
+	assert.false(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
+		'and in reach once it is open'
+	);
+	assert.strictEqual(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).attributes( 'title' ),
+		MARK_FALSE_POSITIVE,
+		'with the tooltip back to what pressing it does'
+	);
+
+	details.open = false;
+	details.dispatchEvent( new Event( 'toggle' ) );
+	await wrapper.vm.$nextTick();
+
+	assert.true(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
+		'and out of reach again once it is closed'
 	);
 } );
 

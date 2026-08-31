@@ -5,6 +5,7 @@ const RowActions = require( './components/RowActions.vue' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
+const DETAILS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row__details';
 const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**
@@ -34,7 +35,11 @@ function mountRowActions() {
 			return;
 		}
 
-		const app = Vue.createMwApp( RowActions, Object.assign( {}, props, { revId } ) );
+		const details = row.querySelector( DETAILS_SELECTOR );
+		const app = Vue.createMwApp( RowActions, Object.assign( {}, props, {
+			revId,
+			detailsElement: details
+		} ) );
 		// Without a per-app id prefix, every row's Codex components generate the same ids.
 		app.config.idPrefix = ID_PREFIX + revId;
 		app.mount( mountPoint );

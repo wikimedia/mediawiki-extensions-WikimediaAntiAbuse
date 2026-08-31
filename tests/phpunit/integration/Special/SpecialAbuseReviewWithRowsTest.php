@@ -340,21 +340,24 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			);
 
 			$suppressedBlocksMark = $isSuppressedRow && !$isFalsePositiveRow && !$isNoFurtherActionRow;
-			$note = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
+			$rowRefuses = $suppressedBlocksMark || !$isOpenRow;
+			$note = $suppressedBlocksMark
+				? '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)'
+				: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 			$this->assertVerdictButtons(
 				$tableRow,
 				[
 					[
 						'pressed' => $isNoFurtherActionRow,
-						'disabled' => $suppressedBlocksMark || $isFalsePositiveRow,
-						'title' => $suppressedBlocksMark
+						'disabled' => $rowRefuses || $isFalsePositiveRow,
+						'title' => $rowRefuses
 							? $note
 							: self::getExpectedVerdictLabel( 'no-further-action', $isNoFurtherActionRow ),
 					],
 					[
 						'pressed' => $isFalsePositiveRow,
-						'disabled' => $suppressedBlocksMark || $isNoFurtherActionRow,
-						'title' => $suppressedBlocksMark
+						'disabled' => $rowRefuses || $isNoFurtherActionRow,
+						'title' => $rowRefuses
 							? $note
 							: self::getExpectedVerdictLabel( 'false-positive', $isFalsePositiveRow ),
 					],

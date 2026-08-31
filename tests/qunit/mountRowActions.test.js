@@ -78,6 +78,23 @@ QUnit.test( 'it mounts an app into every row', async ( assert ) => {
 	);
 } );
 
+QUnit.test( 'only the open row can be judged', async ( assert ) => {
+	const first = makeRow( 1, payloadFor(), true );
+	const second = makeRow( 2, payloadFor(), false );
+
+	mountRowActions();
+	await flushPromises();
+
+	assert.false(
+		first.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
+		'the open row can be judged'
+	);
+	assert.true(
+		second.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
+		'a closed one cannot'
+	);
+} );
+
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {
 	const broken = makeRow( 1, payloadFor(), false );
 	broken.querySelector( '.' + APP_CLASS ).setAttribute( 'data-verdicts', '{not json' );

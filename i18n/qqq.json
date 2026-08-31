@@ -33,6 +33,7 @@
 	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Label for the button on [[Special:AbuseReview]] that undoes marking a revision's abuse review flag as a false positive, restoring the original flag.",
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Label for the button on [[Special:AbuseReview]] that marks a flagged revision as reviewed and needing no further action.",
 	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Label for the button on [[Special:AbuseReview]] that removes the no-further-action marking from a revision, putting it back in the review queue.",
+	"wikimediaantiabuse-special-abuse-review-closed-row-note": "Shown on [[Special:AbuseReview]] when a reviewer hovers a verdict button on a row whose details are hidden. Only the open row can be judged, so that the reviewer sees the edit first.",
 	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Note shown on [[Special:AbuseReview]] beside the disabled action, for a revision that has already been handled by suppressing its text.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Error shown on [[Special:AbuseReview]] when marking or unmarking a revision as a false positive fails.",
 	"wikimediaantiabuse-special-abuse-review-permission-error": "A permission error message shown on [[Special:AbuseReview]] when the user does not have any of the permissions needed to view the page.",

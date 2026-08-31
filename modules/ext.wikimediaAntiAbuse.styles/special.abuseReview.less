@@ -303,6 +303,18 @@ html {
 	background-color: @color-disabled-emphasized;
 }
 
+// Codex paints a pressed button only while it is enabled, and a closed row disables
+// every button. Reuse Codex's own quiet toggled-on colours so a verdict the row holds
+// stays visible.
+.mw-wikimediaantiabuse-abuse-review-verdicts .cdx-toggle-button--toggled-on:disabled {
+	background-color: @background-color-progressive-subtle;
+	color: @color-progressive;
+
+	.mw-wikimediaantiabuse-abuse-review-verdict-icon {
+		background-color: @color-progressive;
+	}
+}
+
 .mw-wikimediaantiabuse-abuse-review-verdicts {
 	display: inline-flex;
 	flex-wrap: wrap;
