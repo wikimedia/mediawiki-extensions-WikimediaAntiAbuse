@@ -1,6 +1,12 @@
 @import 'mediawiki.skin.variables.less';
 @import 'mediawiki.mixins.less';
 
+// Opening a row makes the page taller. Without a reserved gutter the scrollbar then
+// appears, the table narrows, and every column after the first jumps left.
+html {
+	scrollbar-gutter: stable;
+}
+
 .mw-wikimediaantiabuse-abuse-review-table {
 	table-layout: fixed;
 	width: 100%;
