@@ -97,10 +97,18 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'Only abuse review tags should be displayed'
 		);
 
-		$this->assertStringNotContainsString(
-			'mw-wikimediaantiabuse-abuse-review-tag',
-			$actualPagerHtml,
-			'No action buttons should be present if the revision has no abuse review tags'
+		$this->assertSame(
+			'',
+			trim( DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.cdx-table-pager__col--flags'
+			) ) ),
+			'A revision with no abuse review tag has no flag to show and nothing to judge'
+		);
+		$this->assertCount(
+			0,
+			DOMCompat::querySelectorAll( $tableRow, '.mw-wikimediaantiabuse-abuse-review-verdicts button' ),
+			'A revision with no abuse review tag has no verdict buttons'
 		);
 	}
 }

@@ -1,61 +1,40 @@
 <template>
-	<div class="mw-wikimediaantiabuse-abuse-review-actions-groups">
-		<template v-if="tag || isSuppressed">
-			<div class="mw-wikimediaantiabuse-abuse-review-actions-heading">
-				<h4>
-					{{ $i18n(
-						'wikimediaantiabuse-special-abuse-review-verdicts-heading'
-					).text() }}
-				</h4>
-				<cdx-progress-indicator v-if="busy">
-					{{ $i18n(
-						'wikimediaantiabuse-special-abuse-review-action-in-progress'
-					).text() }}
-				</cdx-progress-indicator>
-			</div>
-			<div
-				class="mw-wikimediaantiabuse-abuse-review-actions
-					mw-wikimediaantiabuse-abuse-review-actions--verdicts"
-			>
-				<cdx-button
-					v-if="tag && verdict !== 'noFurtherAction'"
-					type="button"
-					:disabled="busy || suppressedBlocksMark"
-					:aria-describedby="suppressedBlocksMark ? noteId : null"
-					@click="setVerdict( verdict === 'falsePositive' ? null : 'falsePositive' )"
-				>
-					{{ falsePositiveLabel }}
-				</cdx-button>
+	<!-- A click reaching the row's summary element opens or closes it. -->
+	<span class="mw-wikimediaantiabuse-abuse-review-verdicts" @click.stop.prevent>
+		<cdx-toggle-button
+			v-for="button in buttons"
+			:key="button.verdict"
+			size="small"
+			:model-value="verdict === button.verdict"
+			:disabled="busy || button.disabled"
+			:aria-label="button.label"
+			:title="button.title"
+			:aria-describedby="button.note ? noteId : null"
+			@update:model-value="setVerdict( verdict === button.verdict ? null : button.verdict )"
+		>
+			<cdx-icon :icon="button.icon"></cdx-icon>
+		</cdx-toggle-button>
 
-				<cdx-button
-					v-if="tag && verdict !== 'falsePositive'"
-					type="button"
-					:disabled="busy || suppressedBlocksMark"
-					:aria-describedby="suppressedBlocksMark ? noteId : null"
-					@click="setVerdict( verdict === 'noFurtherAction' ? null : 'noFurtherAction' )"
-				>
-					{{ noFurtherActionLabel }}
-				</cdx-button>
+		<cdx-progress-indicator v-if="busy">
+			{{ $i18n( 'wikimediaantiabuse-special-abuse-review-action-in-progress' ).text() }}
+		</cdx-progress-indicator>
 
-				<span
-					v-if="isSuppressed"
-					:id="noteId"
-					class="mw-wikimediaantiabuse-abuse-review-suppressed-note"
-				>
-					{{ $i18n(
-						'wikimediaantiabuse-special-abuse-review-already-suppressed-note'
-					).text() }}
-				</span>
-			</div>
-		</template>
-	</div>
+		<span
+			v-if="disabledNote"
+			:id="noteId"
+			class="mw-wikimediaantiabuse-abuse-review-disabled-note"
+		>
+			{{ disabledNote }}
+		</span>
+	</span>
 </template>
 
 <script>
 const { defineComponent, ref, computed } = require( 'vue' );
 // CodexModule's codexComponents option injects this synthetic file; requiring
 // '@wikimedia/codex' directly only works for a full-library dependency.
-const { CdxButton, CdxProgressIndicator } = require( './../codex.js' );
+const { CdxIcon, CdxProgressIndicator, CdxToggleButton } = require( './../codex.js' );
+const { cdxIconCheck, cdxIconClose } = require( './../icons.json' );
 const {
 	markAsFalsePositive,
 	unmarkAsFalsePositive,
@@ -64,19 +43,29 @@ const {
 } = require( './../rest.js' );
 const { actionErrorMessage } = require( './../utils.js' );
 
-// Each verdict, and the calls that set and clear it.
 const REQUESTS = {
 	falsePositive: { mark: markAsFalsePositive, unmark: unmarkAsFalsePositive },
 	noFurtherAction: { mark: markNoFurtherAction, unmark: unmarkNoFurtherAction }
 };
 
+const LABEL_KEYS = {
+	falsePositive: {
+		mark: 'wikimediaantiabuse-special-abuse-review-action-mark-false-positive',
+		unmark: 'wikimediaantiabuse-special-abuse-review-action-unmark-false-positive'
+	},
+	noFurtherAction: {
+		mark: 'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action',
+		unmark: 'wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action'
+	}
+};
+
 // @vue/component
 module.exports = exports = defineComponent( {
 	name: 'RowActions',
-	components: { CdxButton, CdxProgressIndicator },
+	components: { CdxIcon, CdxProgressIndicator, CdxToggleButton },
 	props: {
 		revId: { type: Number, required: true },
-		tag: { type: String, default: null },
+		tag: { type: String, required: true },
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
 		isSuppressed: { type: Boolean, default: false }
@@ -84,7 +73,6 @@ module.exports = exports = defineComponent( {
 	emits: [ 'verdict-changed' ],
 	setup( props, { emit } ) {
 		const busy = ref( false );
-		// A row carries at most one verdict, so one ref holds it and null means none.
 		const verdict = ref( null );
 		if ( props.isFalsePositive ) {
 			verdict.value = 'falsePositive';
@@ -92,17 +80,50 @@ module.exports = exports = defineComponent( {
 			verdict.value = 'noFurtherAction';
 		}
 
-		const suppressedBlocksMark = computed( () => props.isSuppressed && verdict.value === null );
-		const falsePositiveLabel = computed( () => mw.msg(
-			verdict.value === 'falsePositive' ?
-				'wikimediaantiabuse-special-abuse-review-action-unmark-false-positive' :
-				'wikimediaantiabuse-special-abuse-review-action-mark-false-positive'
-		) );
-		const noFurtherActionLabel = computed( () => mw.msg(
-			verdict.value === 'noFurtherAction' ?
-				'wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action' :
-				'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action'
-		) );
+		const suppressedBlocksMark = computed(
+			() => props.isSuppressed && verdict.value === null
+		);
+
+		const disabledNote = computed( () => suppressedBlocksMark.value ?
+			mw.msg( 'wikimediaantiabuse-special-abuse-review-already-suppressed-note' ) :
+			null
+		);
+
+		/**
+		 * The server refuses two verdicts on one flag, so holding one disables the
+		 * other's button.
+		 *
+		 * @param {string} own
+		 * @return {boolean}
+		 */
+		function isDisabled( own ) {
+			return suppressedBlocksMark.value ||
+				( verdict.value !== null && verdict.value !== own );
+		}
+
+		/**
+		 * @param {string} own
+		 * @param {Object} icon
+		 * @return {Object}
+		 */
+		function toButton( own, icon ) {
+			const held = verdict.value === own;
+			const label = mw.msg( LABEL_KEYS[ own ][ held ? 'unmark' : 'mark' ] );
+
+			return {
+				verdict: own,
+				icon,
+				disabled: isDisabled( own ),
+				note: disabledNote.value,
+				label,
+				title: disabledNote.value || label
+			};
+		}
+
+		const buttons = computed( () => [
+			toButton( 'noFurtherAction', cdxIconCheck ),
+			toButton( 'falsePositive', cdxIconClose )
+		] );
 
 		/**
 		 * @param {string|null} next The verdict to set, or null to clear the one held
@@ -112,7 +133,6 @@ module.exports = exports = defineComponent( {
 				return;
 			}
 
-			// Clearing acts on the verdict the row holds; setting on the one asked for.
 			const requests = REQUESTS[ next === null ? verdict.value : next ];
 			const request = next === null ? requests.unmark : requests.mark;
 			busy.value = true;
@@ -132,13 +152,12 @@ module.exports = exports = defineComponent( {
 				return;
 			}
 			verdict.value = next;
-			// The tag chips are rendered above the island, so the row is told to flip them.
 			emit( 'verdict-changed', next );
 		}
 
 		return {
-			busy, verdict, suppressedBlocksMark, falsePositiveLabel, noFurtherActionLabel,
-			noteId: 'mw-wikimediaantiabuse-abuse-review-suppressed-note-' + props.revId,
+			busy, verdict, buttons, disabledNote,
+			noteId: 'mw-wikimediaantiabuse-abuse-review-disabled-note-' + props.revId,
 			setVerdict
 		};
 	}

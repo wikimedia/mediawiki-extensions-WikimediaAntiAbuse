@@ -141,8 +141,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'.mw-wikimediaantiabuse-abuse-review-row__details'
 			);
 			$detailsCellHtml = DOMCompat::getOuterHTML( $detailsCellNode );
+
+			$isOpenRow = $tableRowIndex === 0;
 			$this->assertSame(
-				$tableRowIndex === 0,
+				$isOpenRow,
 				DOMCompat::getAttribute( $detailsCellNode, 'open' ) !== null,
 				'only the first row arrives open'
 			);
@@ -265,81 +267,32 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'.mw-wikimediaantiabuse-abuse-review-row__tags',
 				true
 			);
-			if ( in_array(
-				$actualRevId,
-				[
-					static::$taggedContentRevId,
-					static::$suppressedContentRevId,
-					static::$noFurtherActionRevId,
-					static::$deletedNoFurtherActionRevId,
-					static::$revertableTaggedContentRevId,
-				],
-				true
-			) ) {
-				$this->assertStringContainsString(
-					'(tag-mw-private-personal-info)',
-					$tagsCellHtml
-				);
-			} elseif ( in_array(
-				$actualRevId,
-				[ static::$falsePositiveRevId, static::$suppressedFalsePositiveRevId ],
-				true
-			) ) {
-				$this->assertStringContainsString(
-					'(tag-mw-private-personal-info-false-positive)',
-					$tagsCellHtml
-				);
-			}
-
-			// Both tag-description variants are rendered so the visible one can switch client-side
-			// when the row is marked or unmarked.
 			$this->assertStringContainsString(
-				'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
+				'(tag-mw-private-personal-info)',
 				$tagsCellHtml
 			);
-			$this->assertStringContainsString(
-				'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
-				$tagsCellHtml
+			$this->assertStringNotContainsString(
+				'(tag-mw-private-personal-info-false-positive)',
+				$tagsCellHtml,
+				'the flag description is not replaced by the verdict'
+			);
+			$this->assertStringNotContainsString(
+				'(tag-mw-private-personal-info-no-further-action)',
+				$tagsCellHtml,
+				'The "no further action" tag description should never be present in the page'
 			);
 
-			// The tag variant not matching the row's current state starts hidden.
 			$isFalsePositiveRow = in_array(
 				$actualRevId,
 				[ static::$falsePositiveRevId, static::$suppressedFalsePositiveRevId ],
 				true
 			);
-			$notFpTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
-				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--not-false-positive'
-			), 'class' );
-			$fpTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
-				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--false-positive'
-			), 'class' );
-			$this->assertSame(
-				$isFalsePositiveRow,
-				str_contains( $notFpTagClass, 'mw-wikimediaantiabuse-hidden' )
-			);
-			$this->assertSame(
-				!$isFalsePositiveRow,
-				str_contains( $fpTagClass, 'mw-wikimediaantiabuse-hidden' )
-			);
-
-			// The no-further-action tag is rendered on every row; it starts hidden unless
-			// the row is marked as needing no further action.
 			$isNoFurtherActionRow = in_array(
 				$actualRevId,
 				[ static::$noFurtherActionRevId, static::$deletedNoFurtherActionRevId ],
 				true
 			);
-			$noFurtherActionTagClass = DOMCompat::getAttribute( DOMCompat::querySelector(
-				$tableRow, '.mw-wikimediaantiabuse-abuse-review-tag--no-further-action'
-			), 'class' );
-			$this->assertSame(
-				!$isNoFurtherActionRow,
-				str_contains( $noFurtherActionTagClass, 'mw-wikimediaantiabuse-hidden' )
-			);
 
-			// The verdict controls are mounted client-side, so what the server owes the row
-			// is the state on the mount point rather than rendered controls.
 			$verdicts = $this->getVerdictsPayload( $tableRow );
 			$this->assertSame(
 				'mw-private-personal-info',
@@ -367,6 +320,28 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$isNoFurtherActionRow,
 				$verdicts['isNoFurtherAction'],
 				'the row reports whether it has already been marked as needing no further action'
+			);
+
+			$suppressedBlocksMark = $isSuppressedRow && !$isFalsePositiveRow && !$isNoFurtherActionRow;
+			$note = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
+			$this->assertVerdictButtons(
+				$tableRow,
+				[
+					[
+						'pressed' => $isNoFurtherActionRow,
+						'disabled' => $suppressedBlocksMark || $isFalsePositiveRow,
+						'title' => $suppressedBlocksMark
+							? $note
+							: self::getExpectedVerdictLabel( 'no-further-action', $isNoFurtherActionRow ),
+					],
+					[
+						'pressed' => $isFalsePositiveRow,
+						'disabled' => $suppressedBlocksMark || $isNoFurtherActionRow,
+						'title' => $suppressedBlocksMark
+							? $note
+							: self::getExpectedVerdictLabel( 'false-positive', $isFalsePositiveRow ),
+					],
+				]
 			);
 
 			$actionLinks = $this->getActionLinks( $tableRow );
@@ -641,10 +616,46 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
+	private static function getExpectedVerdictLabel( string $verdict, bool $held ): string {
+		return '(wikimediaantiabuse-special-abuse-review-action-'
+			. ( $held ? 'unmark-' : 'mark-' ) . $verdict . ')';
+	}
+
 	/**
-	 * The verdict controls are rendered client-side, so the server's side of the contract is
-	 * the state it hands over on the mount point.
+	 * @param Element $row
+	 * @param array[] $expected One [ 'pressed' => bool, 'disabled' => bool, 'title' => string ]
+	 *   per button
 	 */
+	private function assertVerdictButtons( Element $row, array $expected ): void {
+		$buttons = DOMCompat::querySelectorAll(
+			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts button'
+		);
+		$this->assertSameSize( $expected, $buttons, 'one button per verdict' );
+
+		foreach ( $expected as $index => $state ) {
+			$button = $buttons[$index];
+			$this->assertSame(
+				$state['pressed'] ? 'true' : 'false',
+				DOMCompat::getAttribute( $button, 'aria-pressed' ),
+				"button $index reads as pressed only when the row holds that verdict"
+			);
+			$this->assertSame(
+				$state['disabled'],
+				DOMCompat::getAttribute( $button, 'disabled' ) !== null,
+				"button $index is out of reach only when the row's state blocks it"
+			);
+			$this->assertNotNull(
+				DOMCompat::getAttribute( $button, 'aria-label' ),
+				"button $index is named, carrying only an icon"
+			);
+			$this->assertSame(
+				$state['title'],
+				DOMCompat::getAttribute( $button, 'title' ),
+				"button $index explains itself on hover, a verdict it holds before the note"
+			);
+		}
+	}
+
 	private function getVerdictsPayload( Document|Element $node ): array {
 		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
 			$node,

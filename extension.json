@@ -131,8 +131,11 @@
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse.styles",
 			"codexStyleOnly": true,
 			"codexComponents": [
+				"CdxButton",
+				"CdxIcon",
 				"CdxMessage",
 				"CdxProgressIndicator",
+				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
 				"CdxCheckbox"
@@ -146,8 +149,9 @@
 			"localBasePath": "modules/ext.wikimediaAntiAbuse",
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
 			"codexComponents": [
-				"CdxButton",
+				"CdxIcon",
 				"CdxProgressIndicator",
+				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
 				"CdxCheckbox"
@@ -159,17 +163,20 @@
 				"components/RowActions.vue",
 				"rest.js",
 				"utils.js",
-				"components/FilterDialog.vue"
+				"components/FilterDialog.vue",
+				{
+					"name": "icons.json",
+					"callback": "MediaWiki\\ResourceLoader\\CodexModule::getIcons",
+					"callbackParam": [
+						"cdxIconCheck",
+						"cdxIconClose"
+					]
+				}
 			],
 			"dependencies": [
 				"mediawiki.api"
 			],
 			"messages": [
-				"wikimediaantiabuse-special-abuse-review-actions-heading",
-				"wikimediaantiabuse-special-abuse-review-verdicts-heading",
-				"wikimediaantiabuse-special-abuse-review-action-suppress",
-				"wikimediaantiabuse-special-abuse-review-action-revision-delete",
-				"wikimediaantiabuse-special-abuse-review-action-revert",
 				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",
 				"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive",
 				"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action",

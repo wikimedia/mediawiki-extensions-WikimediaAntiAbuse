@@ -4,98 +4,64 @@ const { flushPromises } = require( 'vue-test-utils' );
 const { mountRowActions } = require( 'ext.wikimediaAntiAbuse/mountRowActions.js' );
 
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
-const HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
-const FALSE_POSITIVE_TAG = 'mw-wikimediaantiabuse-abuse-review-tag--false-positive';
-const NOT_FALSE_POSITIVE_TAG = 'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive';
-const NO_FURTHER_ACTION_TAG = 'mw-wikimediaantiabuse-abuse-review-tag--no-further-action';
-const MARK_BUTTON_LABEL = 'Mark as false positive';
-const MARK_NO_FURTHER_ACTION_BUTTON_LABEL = 'No further action needed';
 
-QUnit.module( 'ext.wikimediaAntiAbuse.mountRowActions', QUnit.newMwEnvironment( {
-	messages: {
-		'wikimediaantiabuse-special-abuse-review-action-mark-false-positive': MARK_BUTTON_LABEL,
-		'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action':
-			MARK_NO_FURTHER_ACTION_BUTTON_LABEL
-	}
-} ) );
+QUnit.module( 'ext.wikimediaAntiAbuse.mountRowActions', QUnit.newMwEnvironment() );
 
 /**
- * A review row shaped the way the pager renders one.
+ * A review row shaped the way the pager renders one: a details element holding the flag
+ * and the mount point.
  *
  * @param {number|null} revId Null omits the row's data-rev-id attribute
  * @param {Object|null} payload Null omits the data-verdicts attribute entirely
+ * @param {boolean} open Whether the row starts open, as the first one does
  * @return {HTMLElement}
  */
-function makeRow( revId, payload ) {
-	const row = document.createElement( 'div' );
+function makeRow( revId, payload, open ) {
+	const row = document.createElement( 'tr' );
 	row.className = 'mw-wikimediaantiabuse-abuse-review-row';
 	if ( revId !== null ) {
 		row.dataset.revId = revId;
 	}
 
-	const el = ( tag, className, hidden ) => {
-		const node = document.createElement( tag );
-		// The following classes are used here:
-		// * mw-wikimediaantiabuse-hidden
-		// * mw-wikimediaantiabuse-abuse-review-verdicts-app
-		// * mw-wikimediaantiabuse-abuse-review-tag--false-positive
-		// * mw-wikimediaantiabuse-abuse-review-tag--not-false-positive
-		// * mw-wikimediaantiabuse-abuse-review-tag--no-further-action
-		node.className = className + ( hidden ? ' ' + HIDDEN_CLASS : '' );
-		return node;
-	};
+	const cell = document.createElement( 'td' );
+	const details = document.createElement( 'details' );
+	details.className = 'mw-wikimediaantiabuse-abuse-review-row__details';
+	details.open = !!open;
 
-	const summary = document.createElement( 'div' );
-	summary.append(
-		el( 'span', FALSE_POSITIVE_TAG, true ),
-		el( 'span', NOT_FALSE_POSITIVE_TAG, false ),
-		el( 'span', NO_FURTHER_ACTION_TAG, true )
-	);
-
-	const content = document.createElement( 'div' );
-	content.className = 'mw-wikimediaantiabuse-abuse-review-row__content';
-
-	const mountPoint = el( 'div', APP_CLASS, false );
+	const summary = document.createElement( 'summary' );
+	const mountPoint = document.createElement( 'span' );
+	// The following classes are used here:
+	// * mw-wikimediaantiabuse-abuse-review-verdicts-app
+	mountPoint.className = APP_CLASS;
 	if ( payload !== null ) {
 		mountPoint.setAttribute( 'data-verdicts', JSON.stringify( payload ) );
 	}
+	summary.appendChild( mountPoint );
+	details.appendChild( summary );
+	cell.appendChild( details );
+	row.appendChild( cell );
 
-	content.appendChild( mountPoint );
-	row.append( summary, content );
-	document.getElementById( 'qunit-fixture' ).appendChild( row );
+	let tbody = document.getElementById( 'qunit-fixture' ).querySelector( 'tbody' );
+	if ( !tbody ) {
+		const table = document.createElement( 'table' );
+		tbody = document.createElement( 'tbody' );
+		table.appendChild( tbody );
+		document.getElementById( 'qunit-fixture' ).appendChild( table );
+	}
+	tbody.appendChild( row );
 	return row;
 }
 
-const payloadFor = ( revId, overrides ) => Object.assign( {
+const payloadFor = ( overrides ) => Object.assign( {
 	tag: 'mw-private-personal-info',
 	isFalsePositive: false,
 	isNoFurtherAction: false,
 	isSuppressed: false
 }, overrides );
 
-const isHidden = ( row, className ) => row.querySelector( '.' + className ).classList.contains( HIDDEN_CLASS );
-
-/**
- * Click the row's control carrying the given label. A row offers one control per verdict,
- * so the label is what tells them apart.
- *
- * @param {HTMLElement} row
- * @param {string} label
- */
-function clickButton( row, label ) {
-	const buttons = Array.prototype.filter.call(
-		row.querySelectorAll( '.mw-wikimediaantiabuse-abuse-review-actions button' ),
-		( button ) => button.textContent.trim() === label
-	);
-	if ( buttons.length !== 1 ) {
-		throw new Error( 'Expected one "' + label + '" control, found ' + buttons.length );
-	}
-	buttons[ 0 ].click();
-}
-
 QUnit.test( 'it mounts an app into every row', async ( assert ) => {
-	const first = makeRow( 1, payloadFor( 1 ) );
-	const second = makeRow( 2, payloadFor( 2 ) );
+	const first = makeRow( 1, payloadFor(), true );
+	const second = makeRow( 2, payloadFor(), false );
 
 	mountRowActions();
 	await flushPromises();
@@ -113,11 +79,11 @@ QUnit.test( 'it mounts an app into every row', async ( assert ) => {
 } );
 
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {
-	const broken = makeRow( 1, payloadFor( 1 ) );
+	const broken = makeRow( 1, payloadFor(), false );
 	broken.querySelector( '.' + APP_CLASS ).setAttribute( 'data-verdicts', '{not json' );
-	const missing = makeRow( 2, null );
-	const anonymous = makeRow( null, payloadFor( 4 ) );
-	const healthy = makeRow( 3, payloadFor( 3 ) );
+	const missing = makeRow( 2, null, false );
+	const anonymous = makeRow( null, payloadFor(), false );
+	const healthy = makeRow( 3, payloadFor(), false );
 
 	mountRowActions();
 	await flushPromises();
@@ -142,53 +108,4 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 		null,
 		'the healthy row still mounts, which is the point of the guard'
 	);
-} );
-
-QUnit.test( 'marking a false positive flips the server-rendered tag chips', async function ( assert ) {
-	this.sandbox.stub( mw.Rest.prototype, 'post' )
-		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
-	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
-
-	const row = makeRow( 1, payloadFor( 1 ) );
-	const other = makeRow( 2, payloadFor( 2 ) );
-	mountRowActions();
-	await flushPromises();
-
-	assert.true( isHidden( row, FALSE_POSITIVE_TAG ), 'the false-positive chip starts hidden' );
-
-	clickButton( row, MARK_BUTTON_LABEL );
-	await flushPromises();
-
-	assert.false(
-		isHidden( row, FALSE_POSITIVE_TAG ),
-		'the false-positive chip is shown once the row is marked'
-	);
-	assert.true( isHidden( row, NOT_FALSE_POSITIVE_TAG ), 'the original chip is hidden' );
-	assert.true( isHidden( row, NO_FURTHER_ACTION_TAG ), 'the other verdict\'s chip stays hidden' );
-	assert.true(
-		isHidden( other, FALSE_POSITIVE_TAG ),
-		'a neighbouring row is left alone'
-	);
-} );
-
-QUnit.test( 'marking as needing no further action flips its own chip', async function ( assert ) {
-	this.sandbox.stub( mw.Rest.prototype, 'post' )
-		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
-	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
-
-	const row = makeRow( 1, payloadFor( 1 ) );
-	mountRowActions();
-	await flushPromises();
-
-	assert.true( isHidden( row, NO_FURTHER_ACTION_TAG ), 'the chip starts hidden' );
-
-	clickButton( row, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
-	await flushPromises();
-
-	assert.false( isHidden( row, NO_FURTHER_ACTION_TAG ), 'the chip is shown once the row is marked' );
-	assert.false(
-		isHidden( row, NOT_FALSE_POSITIVE_TAG ),
-		'the flag itself stays, the verdict standing beside it'
-	);
-	assert.true( isHidden( row, FALSE_POSITIVE_TAG ), 'the other verdict\'s chip stays hidden' );
 } );

@@ -154,12 +154,6 @@ html {
 		padding: 0 @spacing-100 @spacing-100;
 	}
 
-	// The summary follows the verdicts here, so it holds itself off them. Once the
-	// verdicts move up into the flags column it leads the content and needs no margin.
-	&__summary {
-		margin-top: @spacing-100;
-	}
-
 	&__changes-header {
 		display: flex;
 		justify-content: space-between;
@@ -220,22 +214,41 @@ html {
 	gap: @spacing-50;
 }
 
-// Closes off the verdicts before the edit summary starts.
 .mw-wikimediaantiabuse-abuse-review-verdicts-app {
-	border-bottom: @border-width-base @border-style-base @border-color-muted;
-	padding-bottom: @spacing-100;
+	display: inline-flex;
 }
 
-// Stacked by default; a percentage basis here would inflate the flex container's
-// intrinsic width and widen the fixed-layout cell holding it.
-.mw-wikimediaantiabuse-abuse-review-actions-groups {
-	display: flex;
-	flex-direction: column;
-	gap: @spacing-50;
+.mw-wikimediaantiabuse-abuse-review-verdict-icon {
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	mask-position: center;
+	-webkit-mask-size: contain;
+	mask-size: contain;
+
+	&--no-further-action {
+		.cdx-mixin-css-icon-background-image( @cdx-icon-check, @color-base );
+	}
+
+	&--false-positive {
+		.cdx-mixin-css-icon-background-image( @cdx-icon-close, @color-base );
+	}
 }
 
-.mw-wikimediaantiabuse-abuse-review-suppressed-note {
-	.mixin-screen-reader-text();
+.cdx-toggle-button--toggled-on .mw-wikimediaantiabuse-abuse-review-verdict-icon {
+	background-color: @color-inverted-fixed;
+}
+
+.cdx-toggle-button:disabled .mw-wikimediaantiabuse-abuse-review-verdict-icon {
+	background-color: @color-disabled-emphasized;
+}
+
+.mw-wikimediaantiabuse-abuse-review-verdicts {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: @spacing-25;
+	cursor: auto;
 }
 
 .mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-abuse-review-row__summary {
@@ -245,32 +258,9 @@ html {
 	padding: 0 0 @spacing-100;
 }
 
-// Both headings share a box, so the links and the verdicts read as one rhythm.
 .mw-wikimediaantiabuse-abuse-review-actions-heading {
-	display: flex;
-	align-items: center;
-	min-height: @size-150;
 	margin-top: @spacing-100;
 	margin-bottom: @spacing-50;
-}
-
-// The app lays its own headings out in a flex column that already spaces them, and
-// anchors the spinner it shows while a request is in flight.
-.mw-wikimediaantiabuse-abuse-review-actions-groups .mw-wikimediaantiabuse-abuse-review-actions-heading {
-	position: relative;
-	margin: 0;
-
-	> .cdx-progress-indicator {
-		position: absolute;
-		top: 50%;
-		left: 50%;
-		transform: translate( -50%, -50% );
-	}
-}
-
-// Two classes, to out-specify Codex's own `.cdx-button { display: inline-flex }`.
-.mw-wikimediaantiabuse-abuse-review-row .mw-wikimediaantiabuse-hidden {
-	display: none;
 }
 
 .mw-wikimediaantiabuse-abuse-review-actions {
@@ -287,6 +277,10 @@ html {
 			min-width: max-content;
 		}
 	}
+}
+
+.mw-wikimediaantiabuse-abuse-review-disabled-note {
+	.mixin-screen-reader-text();
 }
 
 @media screen and ( max-width: @max-width-breakpoint-mobile ) {

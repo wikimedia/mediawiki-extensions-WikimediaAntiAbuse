@@ -2,24 +2,22 @@
 
 const Vue = require( 'vue' );
 const RowActions = require( './components/RowActions.vue' );
-const { setRowVerdict } = require( './utils.js' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
 const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**
- * Mount one app per row. Only a row's verdict controls are Vue; the rest of the queue
+ * Mount one app per row. Only a row's verdict buttons are Vue; the rest of the queue
  * arrives as HTML from the server.
  */
 function mountRowActions() {
-	// A static list, NodeList#forEach not being available to every browser we support.
+	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
 		let props;
 		try {
 			props = JSON.parse( mountPoint.getAttribute( 'data-verdicts' ) );
 		} catch ( error ) {
-			// One unreadable row must not cost the rest of the queue its verdict controls.
 			mw.log.warn( 'Skipping a review row with unreadable verdicts: ' + error );
 			return;
 		}
@@ -30,23 +28,14 @@ function mountRowActions() {
 		}
 
 		const row = mountPoint.closest( ROW_SELECTOR );
-		// The row already names the revision it is about, so the payload only carries what
-		// the viewer may do with it.
 		const revId = Number( row && row.dataset.revId );
 		if ( !revId ) {
 			mw.log.warn( 'Skipping a review row that names no revision' );
 			return;
 		}
 
-		// The tag chips are server-rendered above, so the row is flipped from here.
-		const app = Vue.createMwApp( RowActions, Object.assign( {}, props, {
-			revId,
-			onVerdictChanged: ( verdict ) => {
-				setRowVerdict( row, verdict );
-			}
-		} ) );
-		// Vue restarts its generated ids per app, so without a prefix every row's Codex
-		// components claim the same ones and a label points into the row above.
+		const app = Vue.createMwApp( RowActions, Object.assign( {}, props, { revId } ) );
+		// Without a per-app id prefix, every row's Codex components generate the same ids.
 		app.config.idPrefix = ID_PREFIX + revId;
 		app.mount( mountPoint );
 	} );

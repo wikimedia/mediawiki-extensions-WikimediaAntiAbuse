@@ -5,17 +5,19 @@ const { mount, flushPromises } = require( 'vue-test-utils' );
 // inside its own CodexModule.
 const RowActions = require( 'ext.wikimediaAntiAbuse/components/RowActions.vue' );
 
+const MARK_FALSE_POSITIVE =
+	'(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)';
+const UNMARK_FALSE_POSITIVE =
+	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
+const MARK_NO_FURTHER_ACTION =
+	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
+const UNMARK_NO_FURTHER_ACTION =
+	'(wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action)';
+const SUPPRESSED_NOTE = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
+
 const mounted = [];
 
 QUnit.module( 'ext.wikimediaAntiAbuse.RowActions', QUnit.newMwEnvironment( {
-	messages: {
-		'wikimediaantiabuse-special-abuse-review-action-mark-false-positive': 'No action needed',
-		'wikimediaantiabuse-special-abuse-review-action-unmark-false-positive': 'Undo no action needed',
-		'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action': 'No further action needed',
-		'wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action': 'Needs further action',
-		'wikimediaantiabuse-special-abuse-review-already-suppressed-note': 'Already suppressed.',
-		'wikimediaantiabuse-special-abuse-review-action-in-progress': 'Working…'
-	},
 	afterEach() {
 		// Left mounted, wrappers accumulate across the module and eventually wedge the runner.
 		while ( mounted.length ) {
@@ -41,11 +43,11 @@ const mountRow = ( props, options ) => {
 };
 
 const PROGRESS_INDICATOR = '.cdx-progress-indicator';
-const ACTIONS_PROGRESS_INDICATOR =
-	'.mw-wikimediaantiabuse-abuse-review-actions-heading > .cdx-progress-indicator';
 
-const buttonWithText = ( wrapper, text ) => wrapper.findAll( 'button' )
-	.find( ( button ) => button.text() === text );
+// The buttons carry an icon rather than a label, so what tells them apart is the name
+// they are given for assistive technology.
+const buttonWithLabel = ( wrapper, label ) => wrapper.findAll( 'button' )
+	.find( ( button ) => button.attributes( 'aria-label' ) === label );
 
 // mw.Rest#post rejects jQuery-style with ( code, details ), which a native promise cannot
 // express, so stand in a thenable carrying the same contract rest.js is written against.
@@ -55,52 +57,74 @@ const restRejecting = ( code, details ) => ( {
 	then: ( onSuccess, onError ) => onError( code, details )
 } );
 
-QUnit.test( 'a request in flight is reported on the actions heading', async function ( assert ) {
+QUnit.test( 'both verdicts are offered, neither pressed', ( assert ) => {
+	const wrapper = mountRow();
+
+	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
+		const button = buttonWithLabel( wrapper, label );
+		assert.notStrictEqual( button, undefined, '"' + label + '" is offered' );
+		assert.strictEqual(
+			button.attributes( 'aria-pressed' ),
+			'false',
+			'"' + label + '" is not pressed'
+		);
+		assert.false( button.element.disabled, '"' + label + '" is usable' );
+	} );
+	assert.strictEqual(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).attributes( 'title' ),
+		MARK_NO_FURTHER_ACTION,
+		'the name is also a tooltip, an icon alone saying nothing on hover'
+	);
+} );
+
+QUnit.test( 'a request in flight is reported beside the buttons', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restPending() );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow();
 	assert.false( wrapper.find( PROGRESS_INDICATOR ).exists(), 'nothing spinning to begin with' );
 
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 
-	assert.true(
-		wrapper.find( ACTIONS_PROGRESS_INDICATOR ).exists(),
-		'the heading reports it'
-	);
 	assert.strictEqual(
 		wrapper.findAll( PROGRESS_INDICATOR ).length,
 		1,
 		'one spinner is shown, not one per control'
 	);
+	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
+		assert.true(
+			buttonWithLabel( wrapper, label ).element.disabled,
+			'"' + label + '" cannot be pressed while the request is in flight'
+		);
+	} );
 } );
 
 QUnit.test( 'a suppressed revision cannot be marked, and says why', ( assert ) => {
 	const wrapper = mountRow( { isSuppressed: true } );
 
-	[ 'No action needed', 'No further action needed' ].forEach( ( label ) => {
-		const mark = buttonWithText( wrapper, label );
+	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
+		const mark = buttonWithLabel( wrapper, label );
 		assert.true(
 			mark.element.disabled,
 			'"' + label + '" is disabled on an already-suppressed revision'
 		);
 		assert.strictEqual(
 			mark.attributes( 'aria-describedby' ),
-			'mw-wikimediaantiabuse-abuse-review-suppressed-note-991',
+			'mw-wikimediaantiabuse-abuse-review-disabled-note-991',
 			'"' + label + '" points at the note explaining it'
 		);
 	} );
 	assert.strictEqual(
-		wrapper.find( '.mw-wikimediaantiabuse-abuse-review-suppressed-note' ).text(),
-		'Already suppressed.',
+		wrapper.find( '.mw-wikimediaantiabuse-abuse-review-disabled-note' ).text(),
+		SUPPRESSED_NOTE,
 		'the note is shown'
 	);
 } );
 
 QUnit.test( 'a suppressed revision that was called a false positive can still be unmarked', ( assert ) => {
 	const wrapper = mountRow( { isSuppressed: true, isFalsePositive: true } );
-	const unmark = buttonWithText( wrapper, 'Undo no action needed' );
+	const unmark = buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE );
 
 	assert.notStrictEqual( unmark, undefined, 'the undo control is offered' );
 	assert.false(
@@ -114,13 +138,25 @@ QUnit.test( 'a suppressed revision that was called a false positive can still be
 	);
 } );
 
-QUnit.test( 'marking a false positive swaps the control for its undo', async function ( assert ) {
+QUnit.test( 'the verdict a row holds blocks the other one', ( assert ) => {
+	const wrapper = mountRow( { isNoFurtherAction: true } );
+
+	const held = buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION );
+	assert.strictEqual( held.attributes( 'aria-pressed' ), 'true', 'the verdict held is pressed' );
+	assert.false( held.element.disabled, 'and can be cleared' );
+	assert.true(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
+		'the other verdict is out of reach, the server refusing two on one flag'
+	);
+} );
+
+QUnit.test( 'marking a false positive presses its button and blocks the other', async function ( assert ) {
 	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow();
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 
 	assert.strictEqual( post.callCount, 1, 'one REST call' );
@@ -129,30 +165,22 @@ QUnit.test( 'marking a false positive swaps the control for its undo', async fun
 		'/wikimediaantiabuse/v0/mark/revision/991/mw-private-personal-info/false-positive',
 		'to the mark endpoint for this revision and tag'
 	);
-	assert.strictEqual(
-		buttonWithText( wrapper, 'No action needed' ),
-		undefined,
-		'the mark button is gone'
-	);
-	assert.notStrictEqual(
-		buttonWithText( wrapper, 'Undo no action needed' ),
-		undefined,
-		'the undo control has taken its place'
-	);
-	assert.strictEqual(
-		buttonWithText( wrapper, 'No further action needed' ),
-		undefined,
-		'the other verdict is withdrawn, a row holding one at a time'
+	const marked = buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE );
+	assert.notStrictEqual( marked, undefined, 'the button now offers to undo the verdict' );
+	assert.strictEqual( marked.attributes( 'aria-pressed' ), 'true', 'and reads as pressed' );
+	assert.true(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
+		'the other verdict is out of reach, a row holding one at a time'
 	);
 } );
 
-QUnit.test( 'marking as needing no further action swaps the control for its undo', async function ( assert ) {
+QUnit.test( 'marking as needing no further action uses its own endpoint', async function ( assert ) {
 	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow();
-	await buttonWithText( wrapper, 'No further action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).trigger( 'click' );
 	await flushPromises();
 
 	assert.strictEqual(
@@ -161,14 +189,13 @@ QUnit.test( 'marking as needing no further action swaps the control for its undo
 		'the no-further-action mark endpoint is used'
 	);
 	assert.notStrictEqual(
-		buttonWithText( wrapper, 'Needs further action' ),
+		buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION ),
 		undefined,
-		'the undo control has taken its place'
+		'the button now offers to undo the verdict'
 	);
-	assert.strictEqual(
-		buttonWithText( wrapper, 'No action needed' ),
-		undefined,
-		'the false-positive verdict is withdrawn'
+	assert.true(
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
+		'the false-positive verdict is out of reach'
 	);
 } );
 
@@ -178,7 +205,7 @@ QUnit.test( 'unmarking no further action calls its own unmark endpoint', async f
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow( { isNoFurtherAction: true } );
-	await buttonWithText( wrapper, 'Needs further action' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION ).trigger( 'click' );
 	await flushPromises();
 
 	assert.strictEqual(
@@ -186,25 +213,21 @@ QUnit.test( 'unmarking no further action calls its own unmark endpoint', async f
 		'/wikimediaantiabuse/v0/unmark/revision/991/mw-private-personal-info/no-further-action',
 		'the no-further-action unmark endpoint is used'
 	);
-	assert.notStrictEqual(
-		buttonWithText( wrapper, 'No action needed' ),
-		undefined,
-		'the false-positive verdict is offered again'
-	);
-	assert.notStrictEqual(
-		buttonWithText( wrapper, 'No further action needed' ),
-		undefined,
-		'the no-further-action verdict is offered again'
-	);
+	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
+		assert.false(
+			buttonWithLabel( wrapper, label ).element.disabled,
+			'"' + label + '" is offered again'
+		);
+	} );
 } );
 
-QUnit.test( 'unmarking calls the unmark endpoint', async function ( assert ) {
+QUnit.test( 'unmarking a false positive calls the unmark endpoint', async function ( assert ) {
 	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow( { isFalsePositive: true } );
-	await buttonWithText( wrapper, 'Undo no action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 
 	assert.strictEqual(
@@ -213,7 +236,7 @@ QUnit.test( 'unmarking calls the unmark endpoint', async function ( assert ) {
 		'the unmark endpoint is used'
 	);
 	assert.notStrictEqual(
-		buttonWithText( wrapper, 'No action needed' ),
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ),
 		undefined,
 		'the mark control comes back'
 	);
@@ -229,7 +252,7 @@ QUnit.test( 'a failed mark leaves the control alone and reports the error', asyn
 	const notify = this.sandbox.stub( mw, 'notify' );
 
 	const wrapper = mountRow();
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 
 	assert.deepEqual(
@@ -238,7 +261,7 @@ QUnit.test( 'a failed mark leaves the control alone and reports the error', asyn
 		'the REST message is surfaced'
 	);
 	assert.notStrictEqual(
-		buttonWithText( wrapper, 'No action needed' ),
+		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ),
 		undefined,
 		'the row still offers marking, nothing having changed'
 	);
@@ -250,7 +273,7 @@ QUnit.test( 'marking reports upwards, since the tag chips live outside the app',
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
 	const wrapper = mountRow();
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 	assert.deepEqual(
 		wrapper.emitted( 'verdict-changed' ),
@@ -258,7 +281,7 @@ QUnit.test( 'marking reports upwards, since the tag chips live outside the app',
 		'marking reports the new verdict so the row summary can be flipped'
 	);
 
-	await buttonWithText( wrapper, 'Undo no action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 	assert.deepEqual(
 		wrapper.emitted( 'verdict-changed' )[ 1 ],
@@ -274,7 +297,7 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 	this.sandbox.stub( mw, 'notify' );
 
 	const wrapper = mountRow();
-	await buttonWithText( wrapper, 'No action needed' ).trigger( 'click' );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 	await flushPromises();
 
 	assert.strictEqual(
@@ -282,4 +305,20 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 		undefined,
 		'nothing is reported for a change that did not happen'
 	);
+} );
+
+QUnit.test( 'a click on a button does not reach the row it would open', async ( assert ) => {
+	// On the page the app sits inside the summary element that opens the row, which any
+	// click reaching it would toggle. This stands in for that ancestor.
+	const ancestor = document.createElement( 'div' );
+	document.getElementById( 'qunit-fixture' ).appendChild( ancestor );
+	let reachedAncestor = 0;
+	ancestor.addEventListener( 'click', () => {
+		reachedAncestor++;
+	} );
+
+	const wrapper = mountRow( {}, { attachTo: ancestor } );
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
+
+	assert.strictEqual( reachedAncestor, 0, 'the click stops at the buttons' );
 } );

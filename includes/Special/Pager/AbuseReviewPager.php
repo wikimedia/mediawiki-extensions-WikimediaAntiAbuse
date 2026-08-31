@@ -33,8 +33,6 @@ use Wikimedia\Rdbms\RawSQLExpression;
 
 class AbuseReviewPager extends CodexTablePager {
 
-	private const string HIDDEN_CLASS = 'mw-wikimediaantiabuse-hidden';
-
 	private const string TARGET_FIELD = 'target';
 	private const string FLAGS_FIELD = 'flags';
 	private const string TIMESTAMP_FIELD = 'timestamp';
@@ -200,18 +198,21 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private function buildRowContent( stdClass $row ): string {
 		$title = Title::makeTitle( $row->namespace, $row->title );
-		$tag = $this->getFirstReviewableTag( $row->ts_tags );
 
 		return Html::rawElement(
 			'div',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__content' ],
-			$this->buildRevisionActions( $title, $row )
-				. $this->buildVerdictsApp( $row, $tag )
-				. $this->buildEditSummary( $title, $row )
+			$this->buildEditSummary( $title, $row )
 				. $this->buildChanges( $title, $row )
+				. $this->buildRevisionActions( $title, $row )
 		);
 	}
 
+	/**
+	 * When the flagged revision was made, linking to its diff. A revision the viewer may
+	 * not see the text of is left unlinked, and one whose text is deleted is struck
+	 * through, doubly for a suppressed one, matching Special:Contributions.
+	 */
 	private function buildTimestamp( Title $title, stdClass $row ): string {
 		$timestamp = $this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() );
 
@@ -274,29 +275,134 @@ class AbuseReviewPager extends CodexTablePager {
 			return '';
 		}
 
-		// Render every tag state; the ones not matching the row's state start hidden.
 		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
-		$flagChip = $this->renderTag(
-			$tag,
-			'mw-wikimediaantiabuse-abuse-review-tag--not-false-positive',
-			$isFalsePositive
-		);
-		$falsePositiveChip = $this->renderTag(
-			ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'],
-			'mw-wikimediaantiabuse-abuse-review-tag--false-positive',
-			!$isFalsePositive
-		);
-		$noFurtherActionChip = $this->renderTag(
-			ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['noFurtherAction'],
-			'mw-wikimediaantiabuse-abuse-review-tag--no-further-action',
-			!$this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' )
+		$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' );
+
+		$isSuppressed = $this->isSuppressedRow( $row );
+		$mountPoint = Html::rawElement(
+			'span',
+			[
+				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
+				'data-verdicts' => json_encode( [
+					'tag' => $tag,
+					'isFalsePositive' => $isFalsePositive,
+					'isNoFurtherAction' => $isNoFurtherAction,
+					'isSuppressed' => $isSuppressed,
+				], JSON_THROW_ON_ERROR ),
+			],
+			$this->buildVerdictButtons(
+				(int)$row->rev_id,
+				$isFalsePositive,
+				$isNoFurtherAction,
+				$isSuppressed
+			)
 		);
 
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
-			$flagChip . $falsePositiveChip . $noFurtherActionChip
+			$this->getTagDescription( $tag )
+		) . $mountPoint;
+	}
+
+	private function buildVerdictButtons(
+		int $revId,
+		bool $isFalsePositive,
+		bool $isNoFurtherAction,
+		bool $isSuppressed
+	): string {
+		// A suppressed revision takes no new verdict, but one it holds can be cleared.
+		$suppressedBlocksMark = $isSuppressed && !$isFalsePositive && !$isNoFurtherAction;
+
+		$noteMessage = $suppressedBlocksMark
+			? 'wikimediaantiabuse-special-abuse-review-already-suppressed-note'
+			: null;
+
+		$note = '';
+		$noteId = null;
+		if ( $noteMessage !== null ) {
+			$noteId = 'mw-wikimediaantiabuse-abuse-review-disabled-note-' . $revId;
+			$note = Html::element(
+				'span',
+				[ 'id' => $noteId, 'class' => 'mw-wikimediaantiabuse-abuse-review-disabled-note' ],
+				$this->msg( $noteMessage )->text()
+			);
+		}
+
+		return Html::rawElement(
+			'span',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts' ],
+			$this->buildVerdictButton(
+				'no-further-action',
+				$isNoFurtherAction,
+				$suppressedBlocksMark,
+				$isFalsePositive,
+				$noteId,
+				$noteMessage
+			) . $this->buildVerdictButton(
+				'false-positive',
+				$isFalsePositive,
+				$suppressedBlocksMark,
+				$isNoFurtherAction,
+				$noteId,
+				$noteMessage
+			) . $note
 		);
+	}
+
+	/**
+	 * @param string $verdict
+	 * @param bool $pressed Whether the row holds this verdict
+	 * @param bool $rowRefuses Whether the row itself refuses it, which the note explains
+	 * @param bool $otherVerdictHeld Whether the row holds the other verdict instead
+	 * @param string|null $noteId
+	 * @param string|null $noteMessage
+	 * @return string
+	 */
+	private function buildVerdictButton(
+		string $verdict,
+		bool $pressed,
+		bool $rowRefuses,
+		bool $otherVerdictHeld,
+		?string $noteId,
+		?string $noteMessage
+	): string {
+		$disabled = $rowRefuses || $otherVerdictHeld;
+		$label = $this->msg(
+			'wikimediaantiabuse-special-abuse-review-action-'
+				. ( $pressed ? 'unmark-' : 'mark-' ) . $verdict
+		)->text();
+
+		$attribs = [
+			'type' => 'button',
+			'aria-pressed' => $pressed ? 'true' : 'false',
+			'aria-label' => $label,
+			'title' => $rowRefuses && $noteMessage !== null
+				? $this->msg( $noteMessage )->text()
+				: $label,
+			'class' => [
+				'cdx-toggle-button',
+				'cdx-toggle-button--framed',
+				$pressed ? 'cdx-toggle-button--toggled-on' : 'cdx-toggle-button--toggled-off',
+				'cdx-toggle-button--icon-only',
+				'cdx-toggle-button--size-small',
+			],
+		];
+		if ( $disabled ) {
+			$attribs['disabled'] = true;
+		}
+		if ( $rowRefuses && $noteId !== null ) {
+			$attribs['aria-describedby'] = $noteId;
+		}
+
+		return Html::rawElement( 'button', $attribs, Html::element( 'span', [
+			'class' => [
+				'cdx-icon',
+				'cdx-icon--medium',
+				'mw-wikimediaantiabuse-abuse-review-verdict-icon',
+				'mw-wikimediaantiabuse-abuse-review-verdict-icon--' . $verdict,
+			],
+		] ) );
 	}
 
 	private function buildToggle(): string {
@@ -417,14 +523,10 @@ class AbuseReviewPager extends CodexTablePager {
 			$links .= $this->buildActionLink( $url, $messageKey );
 		}
 
-		$heading = Html::rawElement(
-			'div',
+		$heading = Html::element(
+			'h4',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions-heading' ],
-			Html::element(
-				'h4',
-				[],
-				$this->msg( 'wikimediaantiabuse-special-abuse-review-actions-heading' )->text()
-			)
+			$this->msg( 'wikimediaantiabuse-special-abuse-review-revision-actions-heading' )->text()
 		);
 		$container = Html::rawElement(
 			'div',
@@ -435,32 +537,6 @@ class AbuseReviewPager extends CodexTablePager {
 		return $heading . $container;
 	}
 
-	/**
-	 * The mount point the verdict controls are rendered into. A row with no reviewable tag
-	 * and nothing suppressed has no verdict to offer, so it gets none.
-	 */
-	private function buildVerdictsApp( stdClass $row, ?string $tag ): string {
-		$isSuppressed = $this->isSuppressedRow( $row );
-		if ( $tag === null && !$isSuppressed ) {
-			return '';
-		}
-
-		return Html::rawElement( 'div', [
-			'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
-			'data-verdicts' => json_encode( [
-				'tag' => $tag,
-				'isFalsePositive' => $tag !== null
-					&& $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' ),
-				'isNoFurtherAction' => $tag !== null
-					&& $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' ),
-				'isSuppressed' => $isSuppressed,
-			], JSON_THROW_ON_ERROR ),
-		] );
-	}
-
-	/**
-	 * One of the row's actions, as the link the app renders it as.
-	 */
 	private function buildActionLink( string $url, string $messageKey ): string {
 		return Html::element(
 			'a',
@@ -1027,24 +1103,6 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	private function splitTags( ?string $tsTags ): array {
 		return $tsTags !== null && $tsTags !== '' ? explode( ',', $tsTags ) : [];
-	}
-
-	/**
-	 * @param string $tag
-	 * @param string $variantClass Marks which of the row's tag states this chip shows
-	 * @param bool $hidden Whether the chip does not match the row's current state
-	 * @return string
-	 */
-	private function renderTag( string $tag, string $variantClass, bool $hidden ): string {
-		$classes = [ 'mw-wikimediaantiabuse-abuse-review-tag', $variantClass ];
-		if ( $hidden ) {
-			$classes[] = self::HIDDEN_CLASS;
-		}
-		return Html::rawElement(
-			'span',
-			[ 'class' => $classes ],
-			$this->getTagDescription( $tag )
-		);
 	}
 
 	/** A tag description is the same on every row, so parse each one only once per page. */
