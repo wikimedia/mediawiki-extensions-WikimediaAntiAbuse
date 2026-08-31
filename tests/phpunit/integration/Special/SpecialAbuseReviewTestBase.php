@@ -15,6 +15,9 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
  */
 abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 
+	/** Each row holds core's diff table, which a plain `tbody tr` would also match. */
+	protected const string ROW_SELECTOR = 'tbody tr.mw-wikimediaantiabuse-abuse-review-row';
+
 	protected function setUp(): void {
 		parent::setUp();
 
@@ -121,7 +124,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	 * about.
 	 */
 	protected function getRowForRevision( Document|Element $node, int $revId ): Element {
-		foreach ( DOMCompat::querySelectorAll( $node, 'tbody tr' ) as $tableRow ) {
+		foreach ( DOMCompat::querySelectorAll( $node, self::ROW_SELECTOR ) as $tableRow ) {
 			if ( (int)DOMCompat::getAttribute( $tableRow, 'data-rev-id' ) === $revId ) {
 				return $tableRow;
 			}

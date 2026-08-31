@@ -15,8 +15,8 @@ use Wikimedia\Diff\Diff;
 use Wikimedia\Rdbms\IDBAccessObject;
 
 /**
- * Generates parts of a revision (page title, first paragraph, unified diff, added and
- * removed lines) that content policies combine into the content a model evaluates.
+ * Generates parts of a revision (page title, first paragraph, unified diff) that content
+ * policies combine into the content a model evaluates.
  * Everything is returned at full length; callers apply their own length limits.
  *
  * This service is also used by Wikimedia code that is not public. Treat its public
@@ -77,48 +77,6 @@ class RevisionSnippetGenerator {
 
 		return "--- previous_revision\n+++ current_revision\n" .
 			rtrim( ( new DifflibUnifiedDiffFormatter() )->format( $diff ), "\n" );
-	}
-
-	/**
-	 * Lines present in the given revision but not in its parent, with surrounding
-	 * whitespace trimmed. A page creation returns the whole body.
-	 *
-	 * @return string|null Empty string when nothing was added, null when the
-	 *   revision's content is not text
-	 */
-	public function getAddedLines( RevisionRecord $revisionRecord ): ?string {
-		return $this->getLinesFromDiffSide( $revisionRecord, true );
-	}
-
-	/**
-	 * Lines present in the parent revision but not in the given revision, with
-	 * surrounding whitespace trimmed.
-	 *
-	 * @return string|null Empty string when nothing was removed, null when the
-	 *   revision's content is not text
-	 */
-	public function getRemovedLines( RevisionRecord $revisionRecord ): ?string {
-		return $this->getLinesFromDiffSide( $revisionRecord, false );
-	}
-
-	private function getLinesFromDiffSide( RevisionRecord $revisionRecord, bool $added ): ?string {
-		$currentText = $this->getRevisionText( $revisionRecord );
-		if ( $currentText === null ) {
-			return null;
-		}
-
-		$lines = [];
-		foreach ( $this->getDiff( $revisionRecord, $currentText )->getEdits() as $edit ) {
-			if ( $edit->getType() === 'copy' ) {
-				continue;
-			}
-			$sideLines = $added ? $edit->getClosing() : $edit->getOrig();
-			if ( $sideLines ) {
-				array_push( $lines, ...$sideLines );
-			}
-		}
-
-		return trim( implode( "\n", $lines ) );
 	}
 
 	private function getDiff( RevisionRecord $revisionRecord, string $currentText ): Diff {

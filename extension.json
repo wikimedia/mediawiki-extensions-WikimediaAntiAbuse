@@ -117,8 +117,7 @@
 				"RevisionStore",
 				"ArchivedRevisionLookup",
 				"LinkBatchFactory",
-				"RowCommentFormatter",
-				"WikimediaAntiAbuseRevisionSnippetGenerator"
+				"RowCommentFormatter"
 			]
 		}
 	},
@@ -174,7 +173,8 @@
 				}
 			],
 			"dependencies": [
-				"mediawiki.api"
+				"mediawiki.api",
+				"mediawiki.diff"
 			],
 			"messages": [
 				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",
