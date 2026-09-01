@@ -21,6 +21,7 @@ use Wikimedia\Rdbms\IDBAccessObject;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Jobs\CheckRevisionJob
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ContentPolicyEvaluationResult
  * @group Database
  */
 class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
