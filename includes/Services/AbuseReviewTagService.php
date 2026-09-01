@@ -12,10 +12,12 @@ use MediaWiki\Permissions\Authority;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Title\Title;
+use MediaWiki\User\ActorNormalization;
 use Psr\Log\LoggerInterface;
 use StatusValue;
 use Wikimedia\Rdbms\IConnectionProvider;
 use Wikimedia\Rdbms\ReadOnlyMode;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 class AbuseReviewTagService {
 
@@ -30,6 +32,8 @@ class AbuseReviewTagService {
 		/** @var string[] Base reviewable tags enabled on this wiki */
 		private readonly array $enabledReviewableTags,
 		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly ActorNormalization $actorNormalization,
+		private readonly AbuseReviewVerdictAttribution $verdictAttribution,
 		private readonly IConnectionProvider $connectionProvider,
 		private readonly RevisionLookup $revisionLookup,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
@@ -62,7 +66,7 @@ class AbuseReviewTagService {
 		}
 
 		if ( in_array( $tag, $tags, true ) ) {
-			$this->changeTags( $revisionId, [ $falsePositiveTag ], [ $tag ] );
+			$this->changeTags( $revisionId, [ $falsePositiveTag ], [ $tag ], $this->buildVerdictParams( $authority ) );
 			$this->logger->info( 'Marked revision as false positive', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -169,7 +173,7 @@ class AbuseReviewTagService {
 			);
 		}
 
-		$this->changeTags( $revisionId, [ $noFurtherActionTag ], [] );
+		$this->changeTags( $revisionId, [ $noFurtherActionTag ], [], $this->buildVerdictParams( $authority ) );
 		$this->logger->info( 'Marked revision as needing no further action', [
 			'revisionId' => $revisionId,
 			'tag' => $tag,
@@ -301,8 +305,23 @@ class AbuseReviewTagService {
 		);
 	}
 
-	private function changeTags( int $revisionId, array $tagsToAdd, array $tagsToRemove ): void {
+	private function changeTags(
+		int $revisionId,
+		array $tagsToAdd,
+		array $tagsToRemove,
+		?string $params = null
+	): void {
 		$rcId = null;
-		$this->changeTagsStore->updateTags( $tagsToAdd, $tagsToRemove, $rcId, $revisionId );
+		$this->changeTagsStore->updateTags( $tagsToAdd, $tagsToRemove, $rcId, $revisionId, params: $params );
+	}
+
+	/** Attribution for a verdict, keyed by actor ID so it survives a rename of the reviewer. */
+	private function buildVerdictParams( Authority $authority ): string {
+		$actorId = $this->actorNormalization->acquireActorId(
+			$authority->getUser(),
+			$this->connectionProvider->getPrimaryDatabase()
+		);
+
+		return $this->verdictAttribution->encode( $actorId, ConvertibleTimestamp::now() );
 	}
 }

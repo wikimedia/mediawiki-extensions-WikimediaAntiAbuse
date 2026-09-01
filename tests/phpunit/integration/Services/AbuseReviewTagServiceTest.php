@@ -9,12 +9,15 @@ use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
 use MediaWiki\Title\Title;
+use MediaWiki\User\User;
 use MediaWiki\User\UserIdentityValue;
 use MediaWikiIntegrationTestCase;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService
@@ -28,6 +31,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 	private const string PERSONAL_INFO_FALSE_POSITIVE_TAG = 'mw-private-personal-info-false-positive';
 	private const string PERSONAL_INFO_NO_FURTHER_ACTION_TAG = 'mw-private-personal-info-no-further-action';
 	private const string PAGE_NAME = 'Abuse review verdict test page';
+	private const string VERDICT_TIME = '20260901133152';
 
 	private ?bool $originalAlwaysInsert = null;
 
@@ -70,12 +74,20 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		return $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' );
 	}
 
+	private function getAttribution(): AbuseReviewVerdictAttribution {
+		return $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' );
+	}
+
 	private function reviewer(): Authority {
 		return $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed' ] );
 	}
 
-	private function createRevisionId(): int {
-		return $this->editPage( self::PAGE_NAME, 'test content' )
+	private function realReviewer(): User {
+		return $this->getMutableTestUser( [ 'suppress' ] )->getUser();
+	}
+
+	private function createRevisionId( string $page = self::PAGE_NAME ): int {
+		return $this->editPage( $page, 'test content' )
 			->getNewRevision()
 			->getId();
 	}
@@ -88,6 +100,22 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 
 	private function getTags( int $revId ): array {
 		return $this->getServiceContainer()->getChangeTagsStore()->getTags( $this->getDb(), null, $revId );
+	}
+
+	/** @return string|null The ct_params the given tag carries on the revision */
+	private function getTagParams( int $revId, string $tag ): ?string {
+		$tagsWithData = $this->getServiceContainer()->getChangeTagsStore()
+			->getTagsWithData( $this->getDb(), null, $revId );
+		$this->assertArrayHasKey( $tag, $tagsWithData, "The revision must carry the $tag tag" );
+
+		return $tagsWithData[$tag];
+	}
+
+	private function reviewerActorId( User $reviewer ): int {
+		$actorId = $this->getServiceContainer()->getActorStore()->findActorId( $reviewer, $this->getDb() );
+		$this->assertNotNull( $actorId, 'The reviewer account already has an actor ID, as in production' );
+
+		return $actorId;
 	}
 
 	public function testMarkReturnsNotFoundWhenFeatureDisabled(): void {
@@ -604,6 +632,137 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 			[ self::PERSONAL_INFO_TAG ],
 			$this->getTags( $revId ),
 			'Unmarking a revision that carries both tags leaves only the flagged tag'
+		);
+	}
+
+	public function testMarkingFalsePositiveRecordsTheReviewer(): void {
+		$reviewer = $this->realReviewer();
+		$actorId = $this->reviewerActorId( $reviewer );
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		ConvertibleTimestamp::setFakeTime( self::VERDICT_TIME );
+		$this->assertStatusGood(
+			$this->getService()->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+
+		$this->assertSame(
+			$this->getAttribution()->encode( $actorId, self::VERDICT_TIME ),
+			$this->getTagParams( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG ),
+			'The false positive verdict must name the reviewer who recorded it, and when'
+		);
+	}
+
+	public function testMarkingNoFurtherActionRecordsTheReviewer(): void {
+		$reviewer = $this->realReviewer();
+		$actorId = $this->reviewerActorId( $reviewer );
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		ConvertibleTimestamp::setFakeTime( self::VERDICT_TIME );
+		$this->assertStatusGood(
+			$this->getService()->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+
+		$this->assertSame(
+			$this->getAttribution()->encode( $actorId, self::VERDICT_TIME ),
+			$this->getTagParams( $revId, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ),
+			'The no further action verdict must name the reviewer who recorded it, and when'
+		);
+	}
+
+	public function testFlagRestoredFromFalsePositiveCarriesNoAttribution(): void {
+		$reviewer = $this->realReviewer();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$service = $this->getService();
+		$this->assertStatusGood( $service->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		$this->assertStatusGood( $service->unmarkFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		$this->assertNull(
+			$this->getTagParams( $revId, self::PERSONAL_INFO_TAG ),
+			'Attribution belongs to a verdict, not to the flag that unmarking restores'
+		);
+	}
+
+	public function testFlagRestoredFromNoFurtherActionCarriesNoAttribution(): void {
+		$reviewer = $this->realReviewer();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$service = $this->getService();
+		$this->assertStatusGood( $service->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		$this->assertStatusGood( $service->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		$this->assertNull(
+			$this->getTagParams( $revId, self::PERSONAL_INFO_TAG ),
+			'Attribution belongs to a verdict, not to the flag that unmarking restores'
+		);
+	}
+
+	public function testReFlaggedVerdictKeepsTheFirstAttribution(): void {
+		$firstReviewer = $this->realReviewer();
+		$secondReviewer = $this->realReviewer();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$service = $this->getService();
+		$this->assertStatusGood( $service->markFalsePositive( $firstReviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$this->assertStatusGood( $service->markFalsePositive( $secondReviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		$actorStore = $this->getServiceContainer()->getActorStore();
+		$this->assertSame(
+			$actorStore->findActorId( $firstReviewer, $this->getDb() ),
+			$this->getAttribution()->decodeActorId(
+				$this->getTagParams( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+			),
+			'The reviewer who first judged the revision keeps the attribution'
+		);
+		$this->assertNotContains(
+			self::PERSONAL_INFO_TAG,
+			$this->getServiceContainer()->getChangeTagsStore()->getTags( $this->getDb(), null, $revId ),
+			'The flag a later model run re-added is dropped when the verdict is reapplied'
+		);
+	}
+
+	public function testTwoReviewersAreRecordedDistinctly(): void {
+		$firstReviewer = $this->realReviewer();
+		$secondReviewer = $this->realReviewer();
+		$firstRevId = $this->createRevisionId();
+		$secondRevId = $this->createRevisionId( 'Second false positive test page' );
+		$this->applyTag( $firstRevId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $secondRevId, self::PERSONAL_INFO_TAG );
+
+		$service = $this->getService();
+		$this->assertStatusGood(
+			$service->markFalsePositive( $firstReviewer, $firstRevId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertStatusGood(
+			$service->markFalsePositive( $secondReviewer, $secondRevId, self::PERSONAL_INFO_TAG )
+		);
+
+		$actorStore = $this->getServiceContainer()->getActorStore();
+		$firstActorId = $actorStore->findActorId( $firstReviewer, $this->getDb() );
+		$secondActorId = $actorStore->findActorId( $secondReviewer, $this->getDb() );
+		$this->assertNotNull( $firstActorId, 'The first reviewer account already has an actor ID' );
+		$this->assertNotSame( $firstActorId, $secondActorId, 'The reviewers must be two different actors' );
+
+		$this->assertSame(
+			$firstActorId,
+			$this->getAttribution()->decodeActorId(
+				$this->getTagParams( $firstRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+			),
+			'The first revision names the reviewer who judged it'
+		);
+		$this->assertSame(
+			$secondActorId,
+			$this->getAttribution()->decodeActorId(
+				$this->getTagParams( $secondRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+			),
+			'The second revision names the other reviewer, not the first'
 		);
 	}
 }

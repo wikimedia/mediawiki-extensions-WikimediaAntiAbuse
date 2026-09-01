@@ -10,6 +10,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNot
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
@@ -36,6 +37,8 @@ return [
 		return new AbuseReviewTagService(
 			$enabledReviewableTags,
 			$services->getChangeTagsStore(),
+			$services->getActorNormalization(),
+			$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' ),
 			$services->getConnectionProvider(),
 			$services->getRevisionLookup(),
 			$services->getArchivedRevisionLookup(),
@@ -44,6 +47,10 @@ return [
 			$services->get( 'WikimediaAntiAbuseLogger' )
 		);
 	},
+
+	'WikimediaAntiAbuseAbuseReviewVerdictAttribution' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewVerdictAttribution( $services->get( 'WikimediaAntiAbuseLogger' ) ),
 
 	'WikimediaAntiAbuseContentPolicyEvaluator' => static fn (
 		MediaWikiServices $services
