@@ -9,6 +9,7 @@ use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
@@ -39,6 +40,7 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
+		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -55,14 +57,26 @@ class SpecialAbuseReview extends SpecialPage {
 		$this->getOutput()->addModules( 'ext.wikimediaAntiAbuse' );
 		$this->getOutput()->addHtml( '<div id="mw-wikimediaantiabuse-abuse-review-filter-app"></div>' );
 
-		$this->parseFilters();
-		$this->displayPager();
+		$appliedFilters = $this->parseFilters();
+		$pager = $this->displayPager();
+
+		$pageLoadInstrumentationData = [
+			'is_paging_results' => $pager->mOffset || $pager->mIsBackwards,
+			'pager_limit' => $pager->mLimit,
+			'applied_filters' => $appliedFilters,
+		];
+		$this->instrumentationClient->submitInteraction(
+			$this->getContext(),
+			'page_load',
+			$pageLoadInstrumentationData
+		);
 	}
 
 	/**
-	 * Parse the filters from the request
+	 * Parse the filters from the request, returning the applied filters in a format acceptable by the
+	 * instrumentation client. Also sets the class properties for the filters, which are used by the pager.
 	 */
-	private function parseFilters(): void {
+	private function parseFilters(): array {
 		$showFalsePositives = $this->getRequest()->getBool( 'wpShowFalsePositives' );
 		$showHandledRevisions = $this->getRequest()->getBool( 'wpShowHandledRevisions' );
 
@@ -101,12 +115,18 @@ class SpecialAbuseReview extends SpecialPage {
 				'username' => $this->usernamesFilter,
 			]
 		);
+
+		return [
+			'show_false_positives' => $showFalsePositives,
+			'show_handled_revisions' => $showHandledRevisions,
+			'username' => $this->usernamesFilter,
+		];
 	}
 
 	/**
-	 * Displays the abuse review pager
+	 * Displays the abuse review pager, returning the instance of the pager for use in instrumentation.
 	 */
-	private function displayPager(): void {
+	private function displayPager(): AbuseReviewPager {
 		$pager = new AbuseReviewPager(
 			$this->getContext(),
 			$this->getLinkRenderer(),
@@ -125,6 +145,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$pager->getFullOutput(),
 			ParserOptions::newFromContext( $this->getContext() )
 		);
+		return $pager;
 	}
 
 	/** @inheritDoc */

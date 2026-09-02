@@ -121,7 +121,8 @@
 				"RevisionStore",
 				"ArchivedRevisionLookup",
 				"LinkBatchFactory",
-				"RowCommentFormatter"
+				"RowCommentFormatter",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
 			]
 		}
 	},

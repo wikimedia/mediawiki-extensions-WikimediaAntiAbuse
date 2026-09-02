@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Title\Title;
@@ -61,6 +62,24 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$data = array_merge( $data, $extraQueryParamsCallback() );
 
 		$context = RequestContext::getMain();
+		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$client->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				$context,
+				'page_load',
+				[
+					'is_paging_results' => array_key_exists( 'offset', $data ) || ( $data['dir'] ?? '' ) === 'prev',
+					'pager_limit' => $data['limit'] ?? 50,
+					'applied_filters' => [
+						'show_false_positives' => $includeFalsePositiveRevisions,
+						'show_handled_revisions' => $includeHandledRevisions,
+						'username' => [],
+					]
+				]
+			);
+		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
+
 		$context->setRequest( new FauxRequest( $data ) );
 		$context->setUser( $testUser );
 		$context->setLanguage( 'qqx' );
@@ -547,6 +566,20 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'expectedRevIdsCallback' => static fn () => [
 					static::$suppressedFalsePositiveRevId,
 					static::$falsePositiveRevId,
+				],
+			],
+			'Oldest page via the last pagination link' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'limit' => 2,
+					'dir' => 'prev',
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$noFurtherActionRevId,
+					static::$deletedNoFurtherActionRevId,
 				],
 			],
 			'False positives and handled revisions included but user lacks access to deleted history' => [

@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\Ext\DOMUtils;
@@ -117,8 +118,27 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		);
 
 		$context = RequestContext::getMain();
+		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$client->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				$context,
+				'page_load',
+				[
+					'is_paging_results' => false,
+					'pager_limit' => 123,
+					'applied_filters' => [
+						'show_false_positives' => false,
+						'show_handled_revisions' => false,
+						'username' => [ $firstTestUser->getName() ],
+					]
+				]
+			);
+		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
+
 		$context->setRequest( new FauxRequest( [
-			'username' => [ $firstTestUser->getName() ]
+			'username' => [ $firstTestUser->getName() ],
+			'limit' => 123,
 		] ) );
 		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
 		$context->setLanguage( 'qqx' );

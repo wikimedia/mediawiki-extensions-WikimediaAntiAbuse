@@ -9,11 +9,14 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNot
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\NoOpAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\NoOpContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\RevisionSnippetGenerator;
 use MediaWiki\Logger\LoggerFactory;
@@ -27,6 +30,17 @@ use MediaWiki\Registration\ExtensionRegistry;
 
 /** @phpcs-require-sorted-array */
 return [
+	'WikimediaAntiAbuseAbuseReviewInstrumentationClient' => static function (
+		MediaWikiServices $services
+	): IAbuseReviewInstrumentationClient {
+		// If EventLogging is not installed, return the no-op client so callers can call it safely.
+		if ( !$services->has( 'EventLogging.MetricsClientFactory' ) ) {
+			return new NoOpAbuseReviewInstrumentationClient();
+		}
+
+		return new AbuseReviewInstrumentationClient( $services->getService( 'EventLogging.MetricsClientFactory' ) );
+	},
+
 	'WikimediaAntiAbuseAbuseReviewTagService' => static function ( MediaWikiServices $services ) {
 		$config = $services->getMainConfig();
 		$enabledReviewableTags = [];
