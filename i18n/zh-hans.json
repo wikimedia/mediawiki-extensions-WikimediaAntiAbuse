@@ -1,12 +1,51 @@
 {
 	"@metadata": {
 		"authors": [
-			"GuoPC"
+			"GuoPC",
+			"Shizhao"
 		]
 	},
 	"wikimediaantiabuse-desc": "用于维基媒体wiki的防滥用功能",
+	"wikimediaantiabuse-special-abuse-review": "滥用审查",
+	"wikimediaantiabuse-special-abuse-review-caption": "已标记待审核的修订",
+	"wikimediaantiabuse-special-abuse-review-summary": "此页面显示已自动标记为待审核的修订版本。每一行显示一个标记，旁边有一个按钮对应相应的审核结果。如果修订版本与标记不符，请将其标记为误报。如果标记正确但无需进一步操作，请将该修订版本标记为无需进一步处理。无论选择哪种结果，都将修订版本标记为已处理，隐藏需要处理的修订版本的文本也同样如此。",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "显示假阳性",
+	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "显示已处理的修订",
+	"wikimediaantiabuse-special-abuse-review-filter-submit": "过滤器",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "过滤修订版本",
+	"wikimediaantiabuse-special-abuse-review-filter-close": "关闭",
+	"wikimediaantiabuse-special-abuse-review-filter-open-button": "过滤器",
+	"wikimediaantiabuse-special-abuse-review-heading-revision": "修订版本",
+	"wikimediaantiabuse-special-abuse-review-heading-flags": "标记",
+	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "时间戳",
+	"wikimediaantiabuse-special-abuse-review-empty-title": "没有被标记的编辑",
+	"wikimediaantiabuse-special-abuse-review-empty-description": "目前没有待内容政策审核的修改。",
+	"wikimediaantiabuse-special-abuse-review-empty-hint": "新编辑的内容会在自动添加标签后显示在此处。",
+	"wikimediaantiabuse-special-abuse-review-show-details": "显示详情",
+	"wikimediaantiabuse-special-abuse-review-hide-details": "隐藏详情",
+	"wikimediaantiabuse-special-abuse-review-revision-actions-heading": "修订操作",
+	"wikimediaantiabuse-special-abuse-review-edit-summary": "编辑摘要",
+	"wikimediaantiabuse-special-abuse-review-changes-made": "已做更改：",
+	"wikimediaantiabuse-special-abuse-review-open-full-diff": "打开完整差异",
+	"wikimediaantiabuse-special-abuse-review-diff-too-large": "此次修改内容过多，无法在此处显示。",
+	"wikimediaantiabuse-special-abuse-review-action-in-progress": "工作中...",
+	"wikimediaantiabuse-special-abuse-review-action-revert": "仅恢复",
+	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "标记为假阳性",
+	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "取消标记为假阳性",
+	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "无需采取进一步行动",
+	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "需要采取进一步行动",
+	"wikimediaantiabuse-special-abuse-review-closed-row-note": "请展示此次修改的细节以便评判。",
+	"wikimediaantiabuse-special-abuse-review-permission-error": "您没有查看此页面所需的任何权限。",
 	"tag-mw-private-personal-info": "可能包含个人信息",
 	"tag-mw-private-personal-info-description": "被自动标记为可能添加个人信息的编辑",
 	"tag-mw-private-personal-info-false-positive": "误报（个人信息）",
-	"tag-mw-private-personal-info-false-positive-description": "被自动标记为添加个人信息的编辑，但被判定为误报"
+	"tag-mw-private-personal-info-false-positive-description": "被自动标记为添加个人信息的编辑，但被判定为误报",
+	"tag-mw-private-personal-info-no-further-action": "无需采取进一步行动（个人信息）",
+	"tag-mw-private-personal-info-no-further-action-description": "被自动标记为添加个人信息且无需进一步操作的编辑",
+	"echo-category-title-personal-info": "标记为可能包含个人信息",
+	"echo-pref-tooltip-personal-info": "当编辑内容被标记为可能包含个人信息时，请通知我。",
+	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|了解更多关于此通知的信息]]",
+	"notification-header-personal-info-flagged": "对<strong>$1</strong>编辑可能包含个人信息。",
+	"notification-bundle-header-personal-info-flagged": "$1次{{PLURAL:$1|编辑}}可能包含个人信息。",
+	"notification-link-text-personal-info-flagged": "查看已标记的编辑"
 }
