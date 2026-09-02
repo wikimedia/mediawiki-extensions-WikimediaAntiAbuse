@@ -25,6 +25,7 @@ class SpecialAbuseReview extends SpecialPage {
 
 	private array $tagsFilter;
 	private bool $includeHandledRevisions;
+	private array $usernamesFilter;
 
 	/**
 	 * @var int The number of filters applied (counting all filters present in the filters dialog)
@@ -84,11 +85,20 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->numberOfFiltersApplied++;
 		}
 
+		$this->usernamesFilter = array_values( array_filter(
+			$this->getRequest()->getArray( 'username', [] ),
+			static fn ( $username ): bool => is_string( $username ) && $username !== ''
+		) );
+		if ( $this->usernamesFilter ) {
+			$this->numberOfFiltersApplied += count( $this->usernamesFilter );
+		}
+
 		$this->getOutput()->addJsConfigVars(
 			'wgWikimediaAntiAbuseActiveFilters',
 			[
 				'showFalsePositives' => $showFalsePositives,
 				'showHandledRevisions' => $showHandledRevisions,
+				'username' => $this->usernamesFilter,
 			]
 		);
 	}
@@ -108,6 +118,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->rowCommentFormatter,
 			$this->tagsFilter,
 			$this->includeHandledRevisions,
+			$this->usernamesFilter,
 			$this->numberOfFiltersApplied
 		);
 		$this->getOutput()->addParserOutputContent(

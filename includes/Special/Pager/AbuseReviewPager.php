@@ -69,6 +69,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly array $tagsFilter,
 		private readonly bool $includeHandledRevisions,
+		private readonly array $usernamesFilter,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
@@ -1007,6 +1008,10 @@ class AbuseReviewPager extends CodexTablePager {
 				);
 				$queryBuilder->andWhere( [ 'changetagnofurtheraction.ct_tag_id' => null ] );
 			}
+		}
+
+		if ( $this->usernamesFilter ) {
+			$queryBuilder->where( $this->getDatabase()->expr( 'actor_name', '=', $this->usernamesFilter ) );
 		}
 
 		return $queryBuilder->getQueryInfo();

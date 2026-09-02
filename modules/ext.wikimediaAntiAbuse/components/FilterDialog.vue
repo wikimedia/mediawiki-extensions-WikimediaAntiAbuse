@@ -15,6 +15,11 @@
 		<cdx-field
 			class="mw-wikimediaantiabuse-abuse-review-filter-dialog-checkbox-filters"
 		>
+			<template #label>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-filter-verdicts-header'
+				).text() }}
+			</template>
 			<cdx-checkbox
 				v-model="showFalsePositivesCheckboxValue"
 				name="filter-show-false-positives"
@@ -31,6 +36,8 @@
 					'wikimediaantiabuse-special-abuse-review-show-handled-revisions'
 				).text() }}
 			</cdx-checkbox>
+			<filter-dialog-username-filter v-model:selected-usernames="selectedUsernames">
+			</filter-dialog-username-filter>
 		</cdx-field>
 	</cdx-dialog>
 </template>
@@ -38,6 +45,7 @@
 <script>
 const { ref } = require( 'vue' ),
 	{ CdxDialog, CdxField, CdxCheckbox } = require( './../codex.js' ),
+	FilterDialogUsernameFilter = require( './FilterDialogUsernameFilter.vue' ),
 	utils = require( './../utils.js' );
 
 // @vue/component
@@ -46,7 +54,8 @@ module.exports = exports = {
 	components: {
 		CdxDialog,
 		CdxField,
-		CdxCheckbox
+		CdxCheckbox,
+		FilterDialogUsernameFilter
 	},
 	props: {
 		/**
@@ -57,6 +66,7 @@ module.exports = exports = {
 		 *      been marked as false positives
 		 *  - showHandledRevisions: Boolean. If true, show revisions that have
 		 *      been marked as no further action
+		 *  - username: Array of strings. A list of usernames to filter by
 		 */
 		initialFilters: {
 			type: Object,
@@ -74,6 +84,8 @@ module.exports = exports = {
 			props.initialFilters.showHandledRevisions
 		);
 
+		const selectedUsernames = ref( props.initialFilters.username );
+
 		function onCloseButtonClick() {
 			open.value = false;
 		}
@@ -83,7 +95,9 @@ module.exports = exports = {
 		 * causes the page to be reloaded with the selected filters applied
 		 */
 		function onShowResultsButtonClick() {
-			const filters = {};
+			const filters = {
+				username: selectedUsernames.value
+			};
 
 			if ( showFalsePositivesCheckboxValue.value ) {
 				filters.wpShowFalsePositives = 1;
@@ -111,6 +125,7 @@ module.exports = exports = {
 			defaultAction,
 			showFalsePositivesCheckboxValue,
 			showHandledRevisionsCheckboxValue,
+			selectedUsernames,
 			onCloseButtonClick,
 			onShowResultsButtonClick
 		};

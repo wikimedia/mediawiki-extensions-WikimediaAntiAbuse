@@ -33,6 +33,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getRowCommentFormatter(),
 			$tagsFilter,
 			false,
+			[],
 			0
 		);
 	}

@@ -136,7 +136,8 @@
 				"CdxDialog",
 				"CdxField",
 				"CdxCheckbox",
-				"CdxInfoChip"
+				"CdxInfoChip",
+				"CdxMultiselectLookup"
 			],
 			"styles": [
 				"special.abuseReview.less"
@@ -152,7 +153,8 @@
 				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
-				"CdxCheckbox"
+				"CdxCheckbox",
+				"CdxMultiselectLookup"
 			],
 			"codexScriptOnly": true,
 			"packageFiles": [
@@ -162,6 +164,7 @@
 				"rest.js",
 				"utils.js",
 				"components/FilterDialog.vue",
+				"components/FilterDialogUsernameFilter.vue",
 				"mountFilterDialog.js",
 				{
 					"name": "icons.json",
@@ -190,7 +193,10 @@
 				"wikimediaantiabuse-special-abuse-review-show-false-positives",
 				"wikimediaantiabuse-special-abuse-review-show-handled-revisions",
 				"wikimediaantiabuse-special-abuse-review-filter-submit",
-				"wikimediaantiabuse-special-abuse-review-filter-open-button"
+				"wikimediaantiabuse-special-abuse-review-filter-open-button",
+				"wikimediaantiabuse-special-abuse-review-filter-username-header",
+				"wikimediaantiabuse-special-abuse-review-filter-username-placeholder",
+				"wikimediaantiabuse-special-abuse-review-filter-verdicts-header"
 			]
 		}
 	},
@@ -204,6 +210,7 @@
 			"tests/qunit/components/RowVerdicts.test.js",
 			"tests/qunit/utils.test.js",
 			"tests/qunit/components/FilterDialog.test.js",
+			"tests/qunit/components/FilterDialogUsernameFilter.test.js",
 			"tests/qunit/mountFilterDialog.test.js"
 		],
 		"dependencies": [

@@ -69,6 +69,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$expectedActiveFiltersArray = [
 			'showFalsePositives' => $includeFalsePositiveRevisions,
 			'showHandledRevisions' => $includeHandledRevisions,
+			'username' => [],
 		];
 		$this->assertArrayEquals(
 			$expectedActiveFiltersArray,

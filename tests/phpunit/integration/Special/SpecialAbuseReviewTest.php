@@ -4,7 +4,9 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Request\FauxRequest;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\Ext\DOMUtils;
 
@@ -84,6 +86,68 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		$this->assertNull(
 			DOMCompat::querySelector( $row, '.mw-wikimediaantiabuse-abuse-review-row__diff' ),
 			'a preview with no lines either side is left out rather than drawn empty'
+		);
+	}
+
+	public function testViewWhenUsernameFilterSet(): void {
+		$firstTestUser = $this->getTestUser()->getUser();
+		$firstEditStatus = $this->editPage(
+			$this->getNonexistingTestPage(),
+			'test content',
+			performer: $firstTestUser
+		);
+		$this->assertStatusGood( $firstEditStatus );
+		$this->getServiceContainer()->getChangeTagsStore()->addTags(
+			[ 'mw-private-personal-info' ],
+			null,
+			$firstEditStatus->getNewRevision()->getId()
+		);
+
+		$secondTestUser = $this->getTestSysop()->getUser();
+		$secondEditStatus = $this->editPage(
+			$this->getNonexistingTestPage(),
+			'test content',
+			performer: $secondTestUser
+		);
+		$this->assertStatusGood( $secondEditStatus );
+		$this->getServiceContainer()->getChangeTagsStore()->addTags(
+			[ 'mw-private-personal-info' ],
+			null,
+			$secondEditStatus->getNewRevision()->getId()
+		);
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( [
+			'username' => [ $firstTestUser->getName() ]
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$this->assertArrayEquals(
+			[
+				'showFalsePositives' => false,
+				'showHandledRevisions' => false,
+				'username' => [ $firstTestUser->getName() ],
+			],
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
+			false,
+			true
+		);
+
+		$this->verifyFilterButtonPresent( $html, 1 );
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$reviewRows = DOMCompat::querySelectorAll( $htmlAsNode, self::ROW_SELECTOR );
+		$this->assertCount(
+			1,
+			$reviewRows,
+			'Username filter should have filtered out the revision performed by the second user'
+		);
+		$this->assertSame(
+			$firstEditStatus->getNewRevision()->getId(),
+			(int)DOMCompat::getAttribute( $reviewRows[0], 'data-rev-id' ),
+			'The visible row should be one performed by the first user'
 		);
 	}
 
