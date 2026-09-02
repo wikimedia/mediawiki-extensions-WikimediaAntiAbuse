@@ -4,9 +4,11 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Unit\Rest\Handler;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\MarkReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Rest\LocalizedHttpException;
 use MediaWiki\Rest\RequestData;
 use MediaWiki\Tests\Rest\Handler\HandlerTestTrait;
@@ -49,8 +51,21 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			->with( $authority, 123, self::TAG )
 			->willReturn( StatusValue::newGood() );
 
+		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$instrumentationClient->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				RequestContext::getMain(),
+				strtr( $verdict, [ '-' => '_' ] ),
+				[
+					'action_subtype' => 'mark',
+					'identifier' => 123,
+					'identifier_type' => 'revision',
+				]
+			);
+
 		$data = $this->executeHandlerAndGetBodyData(
-			new MarkReviewVerdictHandler( $service ),
+			new MarkReviewVerdictHandler( $service, $instrumentationClient ),
 			$this->newRequest( $verdict ),
 			[],
 			[],
@@ -88,7 +103,10 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 
 		$this->expectExceptionObject( new LocalizedHttpException( new MessageValue( 'rest-badtoken' ), 403 ) );
 		$this->executeHandler(
-			new MarkReviewVerdictHandler( $service ),
+			new MarkReviewVerdictHandler(
+				$service,
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],
 			[],
@@ -112,7 +130,10 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			new LocalizedHttpException( new MessageValue( 'wikimediaantiabuse-api-review-blocked' ), 403 )
 		);
 		$this->executeHandler(
-			new MarkReviewVerdictHandler( $service ),
+			new MarkReviewVerdictHandler(
+				$service,
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],
 			[],

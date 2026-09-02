@@ -252,7 +252,8 @@
 			"path": "/wikimediaantiabuse/v0/mark/revision/{revision}/{tag}/{verdict}",
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkReviewVerdictHandler",
 			"services": [
-				"WikimediaAntiAbuseAbuseReviewTagService"
+				"WikimediaAntiAbuseAbuseReviewTagService",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
 			],
 			"openApiSpec": {
 				"x-i18n-description": "wikimediaantiabuse-api-review-mark-description"
@@ -263,7 +264,8 @@
 			"path": "/wikimediaantiabuse/v0/unmark/revision/{revision}/{tag}/{verdict}",
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkReviewVerdictHandler",
 			"services": [
-				"WikimediaAntiAbuseAbuseReviewTagService"
+				"WikimediaAntiAbuseAbuseReviewTagService",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
 			],
 			"openApiSpec": {
 				"x-i18n-description": "wikimediaantiabuse-api-review-unmark-description"

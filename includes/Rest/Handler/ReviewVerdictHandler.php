@@ -4,7 +4,9 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Rest\LocalizedHttpException;
 use MediaWiki\Rest\Response;
 use MediaWiki\Rest\SimpleHandler;
@@ -33,6 +35,7 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 
 	public function __construct(
 		protected readonly AbuseReviewTagService $abuseReviewTagService,
+		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 	) {
 	}
 
@@ -48,6 +51,16 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 		if ( !$status->isGood() ) {
 			throw new LocalizedHttpException( $status->getMessages()[0], (int)$status->getValue() );
 		}
+
+		$this->instrumentationClient->submitInteraction(
+			RequestContext::getMain(),
+			strtr( $verdict, [ '-' => '_' ] ),
+			[
+				'action_subtype' => $this->verdictIsSet() ? 'mark' : 'unmark',
+				'identifier' => $revision,
+				'identifier_type' => 'revision',
+			]
+		);
 
 		return $this->getResponseFactory()->createJson( [
 			'revision' => $revision,
