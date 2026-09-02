@@ -4,14 +4,19 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\RevisionDelete\Hook\ArticleRevisionVisibilitySetHook;
+use Wikimedia\Rdbms\IConnectionProvider;
 
 class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 
 	public function __construct(
-		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator
+		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator,
+		private readonly IConnectionProvider $dbProvider,
+		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 	) {
 	}
 
@@ -39,6 +44,31 @@ class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 		}
 
 		$this->notificationModerator->hideForRevisions( $title->getId(), $newlySuppressedRevisionIds );
+
+		$dbr = $this->dbProvider->getReplicaDatabase();
+		$revisionsIdsTaggedWithPersonalInfoTag = $dbr->newSelectQueryBuilder()
+			->select( 'ct_rev_id' )
+			->from( 'change_tag' )
+			->join( 'change_tag_def', null, 'ct_tag_id = ctd_id' )
+			->where( [ 'ctd_name' => ChangeTagsHandler::PERSONAL_INFO_TAG ] )
+			->andWhere( $dbr->expr( 'ct_rev_id', '=', $newlySuppressedRevisionIds ) )
+			->caller( __METHOD__ )
+			->fetchFieldValues();
+		$revisionsIdsTaggedWithPersonalInfoTag = array_map( 'intval', $revisionsIdsTaggedWithPersonalInfoTag );
+
+		foreach ( $newlySuppressedRevisionIds as $revisionId ) {
+			$this->instrumentationClient->submitInteraction(
+				RequestContext::getMain(),
+				'revision_content_suppressed',
+				[
+					'action_subtype' => in_array( $revisionId, $revisionsIdsTaggedWithPersonalInfoTag, true )
+						? 'personal-info-tagged'
+						: 'personal-info-not-tagged',
+					'identifier' => $revisionId,
+					'identifier_type' => 'revision',
+				]
+			);
+		}
 	}
 
 	private function isSuppressed( int $bits ): bool {

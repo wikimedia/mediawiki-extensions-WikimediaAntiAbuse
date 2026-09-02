@@ -80,7 +80,9 @@
 		"RevisionVisibilityHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler",
 			"services": [
-				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator"
+				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator",
+				"ConnectionProvider",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
 			]
 		},
 		"EchoHooksHandler": {
