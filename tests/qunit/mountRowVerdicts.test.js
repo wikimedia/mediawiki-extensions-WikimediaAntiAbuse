@@ -239,3 +239,24 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 		'the healthy row still mounts, which is the point of the guard'
 	);
 } );
+
+QUnit.test( 'The referrer in the query string is sent with a verdict', async function ( assert ) {
+	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	this.sandbox.stub( mw.util, 'getParamValue' )
+		.withArgs( 'referrer' ).returns( 'echo_notification' );
+
+	const row = makeRow( 1, payloadFor(), true );
+	mountRowVerdicts();
+	await flushPromises();
+
+	clickButton( row, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.deepEqual(
+		post.firstCall.args[ 1 ],
+		{ token: 'token', referrer: 'echo_notification' },
+		'the request body carries the referrer read from the query string'
+	);
+} );

@@ -9,6 +9,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\MarkReviewVerdictHandler
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview;
 use MediaWiki\Rest\LocalizedHttpException;
 use MediaWiki\Rest\RequestData;
 use MediaWiki\Tests\Rest\Handler\HandlerTestTrait;
@@ -26,11 +27,12 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 
 	private const string TAG = 'mw-private-personal-info';
 
-	private function newRequest( string $verdict ): RequestData {
+	private function newRequest( string $verdict, string $referrer = '' ): RequestData {
 		return new RequestData( [
 			'method' => 'POST',
 			'pathParams' => [ 'revision' => 123, 'tag' => self::TAG, 'verdict' => $verdict ],
 			'headers' => [ 'Content-Type' => 'application/json' ],
+			'bodyContents' => json_encode( [ 'referrer' => $referrer ] )
 		] );
 	}
 
@@ -42,7 +44,8 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 	public function testRunMarksRevisionAndReturnsJson(
 		string $verdict,
 		string $serviceMethod,
-		string $responseField
+		string $responseField,
+		string $referrer
 	): void {
 		$authority = $this->mockRegisteredUltimateAuthority();
 		$service = $this->createMock( AbuseReviewTagService::class );
@@ -51,25 +54,29 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			->with( $authority, 123, self::TAG )
 			->willReturn( StatusValue::newGood() );
 
+		$expectedInstrumentationData = [
+			'action_subtype' => 'mark',
+			'identifier' => 123,
+			'identifier_type' => 'revision',
+		];
+		if ( in_array( $referrer, SpecialAbuseReview::VALID_REFERRERS, true ) ) {
+			$expectedInstrumentationData['referrer'] = $referrer;
+		}
 		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
 		$instrumentationClient->expects( $this->once() )
 			->method( 'submitInteraction' )
 			->with(
 				RequestContext::getMain(),
 				strtr( $verdict, [ '-' => '_' ] ),
-				[
-					'action_subtype' => 'mark',
-					'identifier' => 123,
-					'identifier_type' => 'revision',
-				]
+				$expectedInstrumentationData
 			);
 
 		$data = $this->executeHandlerAndGetBodyData(
 			new MarkReviewVerdictHandler( $service, $instrumentationClient ),
-			$this->newRequest( $verdict ),
+			$this->newRequest( $verdict, $referrer ),
 			[],
 			[],
-			$this->pathParams( $verdict ),
+			[],
 			[],
 			$authority
 		);
@@ -86,11 +93,19 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 				'verdict' => ReviewVerdictHandler::FALSE_POSITIVE,
 				'serviceMethod' => 'markFalsePositive',
 				'responseField' => 'falsePositive',
+				'referrer' => '',
 			],
 			'no further action' => [
 				'verdict' => ReviewVerdictHandler::NO_FURTHER_ACTION,
 				'serviceMethod' => 'markNoFurtherAction',
 				'responseField' => 'noFurtherAction',
+				'referrer' => 'invalid_referrer',
+			],
+			'false positive with valid referrer' => [
+				'verdict' => ReviewVerdictHandler::FALSE_POSITIVE,
+				'serviceMethod' => 'markFalsePositive',
+				'responseField' => 'falsePositive',
+				'referrer' => 'echo_notification',
 			],
 		];
 	}

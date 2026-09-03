@@ -58,6 +58,8 @@ function advanceQueue( row, verdict, suppressedRows ) {
  * arrives as HTML from the server.
  */
 function mountRowVerdicts() {
+	const referrer = mw.util.getParamValue( 'referrer' ) || '';
+
 	const suppressedRows = new Set();
 	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
@@ -89,6 +91,7 @@ function mountRowVerdicts() {
 		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
 			detailsElement: details,
+			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
 				advanceQueue( row, verdict, suppressedRows );
 			}

@@ -69,7 +69,8 @@ module.exports = exports = defineComponent( {
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
 		isSuppressed: { type: Boolean, default: false },
-		detailsElement: { type: Object, default: null }
+		detailsElement: { type: Object, default: null },
+		referrer: { type: String, default: '' }
 	},
 	emits: [ 'verdict-changed' ],
 	setup( props, { emit } ) {
@@ -158,7 +159,7 @@ module.exports = exports = defineComponent( {
 			let succeeded = false;
 			let failure = null;
 			try {
-				await request( props.revId, props.tag );
+				await request( props.revId, props.tag, props.referrer );
 				succeeded = true;
 			} catch ( error ) {
 				failure = error;

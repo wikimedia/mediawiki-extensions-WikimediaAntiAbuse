@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview;
 use MediaWiki\Rest\LocalizedHttpException;
 use MediaWiki\Rest\Response;
 use MediaWiki\Rest\SimpleHandler;
@@ -52,14 +53,19 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 			throw new LocalizedHttpException( $status->getMessages()[0], (int)$status->getValue() );
 		}
 
+		$instrumentationData = [
+			'action_subtype' => $this->verdictIsSet() ? 'mark' : 'unmark',
+			'identifier' => $revision,
+			'identifier_type' => 'revision',
+		];
+		$referrer = $this->getValidatedBody()['referrer'] ?? '';
+		if ( in_array( $referrer, SpecialAbuseReview::VALID_REFERRERS, true ) ) {
+			$instrumentationData['referrer'] = $referrer;
+		}
 		$this->instrumentationClient->submitInteraction(
 			RequestContext::getMain(),
 			strtr( $verdict, [ '-' => '_' ] ),
-			[
-				'action_subtype' => $this->verdictIsSet() ? 'mark' : 'unmark',
-				'identifier' => $revision,
-				'identifier_type' => 'revision',
-			]
+			$instrumentationData
 		);
 
 		return $this->getResponseFactory()->createJson( [
@@ -90,6 +96,13 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 	}
 
 	public function getBodyParamSettings(): array {
-		return $this->getTokenParamDefinition();
+		return [
+			'referrer' => [
+				self::PARAM_SOURCE => 'body',
+				ParamValidator::PARAM_TYPE => 'string',
+				ParamValidator::PARAM_REQUIRED => false,
+				ParamValidator::PARAM_DEFAULT => '',
+			],
+		] + $this->getTokenParamDefinition();
 	}
 }

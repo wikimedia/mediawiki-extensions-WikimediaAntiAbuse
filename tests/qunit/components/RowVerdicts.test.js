@@ -46,7 +46,8 @@ const mountRow = ( given, options ) => {
 		tag: 'mw-private-personal-info',
 		isFalsePositive: false,
 		isNoFurtherAction: false,
-		isSuppressed: false
+		isSuppressed: false,
+		referrer: ''
 	}, given );
 	if ( !props.detailsElement ) {
 		// Only an open row is judged, and most of these tests are about judging.
@@ -184,7 +185,12 @@ QUnit.test( 'marking a false positive presses its button and blocks the other', 
 	assert.strictEqual(
 		post.firstCall.args[ 0 ],
 		'/wikimediaantiabuse/v0/mark/revision/991/mw-private-personal-info/false-positive',
-		'to the mark endpoint for this revision and tag'
+		'The mark endpoint path is as expected for this revision and tag'
+	);
+	assert.deepEqual(
+		post.firstCall.args[ 1 ],
+		{ token: 'token', referrer: '' },
+		'The mark endpoint body carries the CSRF token and referrer'
 	);
 	const marked = buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE );
 	assert.notStrictEqual( marked, undefined, 'the button now offers to undo the verdict' );
@@ -200,7 +206,7 @@ QUnit.test( 'marking as needing no further action uses its own endpoint', async 
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
-	const wrapper = mountRow();
+	const wrapper = mountRow( { referrer: 'echo_notification' } );
 	await buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).trigger( 'click' );
 	await flushPromises();
 
@@ -208,6 +214,11 @@ QUnit.test( 'marking as needing no further action uses its own endpoint', async 
 		post.firstCall.args[ 0 ],
 		'/wikimediaantiabuse/v0/mark/revision/991/mw-private-personal-info/no-further-action',
 		'the no-further-action mark endpoint is used'
+	);
+	assert.deepEqual(
+		post.firstCall.args[ 1 ],
+		{ token: 'token', referrer: 'echo_notification' },
+		'The mark endpoint body carries the CSRF token and referrer'
 	);
 	assert.notStrictEqual(
 		buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION ),

@@ -9,6 +9,7 @@ let server;
 
 QUnit.module( 'ext.wikimediaAntiAbuse.rest', QUnit.newMwEnvironment( {
 	beforeEach: function () {
+		mw.Api.resetTokenCacheForTest();
 		this.server = this.sandbox.useFakeServer();
 		this.server.respondImmediately = true;
 		server = this.server;
@@ -33,6 +34,11 @@ QUnit.test( 'markAsFalsePositive resolves with the response body on success', as
 	server.respond( ( request ) => {
 		if ( request.url.endsWith( 'wikimediaantiabuse/v0/mark/revision/1/' + TAG + '/false-positive' ) ) {
 			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			assert.deepEqual(
+				JSON.parse( request.requestBody ),
+				{ token: '+\\', referrer: '' },
+				'endpoint is called with token and referrer'
+			);
 			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
 		} else if ( isTokenRequest( request ) ) {
 			respondWithToken( request );
@@ -41,7 +47,7 @@ QUnit.test( 'markAsFalsePositive resolves with the response body on success', as
 		}
 	} );
 
-	const data = await markAsFalsePositive( 1, TAG );
+	const data = await markAsFalsePositive( 1, TAG, '' );
 	assert.deepEqual( data, body, 'resolves with the response body' );
 } );
 
@@ -50,6 +56,11 @@ QUnit.test( 'unmarkAsFalsePositive resolves with the response body on success', 
 	server.respond( ( request ) => {
 		if ( request.url.endsWith( 'wikimediaantiabuse/v0/unmark/revision/1/' + TAG + '/false-positive' ) ) {
 			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			assert.deepEqual(
+				JSON.parse( request.requestBody ),
+				{ token: '+\\', referrer: 'echo_notification' },
+				'endpoint is called with token and referrer'
+			);
 			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
 		} else if ( isTokenRequest( request ) ) {
 			respondWithToken( request );
@@ -58,7 +69,7 @@ QUnit.test( 'unmarkAsFalsePositive resolves with the response body on success', 
 		}
 	} );
 
-	const data = await unmarkAsFalsePositive( 1, TAG );
+	const data = await unmarkAsFalsePositive( 1, TAG, 'echo_notification' );
 	assert.deepEqual( data, body, 'resolves with the response body' );
 } );
 
@@ -67,6 +78,11 @@ QUnit.test( 'markNoFurtherAction resolves with the response body on success', as
 	server.respond( ( request ) => {
 		if ( request.url.endsWith( 'wikimediaantiabuse/v0/mark/revision/1/' + TAG + '/no-further-action' ) ) {
 			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			assert.deepEqual(
+				JSON.parse( request.requestBody ),
+				{ token: '+\\', referrer: 'echo_notification' },
+				'endpoint is called with token and referrer'
+			);
 			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
 		} else if ( isTokenRequest( request ) ) {
 			respondWithToken( request );
@@ -75,7 +91,7 @@ QUnit.test( 'markNoFurtherAction resolves with the response body on success', as
 		}
 	} );
 
-	const data = await markNoFurtherAction( 1, TAG );
+	const data = await markNoFurtherAction( 1, TAG, 'echo_notification' );
 	assert.deepEqual( data, body, 'resolves with the response body' );
 } );
 
@@ -84,6 +100,11 @@ QUnit.test( 'unmarkNoFurtherAction resolves with the response body on success', 
 	server.respond( ( request ) => {
 		if ( request.url.endsWith( 'wikimediaantiabuse/v0/unmark/revision/1/' + TAG + '/no-further-action' ) ) {
 			assert.strictEqual( request.method, 'POST', 'endpoint is called with POST' );
+			assert.deepEqual(
+				JSON.parse( request.requestBody ),
+				{ token: '+\\', referrer: '' },
+				'endpoint is called with token and referrer'
+			);
 			request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
 		} else if ( isTokenRequest( request ) ) {
 			respondWithToken( request );
@@ -92,7 +113,7 @@ QUnit.test( 'unmarkNoFurtherAction resolves with the response body on success', 
 		}
 	} );
 
-	const data = await unmarkNoFurtherAction( 1, TAG );
+	const data = await unmarkNoFurtherAction( 1, TAG, '' );
 	assert.deepEqual( data, body, 'resolves with the response body' );
 } );
 
@@ -126,6 +147,11 @@ QUnit.test( 'retries once with a fresh token on a bad-token error, then succeeds
 				request.respond( 403, { 'Content-Type': 'application/json' },
 					JSON.stringify( { errorKey: 'rest-badtoken' } ) );
 			} else {
+				assert.deepEqual(
+					JSON.parse( request.requestBody ),
+					{ token: 'newtoken', referrer: 'echo_notification' },
+					'the retry carries the referrer and the refreshed token'
+				);
 				request.respond( 200, { 'Content-Type': 'application/json' }, JSON.stringify( body ) );
 			}
 		} else if ( isTokenRequest( request ) ) {
@@ -135,7 +161,7 @@ QUnit.test( 'retries once with a fresh token on a bad-token error, then succeeds
 		}
 	} );
 
-	const data = await markAsFalsePositive( 3, TAG );
+	const data = await markAsFalsePositive( 3, TAG, 'echo_notification' );
 	assert.deepEqual( data, body, 'resolves after the retry' );
 	assert.false( firstAttempt, 'the endpoint was retried' );
 } );
