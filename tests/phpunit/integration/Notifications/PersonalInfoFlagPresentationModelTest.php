@@ -54,7 +54,14 @@ class PersonalInfoFlagPresentationModelTest extends MediaWikiIntegrationTestCase
 	public function testGetPrimaryLink(): void {
 		$link = $this->newModel( $this->createEvent( 1001 ) )->getPrimaryLink();
 
-		$this->assertStringContainsString( 'Special:AbuseReview', $link['url'] );
+		$urlParts = $this->getServiceContainer()->getUrlUtils()->parse( $link['url'] );
+		$this->assertArrayContains(
+			[
+				'referrer' => 'echo_notification',
+				'title' => 'Special:AbuseReview',
+			],
+			wfCgiToArray( $urlParts['query'] )
+		);
 		$this->assertSame( '(notification-link-text-personal-info-flagged)', $link['label'] );
 	}
 

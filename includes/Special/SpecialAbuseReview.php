@@ -21,6 +21,12 @@ use MediaWiki\User\User;
 
 class SpecialAbuseReview extends SpecialPage {
 
+	/**
+	 * @var string[] The list of valid referrers for Special:AbuseReview. If the referrer is not in this list,
+	 *   it will be ignored for the purposes of instrumentation
+	 */
+	public const array VALID_REFERRERS = [ 'echo_notification' ];
+
 	// The paging and ordering the pager reads out of the query string.
 	private const array PAGER_STATE_PARAMS = [ 'limit', 'sort', 'asc', 'desc' ];
 
@@ -65,6 +71,10 @@ class SpecialAbuseReview extends SpecialPage {
 			'pager_limit' => $pager->mLimit,
 			'applied_filters' => $appliedFilters,
 		];
+		$referrer = $this->getRequest()->getText( 'referrer' );
+		if ( in_array( $referrer, self::VALID_REFERRERS, true ) ) {
+			$pageLoadInstrumentationData['referrer'] = $referrer;
+		}
 		$this->instrumentationClient->submitInteraction(
 			$this->getContext(),
 			'page_load',

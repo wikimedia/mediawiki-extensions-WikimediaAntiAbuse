@@ -171,6 +171,57 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
+	/** @dataProvider provideViewWhenReferrerSet */
+	public function testViewWhenReferrerSet( string $referrerSetInRequest, ?string $expectedReferrer ): void {
+		$context = RequestContext::getMain();
+		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$expectedInteractionData = [
+			'is_paging_results' => false,
+			'pager_limit' => 1,
+			'applied_filters' => [
+				'show_false_positives' => false,
+				'show_handled_revisions' => false,
+				'username' => [],
+			]
+		];
+		if ( $expectedReferrer !== null ) {
+			$expectedInteractionData['referrer'] = $expectedReferrer;
+		}
+		$client->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				$context,
+				'page_load',
+				$expectedInteractionData
+			);
+		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
+
+		$context->setRequest( new FauxRequest( [
+			'limit' => 1,
+			'referrer' => $referrerSetInRequest,
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		$this->executeSpecialPage( '', null, null, null, false, $context );
+	}
+
+	public static function provideViewWhenReferrerSet(): array {
+		return [
+			'Referrer set in request as echo_notification' => [
+				'referrerSetInRequest' => 'echo_notification',
+				'expectedReferrer' => 'echo_notification',
+			],
+			'Referrer set in request as unrecognised referrer' => [
+				'referrerSetInRequest' => 'unrecognised_referrer',
+				'expectedReferrer' => null,
+			],
+			'Referrer not set in request' => [
+				'referrerSetInRequest' => '',
+				'expectedReferrer' => null,
+			],
+		];
+	}
+
 	/** @inheritDoc */
 	protected function newSpecialPage() {
 		return $this->getServiceContainer()->getSpecialPageFactory()->getPage( 'AbuseReview' );

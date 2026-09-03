@@ -50,7 +50,9 @@ class PersonalInfoFlagPresentationModel extends EchoEventPresentationModel {
 	/** @inheritDoc */
 	public function getPrimaryLink(): array {
 		return [
-			'url' => SpecialPage::getTitleFor( 'AbuseReview' )->getFullURL(),
+			'url' => SpecialPage::getTitleFor( 'AbuseReview' )->getFullURL( [
+				'referrer' => 'echo_notification',
+			] ),
 			'label' => $this->msg( 'notification-link-text-personal-info-flagged' )->text(),
 		];
 	}
