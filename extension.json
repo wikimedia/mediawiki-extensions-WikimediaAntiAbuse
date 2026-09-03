@@ -53,6 +53,13 @@
 		}
 	},
 	"HookHandlers": {
+		"AbuseReviewLinkClickHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewLinkClickHandler",
+			"services": [
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
+				"WikimediaAntiAbuseAbuseReviewPermissionManager"
+			]
+		},
 		"ChangeTagsHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\ChangeTagsHandler",
 			"services": [
@@ -104,6 +111,7 @@
 		}
 	},
 	"Hooks": {
+		"BeforeInitialize": "AbuseReviewLinkClickHandler",
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
@@ -119,6 +127,7 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
 			"services": [
 				"ChangeTagsStore",
+				"WikimediaAntiAbuseAbuseReviewPermissionManager",
 				"ChangeTagsFormatter",
 				"RevisionStore",
 				"ArchivedRevisionLookup",

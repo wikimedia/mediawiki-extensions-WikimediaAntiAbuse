@@ -12,6 +12,7 @@ use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Context\DerivativeContext;
 use MediaWiki\Context\IContextSource;
 use MediaWiki\Diff\DifferenceEngine;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
 use MediaWiki\Html\Html;
@@ -235,14 +236,20 @@ class AbuseReviewPager extends CodexTablePager {
 				SpecialPage::getTitleValueFor( 'Undelete' ),
 				$timestamp,
 				[],
-				$this->buildUndeleteQuery( $title, $row )
+				array_merge(
+					$this->buildUndeleteQuery( $title, $row ),
+					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row )
+				)
 			);
 		} else {
 			$dateLink = $this->getLinkRenderer()->makeKnownLink(
 				$title,
 				$timestamp,
 				[],
-				[ 'diff' => 'prev', 'oldid' => $row->rev_id ]
+				array_merge(
+					[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
+					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row )
+				)
 			);
 		}
 
@@ -444,14 +451,29 @@ class AbuseReviewPager extends CodexTablePager {
 	 * points at the page's deleted revisions on Special:Undelete instead.
 	 */
 	private function buildPageLink( Title $title, stdClass $row ): string {
+		$query = $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_PAGE_TITLE, $row );
 		if ( !$this->isArchivedRow( $row ) ) {
-			return $this->getLinkRenderer()->makeKnownLink( $title );
+			return $this->getLinkRenderer()->makeKnownLink( $title, null, [], $query );
 		}
 
 		return $this->getLinkRenderer()->makeKnownLink(
 			SpecialPage::getTitleValueFor( 'Undelete', $title->getPrefixedDBkey() ),
-			$title->getPrefixedText()
+			$title->getPrefixedText(),
+			[],
+			$query
 		);
+	}
+
+	/**
+	 * The parameters that name a link click, which the page the link opens reports.
+	 *
+	 * @return array<string,string|int>
+	 */
+	private function linkClickQuery( string $subtype, stdClass $row ): array {
+		return [
+			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => $subtype,
+			AbuseReviewLinkClickHandler::REVISION_PARAM => $row->rev_id,
+		];
 	}
 
 	/** @return array<string,string> Query parameters addressing an archived revision's diff on Special:Undelete */
@@ -489,11 +511,11 @@ class AbuseReviewPager extends CodexTablePager {
 		// ar_timestamp, so a type=revision link built from ar_rev_id resolves to nothing.
 		$revisionDeleteUrl = null;
 		if ( !$this->isArchivedRow( $row ) && $this->getAuthority()->isAllowed( 'deleterevision' ) ) {
-			$revisionDeleteUrl = SpecialPage::getTitleFor( 'Revisiondelete' )->getLocalURL( [
+			$revisionDeleteUrl = SpecialPage::getTitleFor( 'Revisiondelete' )->getLocalURL( array_merge( [
 				'type' => 'revision',
 				'target' => $title->getPrefixedText(),
 				'ids' => $row->rev_id,
-			] );
+			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_REVISION_DELETE, $row ) ) );
 		}
 		// Suppression has no URL of its own: it is the wpHideRestricted checkbox inside
 		// Special:RevisionDelete. The history is sent instead, for its checkbox interface,
@@ -503,7 +525,9 @@ class AbuseReviewPager extends CodexTablePager {
 		if ( !$this->isArchivedRow( $row )
 			&& $this->getAuthority()->isAllowedAll( 'deleterevision', 'suppressrevision' )
 		) {
-			$suppressUrl = $title->getLocalURL( [ 'action' => 'history' ] );
+			$suppressUrl = $title->getLocalURL( array_merge( [
+				'action' => 'history',
+			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_SUPPRESS, $row ) ) );
 		}
 		// Undo resolves its revision against the live revision table, so an archived one is
 		// never found. The first revision of a page has nothing to restore, and core refuses
@@ -515,11 +539,11 @@ class AbuseReviewPager extends CodexTablePager {
 			&& !$this->parentTextIsDeleted( (int)$row->parent_id )
 			&& $this->getAuthority()->probablyCan( 'edit', $title )
 		) {
-			$revertUrl = $title->getLocalURL( [
+			$revertUrl = $title->getLocalURL( array_merge( [
 				'action' => 'edit',
 				'undoafter' => $row->parent_id,
 				'undo' => $row->rev_id,
-			] );
+			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_REVERT, $row ) ) );
 		}
 
 		// A URL is either null or a real one, so the default filter drops exactly the
@@ -729,11 +753,16 @@ class AbuseReviewPager extends CodexTablePager {
 	 * has been deleted and its revisions have left the revision table.
 	 */
 	private function buildFullDiffUrl( Title $title, stdClass $row ): string {
+		$query = $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF, $row );
 		if ( !$this->isArchivedRow( $row ) ) {
-			return $title->getLocalURL( [ 'diff' => 'prev', 'oldid' => $row->rev_id ] );
+			return $title->getLocalURL(
+				array_merge( [ 'diff' => 'prev', 'oldid' => $row->rev_id ], $query )
+			);
 		}
 
-		return SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( $this->buildUndeleteQuery( $title, $row ) );
+		return SpecialPage::getTitleFor( 'Undelete' )->getLocalURL(
+			array_merge( $this->buildUndeleteQuery( $title, $row ), $query )
+		);
 	}
 
 	/**

@@ -9,6 +9,7 @@ use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewPermissionManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
@@ -42,6 +43,7 @@ class SpecialAbuseReview extends SpecialPage {
 
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly AbuseReviewPermissionManager $permissionManager,
 		private readonly ChangeTagsFormatter $changeTagsFormatter,
 		private readonly RevisionStore $revisionStore,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
@@ -197,20 +199,9 @@ class SpecialAbuseReview extends SpecialPage {
 		);
 	}
 
-	/**
-	 * A user can view this special page if they can view at least one of the abuse review tags.
-	 *
-	 * @inheritDoc
-	 */
+	/** @inheritDoc */
 	public function userCanExecute( User $user ): bool {
-		return count( $this->changeTagsStore->filterViewableTags(
-			array_merge(
-				array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
-				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'falsePositive' ),
-				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'noFurtherAction' )
-			),
-			$user
-		) ) > 0;
+		return $this->permissionManager->canViewQueue( $user );
 	}
 
 	/**

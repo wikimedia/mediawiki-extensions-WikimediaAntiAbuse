@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
@@ -165,6 +166,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				} else {
 					$this->assertStringContainsString( 'oldid=' . $actualRevId, $href );
 				}
+				$this->assertStringContainsString(
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=timestamp',
+					$href,
+					'the timestamp link names the click it stands for'
+				);
 			} else {
 				$this->assertNull( $timestampLink );
 			}
@@ -225,7 +231,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'diff=prev', $pageLinkHref );
 			} else {
 				$this->assertSame(
-					$pageTitle->getLocalURL(),
+					$pageTitle->getLocalURL( [
+						AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'page_title',
+						AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					] ),
 					$pageLinkHref,
 					'the title links to the page itself'
 				);
@@ -256,6 +265,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					$this->assertStringContainsString( 'diff=prev', $fullDiffHref );
 					$this->assertStringContainsString( 'oldid=' . $actualRevId, $fullDiffHref );
 				}
+				$this->assertStringContainsString(
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=full_diff',
+					$fullDiffHref,
+					'the full diff link names the click it stands for'
+				);
 			} else {
 				$this->assertStringNotContainsString( 'oldid=' . $actualRevId, $detailsCellHtml );
 				$this->assertStringNotContainsString(
@@ -407,6 +421,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'ids=' . $actualRevId,
 					$actionLinks[self::REVISION_DELETE_LABEL]
 				);
+				$this->assertStringContainsString(
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
+						AbuseReviewLinkClickHandler::SUBTYPE_REVISION_DELETE,
+					$actionLinks[self::REVISION_DELETE_LABEL],
+					'the revision deletion link names the click it stands for'
+				);
 			}
 
 			// Reverting is offered only where core would accept the undo: a live revision on a
@@ -424,6 +444,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'&undo=' . static::$revertableTaggedContentRevId,
 					$actionLinks[self::REVERT_LABEL]
 				);
+				$this->assertStringContainsString(
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
+						AbuseReviewLinkClickHandler::SUBTYPE_REVERT,
+					$actionLinks[self::REVERT_LABEL],
+					'the revert link names the click it stands for'
+				);
 			}
 
 			// The history offers its visibility checkboxes to a holder of deleterevision, so
@@ -436,6 +462,14 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				isset( $actionLinks[self::SUPPRESS_LABEL] ),
 				'suppression offered only where the history will let the reviewer act'
 			);
+			if ( $expectsSuppress ) {
+				$this->assertStringContainsString(
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
+						AbuseReviewLinkClickHandler::SUBTYPE_SUPPRESS,
+					$actionLinks[self::SUPPRESS_LABEL],
+					'the suppression link names the click it stands for'
+				);
+			}
 
 			$this->assertSame(
 				array_values( array_filter( [
