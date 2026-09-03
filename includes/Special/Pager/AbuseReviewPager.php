@@ -70,6 +70,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly array $tagsFilter,
 		private readonly bool $includeHandledRevisions,
 		private readonly array $usernamesFilter,
+		private readonly array $revisionsFilter,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
@@ -1012,6 +1013,14 @@ class AbuseReviewPager extends CodexTablePager {
 
 		if ( $this->usernamesFilter ) {
 			$queryBuilder->where( $this->getDatabase()->expr( 'actor_name', '=', $this->usernamesFilter ) );
+		}
+
+		if ( $this->revisionsFilter ) {
+			if ( $table === 'revision' ) {
+				$queryBuilder->where( $this->getDatabase()->expr( 'rev_id', '=', $this->revisionsFilter ) );
+			} else {
+				$queryBuilder->where( $this->getDatabase()->expr( 'ar_rev_id', '=', $this->revisionsFilter ) );
+			}
 		}
 
 		return $queryBuilder->getQueryInfo();

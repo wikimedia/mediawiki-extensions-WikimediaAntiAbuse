@@ -131,7 +131,8 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 						'show_false_positives' => false,
 						'show_handled_revisions' => false,
 						'username' => [ $firstTestUser->getName() ],
-					]
+						'revision' => [],
+					],
 				]
 			);
 		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
@@ -182,6 +183,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'show_false_positives' => false,
 				'show_handled_revisions' => false,
 				'username' => [],
+				'revision' => [],
 			]
 		];
 		if ( $expectedReferrer !== null ) {

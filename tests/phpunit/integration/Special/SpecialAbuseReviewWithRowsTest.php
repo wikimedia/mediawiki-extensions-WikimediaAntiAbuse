@@ -61,6 +61,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		}
 		$data = array_merge( $data, $extraQueryParamsCallback() );
 
+		$expectedRevisionIdFilter = array_values( array_filter( array_map( 'intval', $data['revision'] ?? [] ) ) );
+
 		$context = RequestContext::getMain();
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
 		$client->expects( $this->once() )
@@ -75,6 +77,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'show_false_positives' => $includeFalsePositiveRevisions,
 						'show_handled_revisions' => $includeHandledRevisions,
 						'username' => [],
+						'revision' => $expectedRevisionIdFilter,
 					]
 				]
 			);
@@ -103,7 +106,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$specialPageSummaryHtml
 		);
 
-		$this->verifyFilterButtonPresent( $html, count( array_filter( $expectedActiveFiltersArray ) ) );
+		$expectedFiltersAppliedChipValue = count( array_filter( $expectedActiveFiltersArray ) );
+		$expectedFiltersAppliedChipValue += count( $expectedRevisionIdFilter );
+		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedChipValue );
 
 		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
 
@@ -596,6 +601,44 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedContentRevId,
 					static::$noFurtherActionRevId,
 				],
+			],
+			'Filters for specific revision' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'revision' => [ static::$taggedContentRevId ] ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+			],
+			'Filters for specific archived revision' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'revision' => [ static::$deletedTaggedContentRevId ] ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$deletedTaggedContentRevId ],
+			],
+			'Ignores invalid revision filter' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'revision' => [ 'invalid' ] ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+			],
+			'Filters for specific revision, ignoring an invalid one' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'revision' => [ 'invalid', static::$taggedContentRevId ],
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
 			],
 		];
 	}

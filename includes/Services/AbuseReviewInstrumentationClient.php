@@ -14,7 +14,7 @@ use MediaWiki\Extension\EventLogging\MetricsPlatform\MetricsClientFactory;
 class AbuseReviewInstrumentationClient implements IAbuseReviewInstrumentationClient {
 
 	private const string STREAM = 'mediawiki.wikimedia_antiabuse.abuse_review_interaction';
-	private const string SCHEMA = '/analytics/mediawiki/wikimedia_antiabuse/abuse_review_interaction/1.1.0';
+	private const string SCHEMA = '/analytics/mediawiki/wikimedia_antiabuse/abuse_review_interaction/1.1.1';
 
 	public function __construct(
 		private readonly MetricsClientFactory $metricsClientFactory,

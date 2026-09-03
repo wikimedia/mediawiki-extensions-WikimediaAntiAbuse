@@ -33,6 +33,7 @@ class SpecialAbuseReview extends SpecialPage {
 	private array $tagsFilter;
 	private bool $includeHandledRevisions;
 	private array $usernamesFilter;
+	private array $revisionsFilter;
 
 	/**
 	 * @var int The number of filters applied (counting all filters present in the filters dialog)
@@ -109,12 +110,17 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->numberOfFiltersApplied++;
 		}
 
-		$this->usernamesFilter = array_values( array_filter(
-			$this->getRequest()->getArray( 'username', [] ),
-			static fn ( $username ): bool => is_string( $username ) && $username !== ''
-		) );
+		$this->usernamesFilter = $this->getArrayParam( 'username' );
 		if ( $this->usernamesFilter ) {
 			$this->numberOfFiltersApplied += count( $this->usernamesFilter );
+		}
+
+		$this->revisionsFilter = array_values( array_filter( array_map(
+			'intval',
+			$this->getArrayParam( 'revision' )
+		) ) );
+		if ( $this->revisionsFilter ) {
+			$this->numberOfFiltersApplied += count( $this->revisionsFilter );
 		}
 
 		$this->getOutput()->addJsConfigVars(
@@ -130,7 +136,21 @@ class SpecialAbuseReview extends SpecialPage {
 			'show_false_positives' => $showFalsePositives,
 			'show_handled_revisions' => $showHandledRevisions,
 			'username' => $this->usernamesFilter,
+			'revision' => $this->revisionsFilter,
 		];
+	}
+
+	/**
+	 * Given a parameter name that takes an array of values, return the array of values from the request
+	 * after sanitising.
+	 *
+	 * @return string[]
+	 */
+	private function getArrayParam( string $paramName ): array {
+		return array_values( array_filter(
+			$this->getRequest()->getArray( $paramName, [] ),
+			static fn ( $value ): bool => is_string( $value ) && $value !== ''
+		) );
 	}
 
 	/**
@@ -149,6 +169,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->tagsFilter,
 			$this->includeHandledRevisions,
 			$this->usernamesFilter,
+			$this->revisionsFilter,
 			$this->numberOfFiltersApplied
 		);
 		$this->getOutput()->addParserOutputContent(

@@ -34,6 +34,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$tagsFilter,
 			false,
 			[],
+			[],
 			0
 		);
 	}
