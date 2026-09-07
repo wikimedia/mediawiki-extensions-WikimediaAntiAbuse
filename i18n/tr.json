@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Cobija",
 			"Hedda"
 		]
 	},
@@ -12,6 +13,8 @@
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "İşlenmiş sürümleri göster",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filtrele",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Sürümleri filtrele",
+	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Hesap",
+	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Hesap adını girin...",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Sürüm",
 	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "Yanlış pozitif olarak işaretle",
 	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Yanlış pozitif işaretini kaldır",
@@ -22,6 +25,7 @@
 	"tag-mw-private-personal-info-description": "Kişisel bilgi eklediği şüphesiyle otomatik olarak işaretlenen düzenlemeler",
 	"tag-mw-private-personal-info-false-positive": "Yanlış pozitif (kişisel bilgi)",
 	"tag-mw-private-personal-info-false-positive-description": "Kişisel bilgi eklediği gerekçesiyle otomatik işaretlenen ancak yanlış pozitif olarak işaretlenmiş düzenlemeler",
+	"tag-mw-private-vandalism-no-further-action": "Başka bir işlem gerekmiyor (vandalizm)",
 	"echo-category-title-personal-info": "Kişisel bilgi içerdiği şüphesiyle işaretlendi",
 	"echo-pref-tooltip-personal-info": "Bir düzenleme kişisel bilgi içeriyor olabilir diye işaretlendiğinde beni bilgilendir.",
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Bu bildirim hakkında daha fazla bilgi edinin]]",

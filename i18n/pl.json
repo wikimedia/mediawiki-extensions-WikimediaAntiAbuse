@@ -4,11 +4,14 @@
 			"PanWor"
 		]
 	},
+	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Konto",
+	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Wpisz nazwę konta…",
 	"wikimediaantiabuse-special-abuse-review-show-details": "Pokaż szczegóły",
 	"wikimediaantiabuse-special-abuse-review-edit-summary": "Opis zmian:",
 	"wikimediaantiabuse-special-abuse-review-action-suppress": "Ukryj…",
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Nie są wymagane dalsze działania",
 	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Wymagane dalsze działania",
 	"tag-mw-private-personal-info-no-further-action": "Nie są wymagane dalsze działania (dane osobowe)",
-	"tag-mw-private-personal-info-no-further-action-description": "Zmiany automatycznie oznaczone jako zawierające dane osobowe i zaklasyfikowane jako niewymagające dalszych działań"
+	"tag-mw-private-personal-info-no-further-action-description": "Zmiany automatycznie oznaczone jako zawierające dane osobowe i zaklasyfikowane jako niewymagające dalszych działań",
+	"tag-mw-private-vandalism-no-further-action": "Nie są wymagane dalsze działania (wandalizm)"
 }

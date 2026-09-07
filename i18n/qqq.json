@@ -1,6 +1,8 @@
 {
 	"@metadata": {
-		"authors": []
+		"authors": [
+			"Siebrand"
+		]
 	},
 	"wikimediaantiabuse-desc": "{{desc|name=WikimediaAntiAbuse|url=https://www.mediawiki.org/wiki/Extension:WikimediaAntiAbuse}}",
 	"wikimediaantiabuse-special-abuse-review": "The page title for [[Special:AbuseReview]].",
@@ -54,7 +56,7 @@
 	"tag-mw-private-vandalism-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that likely are vandalism",
 	"tag-mw-private-vandalism-false-positive": "Change tag for edits that were manually reviewed and considered a false positive for being likely vandalism",
 	"tag-mw-private-vandalism-false-positive-description": "Change tag description for edits that were manually reviewed and considered a false positive for being likely vandalism",
-	"tag-mw-private-vandalism-false-positive-helppage": "{{notranslate}}\n\nHelp page link for the change tag for edits that were manually reviewed and considered a false positive for being likely vandalism",
+	"tag-mw-private-vandalism-false-positive-helppage": "{{notranslate}}",
 	"tag-mw-private-vandalism-no-further-action": "Change tag for edits flagged for being likely vandalism that were manually reviewed and need no further action",
 	"tag-mw-private-vandalism-no-further-action-description": "Change tag description for edits flagged for being likely vandalism that were manually reviewed and need no further action",
 	"tag-mw-private-vandalism-no-further-action-helppage": "{{notranslate}}\n\nHelp page link for the change tag for flagged edits that were reviewed for being likely vandalism and need no further action",
