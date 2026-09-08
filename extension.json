@@ -180,6 +180,7 @@
 				"rest.js",
 				"utils.js",
 				"components/FilterDialog.vue",
+				"components/FilterDialogMultiselectLookup.vue",
 				"components/FilterDialogUsernameFilter.vue",
 				"mountFilterDialog.js",
 				{
@@ -227,6 +228,7 @@
 			"tests/qunit/components/RowVerdicts.test.js",
 			"tests/qunit/utils.test.js",
 			"tests/qunit/components/FilterDialog.test.js",
+			"tests/qunit/components/FilterDialogMultiselectLookup.test.js",
 			"tests/qunit/components/FilterDialogUsernameFilter.test.js",
 			"tests/qunit/mountFilterDialog.test.js"
 		],

@@ -1,38 +1,30 @@
 <template>
-	<cdx-field
+	<filter-dialog-multiselect-lookup
+		v-model:selected-items="computedSelectedUsernames"
+		:placeholder="$i18n(
+			'wikimediaantiabuse-special-abuse-review-filter-username-placeholder'
+		).text()"
+		name="filter-username"
 		class="mw-wikimediaantiabuse-abuse-review-filter-dialog-username-filter"
+		:load-suggested-items-callback="loadSuggestedUsernames"
 	>
 		<template #label>
 			{{ $i18n(
 				'wikimediaantiabuse-special-abuse-review-filter-username-header'
 			).text() }}
 		</template>
-		<cdx-multiselect-lookup
-			v-model:input-chips="selectedUsernameChips"
-			v-model:selected="computedSelectedUsernames"
-			v-model:input-value="inputValue"
-			:menu-items="suggestedUsernames"
-			:menu-config="menuConfig"
-			:placeholder="$i18n(
-				'wikimediaantiabuse-special-abuse-review-filter-username-placeholder'
-			).text()"
-			name="filter-username"
-			@update:input-value="loadSuggestedUsernames"
-		>
-		</cdx-multiselect-lookup>
-	</cdx-field>
+	</filter-dialog-multiselect-lookup>
 </template>
 
 <script>
-const { ref, computed, onMounted, onUnmounted } = require( 'vue' ),
-	{ CdxField, CdxMultiselectLookup } = require( './../codex.js' );
+const { computed } = require( 'vue' ),
+	FilterDialogMultiselectLookup = require( './FilterDialogMultiselectLookup.vue' );
 
 // @vue/component
 module.exports = exports = {
 	name: 'FilterDialogUsernameFilter',
 	components: {
-		CdxField,
-		CdxMultiselectLookup
+		FilterDialogMultiselectLookup
 	},
 	props: {
 		/**
@@ -48,118 +40,50 @@ module.exports = exports = {
 		'update:selected-usernames'
 	],
 	setup( props, ctx ) {
-		const windowHeight = ref( window.innerHeight );
-		let usernameLookupDebounce = null;
-
 		const computedSelectedUsernames = computed( {
 			get: () => props.selectedUsernames,
 			set: ( value ) => ctx.emit( 'update:selected-usernames', value )
 		} );
-		const selectedUsernameChips = ref( props.selectedUsernames.map( ( username ) => ( {
-			label: username, value: username
-		} ) ) );
-		const suggestedUsernames = ref( [] );
-		const inputValue = ref( '' );
 
 		/**
-		 * Called when the browser window is resized.
+		 * Load username suggestions for the username lookup component using the
+		 * 'allusers' query API.
 		 *
-		 * This function updates the reference containing
-		 * the current height of the window to adjust the
-		 * number of menu items shown for the username lookup field.
-		 */
-		function onWindowResize() {
-			windowHeight.value = window.innerHeight;
-		}
-
-		onMounted( () => {
-			window.addEventListener( 'resize', onWindowResize );
-		} );
-
-		onUnmounted( () => {
-			window.removeEventListener( 'resize', onWindowResize );
-		} );
-
-		/**
-		 * The configuration settings for the Codex MultiLookup username component.
-		 *
-		 * This sets the visibleItemLimit to a proportion of the height such
-		 * that the dropdown menu should not overflow the bottom of the dialog.
-		 */
-		const menuConfig = computed( () => ( {
-			visibleItemLimit: Math.min(
-				Math.max(
-					Math.floor( windowHeight.value / 150 ),
-					2
-				),
-				4
-			)
-		} ) );
-
-		/**
-		 * Load username suggestions for the username lookup component
-		 * using the 'allusers' query API. The results are set as the
-		 * suggestedUsernames reference for further use.
-		 *
-		 * Calling this method repeatedly is safe as the API call is
-		 * debounced using a 100ms delay.
-		 *
-		 * @param {string} value The text the user has typed into the input field
+		 * @param {string} value The text the user has typed into the input field,
+		 *   never an empty string
+		 * @return {Promise<Array<{ value: string }>>}
 		 */
 		function loadSuggestedUsernames( value ) {
-			// Clear any other yet to be run API calls to get the suggested usernames.
-			clearTimeout( usernameLookupDebounce );
+			return new mw.Api().get( {
+				action: 'query',
+				list: 'allusers',
+				auprefix: value,
+				aulimit: '10'
+			} ).then( ( data ) => {
+				// If the return data structure is not expected or no
+				// users are found, then just display no suggestions.
+				if (
+					!data ||
+					!data.query ||
+					!data.query.allusers ||
+					!Array.isArray( data.query.allusers )
+				) {
+					return [];
+				}
 
-			// Do nothing if we have no input.
-			if ( !value ) {
-				suggestedUsernames.value = [];
-				return;
-			}
-
-			// Debounce the API calls using a 100ms delay.
-			usernameLookupDebounce = setTimeout( () => {
-				new mw.Api().get( {
-					action: 'query',
-					list: 'allusers',
-					auprefix: value,
-					aulimit: '10'
-				} ).then( ( data ) => {
-					// If the return data structure is not expected or no
-					// users are found, then just display no suggestions.
-					if (
-						!data ||
-						!data.query ||
-						!data.query.allusers ||
-						!Array.isArray( data.query.allusers )
-					) {
-						suggestedUsernames.value = [];
-						return;
-					}
-
-					suggestedUsernames.value = data.query.allusers.map(
-						( user ) => ( { value: user.name } )
-					);
-				} ).catch( ( error ) => {
-					suggestedUsernames.value = [];
-					mw.log.error( error );
-				} );
-			}, 100 );
+				return data.query.allusers.map(
+					( user ) => ( { value: user.name } )
+				);
+			} ).catch( ( error ) => {
+				mw.log.error( error );
+				return [];
+			} );
 		}
 
 		return {
-			inputValue,
-			selectedUsernameChips,
 			computedSelectedUsernames,
-			suggestedUsernames,
-			menuConfig,
-			windowHeight,
 			loadSuggestedUsernames
 		};
-	},
-	expose: [
-		// Expose internal functions and variables used in tests in order
-		// to prevent linter errors about unused properties
-		'windowHeight'
-	]
+	}
 };
 </script>

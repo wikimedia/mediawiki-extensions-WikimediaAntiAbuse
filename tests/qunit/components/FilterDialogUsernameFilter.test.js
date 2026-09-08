@@ -13,24 +13,25 @@ QUnit.module( 'ext.wikimediaAntiAbuse.FilterDialogUsernameFilter', QUnit.newMwEn
 	}
 } ) );
 
-/**
- * Waits for the debounce time set for the username lookup component to complete.
- * Used to ensure that tests wait for long enough for the state of the page to be updated.
- *
- * @return {Promise}
- */
-const waitUntilDebounceComplete = () => new Promise( ( resolve ) => {
-	setTimeout( () => {
-		resolve();
-	}, 120 );
-} );
-
 const mountUsernameFilter = ( selectedUsernames ) => {
 	const FilterDialogUsernameFilter = require( 'ext.wikimediaAntiAbuse/components/FilterDialogUsernameFilter.vue' );
 	const wrapper = mount( FilterDialogUsernameFilter, Object.assign( {
 		// $i18n is installed by createMwApp, which mounting the component directly bypasses.
 		global: {
-			mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) }
+			mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) },
+			stubs: {
+				FilterDialogMultiselectLookup: {
+					name: 'FilterDialogMultiselectLookup',
+					template: '<div />',
+					props: [
+						'selectedItems',
+						'placeholder',
+						'name',
+						'class',
+						'loadSuggestedItemsCallback'
+					]
+				}
+			}
 		},
 		props: {
 			selectedUsernames: selectedUsernames === undefined ? [] : selectedUsernames
@@ -40,34 +41,38 @@ const mountUsernameFilter = ( selectedUsernames ) => {
 	return wrapper;
 };
 
-QUnit.test( 'Should update menu config on change in window height', ( assert ) => {
-	const wrapper = mountUsernameFilter();
+QUnit.test( 'Should render correctly', async ( assert ) => {
+	const wrapper = mountUsernameFilter( [ 'Test', 'Testing' ] );
+	const lookup = wrapper.findComponent( { name: 'FilterDialogMultiselectLookup' } );
 
-	wrapper.vm.windowHeight = 1;
 	assert.strictEqual(
-		wrapper.vm.menuConfig.visibleItemLimit,
-		2,
-		'Minimum visible item limit should be 2'
+		lookup.vm.class,
+		'mw-wikimediaantiabuse-abuse-review-filter-dialog-username-filter',
+		'The lookup component should have the expected CSS class'
 	);
-
-	wrapper.vm.windowHeight = 1000;
 	assert.strictEqual(
-		wrapper.vm.menuConfig.visibleItemLimit,
-		4,
-		'Maximum visible item limit should be 4'
+		lookup.vm.name,
+		'filter-username',
+		'The lookup component should have the expected name'
 	);
-
-	// Set the window height to 500 to test the x / 150 calculation
-	wrapper.vm.windowHeight = 500;
-	// The floor division of 500 by 150 is 3.
 	assert.strictEqual(
-		wrapper.vm.menuConfig.visibleItemLimit,
-		3,
-		'Visible item limit should be 3 for a window height of 500'
+		lookup.vm.placeholder,
+		'(wikimediaantiabuse-special-abuse-review-filter-username-placeholder)',
+		'The lookup component should have the expected placeholder'
+	);
+	assert.deepEqual(
+		lookup.vm.selectedItems,
+		[ 'Test', 'Testing' ],
+		'The lookup component should have the expected selected usernames'
+	);
+	assert.strictEqual(
+		lookup.vm.$slots.label()[ 0 ].children,
+		'(wikimediaantiabuse-special-abuse-review-filter-username-header)',
+		'The lookup component should have the expected label slot content'
 	);
 } );
 
-QUnit.test( 'Should query allusers API on inputValue update', async function ( assert ) {
+QUnit.test( 'Should query allusers API on suggested items update', async function ( assert ) {
 	const apiGet = this.sandbox.stub( mw.Api.prototype, 'get' ).callsFake( () => Promise.resolve(
 		{ query: { allusers: [
 			{ userid: 1, name: 'testing' },
@@ -76,20 +81,18 @@ QUnit.test( 'Should query allusers API on inputValue update', async function ( a
 		] } }
 	) );
 	const wrapper = mountUsernameFilter();
+	const lookup = wrapper.findComponent( { name: 'FilterDialogMultiselectLookup' } );
+	const suggestions = await lookup.vm.loadSuggestedItemsCallback( 'testing' );
 
-	// Update the input value
-	const inputField = wrapper.find( 'input[name=filter-username]' );
-	await inputField.setValue( 'testing' );
-
-	// Wait until the debounce time has expired and add around 20ms to be sure it has run.
-	await waitUntilDebounceComplete();
-
-	// The suggestions should now be set.
-	assert.deepEqual( wrapper.vm.suggestedUsernames, [
-		{ value: 'testing' },
-		{ value: 'testing1' },
-		{ value: 'testing2' }
-	] );
+	assert.deepEqual(
+		suggestions,
+		[
+			{ value: 'testing' },
+			{ value: 'testing1' },
+			{ value: 'testing2' }
+		],
+		'The suggestions returned from the API should be transformed into the expected format'
+	);
 	assert.true( apiGet.calledWith( {
 		action: 'query',
 		list: 'allusers',
@@ -98,7 +101,7 @@ QUnit.test( 'Should query allusers API on inputValue update', async function ( a
 	} ) );
 } );
 
-QUnit.test( 'inputValue update but allusers API request errors', async function ( assert ) {
+QUnit.test( 'Should suggest no users if allusers API request errors', async function ( assert ) {
 	const rejectedPromise = Promise.reject( 'error' );
 	rejectedPromise.catch( () => {} );
 
@@ -106,19 +109,14 @@ QUnit.test( 'inputValue update but allusers API request errors', async function 
 	const mwLogError = this.sandbox.stub( mw.log, 'error' );
 
 	const wrapper = mountUsernameFilter();
+	const lookup = wrapper.findComponent( { name: 'FilterDialogMultiselectLookup' } );
+	const suggestions = await lookup.vm.loadSuggestedItemsCallback( 'testing' );
 
-	// Set suggestedUsernames so that the test can verify it empties on a failed request
-	wrapper.vm.suggestedUsernames.value = [ { value: 'test123123123123123' } ];
-
-	// Update the input value
-	const inputField = wrapper.find( 'input[name=filter-username]' );
-	await inputField.setValue( 'testing' );
-
-	// Wait until the debounce time has expired and add around 20ms to be sure it has run
-	await waitUntilDebounceComplete();
-
-	// The suggestions should now be set
-	assert.deepEqual( wrapper.vm.suggestedUsernames, [] );
+	assert.deepEqual(
+		suggestions,
+		[],
+		'The suggestions should be empty if the allusers API request fails'
+	);
 	assert.true( mwLogError.calledWith( 'error' ) );
 	assert.true( apiGet.calledWith( {
 		action: 'query',
@@ -128,73 +126,29 @@ QUnit.test( 'inputValue update but allusers API request errors', async function 
 	} ) );
 } );
 
-QUnit.test( 'inputValue updated but allusers API returns unparsable response', async function ( assert ) {
+QUnit.test( 'Should suggest no users if allusers API returns unparsable response', async function ( assert ) {
 	const apiGet = this.sandbox.stub( mw.Api.prototype, 'get' ).callsFake( () => Promise.resolve(
 		{ test: 'test' }
 	) );
+	const mwLogError = this.sandbox.stub( mw.log, 'error' );
 
 	const wrapper = mountUsernameFilter();
+	const lookup = wrapper.findComponent( { name: 'FilterDialogMultiselectLookup' } );
+	const suggestions = await lookup.vm.loadSuggestedItemsCallback( 'testing123' );
 
-	// Set suggestedUsernames so that the test can verify it empties on a failed request
-	wrapper.vm.suggestedUsernames.value = [ { value: 'test123123123123123' } ];
-
-	// Update the input value
-	const inputField = wrapper.find( 'input[name=filter-username]' );
-	await inputField.setValue( 'testing123' );
-
-	// Wait until the debounce time has expired and add around 20ms to be sure it has run
-	await waitUntilDebounceComplete();
-
-	// The suggestions should now be set
-	assert.deepEqual( wrapper.vm.suggestedUsernames, [] );
-	assert.true( apiGet.calledWith( {
-		action: 'query',
-		list: 'allusers',
-		auprefix: 'testing123',
-		aulimit: '10'
-	} ) );
-} );
-
-QUnit.test( 'Should select no usernames for an empty input field', ( assert ) => {
-	const wrapper = mountUsernameFilter();
-
-	const inputField = wrapper.find( 'input[name=filter-username]' );
-	inputField.setValue( '' );
-
-	// The suggestions should be empty for an empty input
 	assert.deepEqual(
-		wrapper.vm.suggestedUsernames,
+		suggestions,
 		[],
-		'No suggested usernames are set for empty input'
+		'The suggestions should be empty if the allusers API request is unparsable'
 	);
-} );
-
-QUnit.test( 'inputValue updated twice within the debounce period', async function ( assert ) {
-	const apiGet = this.sandbox.stub( mw.Api.prototype, 'get' ).callsFake( () => Promise.resolve(
-		{ query: { allusers: [
-			{ userid: 1, name: 'testing123' },
-			{ userid: 2, name: 'testing1234' }
-		] } }
-	) );
-	const wrapper = mountUsernameFilter();
-
-	// Update the input value twice to test debouncing
-	const inputField = wrapper.find( 'input[name=filter-username]' );
-	await inputField.setValue( 'testing12' );
-	await inputField.setValue( 'testing123' );
-
-	// Wait until the debounce time has expired and add around 20ms to be sure it has run
-	await waitUntilDebounceComplete();
-
-	// The suggestions should now be set.
-	assert.deepEqual( wrapper.vm.suggestedUsernames, [
-		{ value: 'testing123' },
-		{ value: 'testing1234' }
-	] );
 	assert.true( apiGet.calledWith( {
 		action: 'query',
 		list: 'allusers',
 		auprefix: 'testing123',
 		aulimit: '10'
 	} ) );
+	assert.false(
+		mwLogError.called,
+		'The unexpected response shape is handled without an error being thrown'
+	);
 } );
