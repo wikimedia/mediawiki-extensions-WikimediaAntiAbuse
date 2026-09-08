@@ -64,7 +64,18 @@ QUnit.test.each( 'Renders correctly when opened', {
 
 	const wrapper = mountDialog( options.initialFilters );
 
-	const falsePositivesCheckbox = wrapper.find( 'input[name="filter-show-false-positives"]' );
+	const showAdditionalItemsField = wrapper.find(
+		'.mw-wikimediaantiabuse-abuse-review-filter-dialog-show-additional-items'
+	);
+
+	const helpText = showAdditionalItemsField.find( '.cdx-field__help-text' );
+	assert.strictEqual(
+		helpText.text(),
+		'(wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help)',
+		'Show additional items field has the expected help text'
+	);
+
+	const falsePositivesCheckbox = showAdditionalItemsField.find( 'input[name="filter-show-false-positives"]' );
 	assert.strictEqual(
 		falsePositivesCheckbox.element.checked,
 		options.initialFilters.showFalsePositives,
@@ -81,7 +92,7 @@ QUnit.test.each( 'Renders correctly when opened', {
 		'False positives checkbox has correct label'
 	);
 
-	const handledRevisionsCheckbox = wrapper.find( 'input[name="filter-show-handled-revisions"]' );
+	const handledRevisionsCheckbox = showAdditionalItemsField.find( 'input[name="filter-show-handled-revisions"]' );
 	assert.strictEqual(
 		handledRevisionsCheckbox.element.checked,
 		options.initialFilters.showHandledRevisions,

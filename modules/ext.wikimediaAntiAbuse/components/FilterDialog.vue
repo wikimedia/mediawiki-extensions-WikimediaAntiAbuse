@@ -13,21 +13,14 @@
 		@default="onCloseButtonClick"
 	>
 		<cdx-field
-			class="mw-wikimediaantiabuse-abuse-review-filter-dialog-checkbox-filters"
+			:is-fieldset="true"
+			class="mw-wikimediaantiabuse-abuse-review-filter-dialog-show-additional-items"
 		>
 			<template #label>
 				{{ $i18n(
 					'wikimediaantiabuse-special-abuse-review-filter-verdicts-header'
 				).text() }}
 			</template>
-			<cdx-checkbox
-				v-model="showFalsePositivesCheckboxValue"
-				name="filter-show-false-positives"
-			>
-				{{ $i18n(
-					'wikimediaantiabuse-special-abuse-review-show-false-positives'
-				).text() }}
-			</cdx-checkbox>
 			<cdx-checkbox
 				v-model="showHandledRevisionsCheckboxValue"
 				name="filter-show-handled-revisions"
@@ -36,9 +29,22 @@
 					'wikimediaantiabuse-special-abuse-review-show-handled-revisions'
 				).text() }}
 			</cdx-checkbox>
-			<filter-dialog-username-filter v-model:selected-usernames="selectedUsernames">
-			</filter-dialog-username-filter>
+			<cdx-checkbox
+				v-model="showFalsePositivesCheckboxValue"
+				name="filter-show-false-positives"
+			>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-show-false-positives'
+				).text() }}
+			</cdx-checkbox>
+			<template #help-text>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help'
+				).text() }}
+			</template>
 		</cdx-field>
+		<filter-dialog-username-filter v-model:selected-usernames="selectedUsernames">
+		</filter-dialog-username-filter>
 	</cdx-dialog>
 </template>
 
