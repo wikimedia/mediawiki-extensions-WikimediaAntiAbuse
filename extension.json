@@ -84,14 +84,6 @@
 				"ExtensionRegistry"
 			]
 		},
-		"RevisionVisibilityHandler": {
-			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\RevisionVisibilityHandler",
-			"services": [
-				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator",
-				"ConnectionProvider",
-				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
-			]
-		},
 		"EchoHooksHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
 			"services": [
@@ -117,11 +109,23 @@
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
 		"GetPreferences": "NotificationPreferencesHandler",
-		"ArticleRevisionVisibilitySet": "RevisionVisibilityHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
 		"UserGroupsChanged": "UserRightsNotificationHandler"
 	},
+	"DomainEventIngresses": [
+		{
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\EventSubscribers\\PageHistoryVisibilityEventIngress",
+			"services": [
+				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator",
+				"ConnectionProvider",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
+				"NamespaceInfo",
+				"TitleFactory"
+			],
+			"events": [ "PageHistoryVisibilityChanged" ]
+		}
+	],
 	"SpecialPages": {
 		"AbuseReview": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",

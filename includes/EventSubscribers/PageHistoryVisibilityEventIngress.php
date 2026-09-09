@@ -2,40 +2,43 @@
 
 declare( strict_types=1 );
 
-namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
+namespace MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers;
 
 use MediaWiki\Context\RequestContext;
+use MediaWiki\DomainEvent\DomainEventIngress;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
-use MediaWiki\RevisionDelete\Hook\ArticleRevisionVisibilitySetHook;
+use MediaWiki\Page\Event\PageHistoryVisibilityChangedEvent;
+use MediaWiki\Page\Event\PageHistoryVisibilityChangedListener;
+use MediaWiki\Title\NamespaceInfo;
+use MediaWiki\Title\TitleFactory;
 use Wikimedia\Rdbms\IConnectionProvider;
 
-class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
+class PageHistoryVisibilityEventIngress extends DomainEventIngress
+	implements PageHistoryVisibilityChangedListener
+{
 
 	public function __construct(
 		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator,
 		private readonly IConnectionProvider $dbProvider,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
+		private readonly NamespaceInfo $namespaceInfo,
+		private readonly TitleFactory $titleFactory,
 	) {
 	}
 
-	/**
-	 * A suppressed revision no longer needs a reviewer, so hide its notification. A plain
-	 * revision-deletion is deliberately ignored: the edit still needs suppression, so the
-	 * notification stays. This matches the suppression guard in PersonalInfoFlagNotifier.
-	 * To lift a suppression does not bring the notification back, because that is a rare and
-	 * deliberate act which follows human review.
-	 *
-	 * @inheritDoc
-	 */
-	public function onArticleRevisionVisibilitySet( $title, $ids, $visibilityChangeMap ): void {
+	public function handlePageHistoryVisibilityChangedEvent( PageHistoryVisibilityChangedEvent $event ): void {
+		$affectedRevIds = $event->getAffectedRevisionIDs();
+		$pageIdentity = $event->getPage();
+
 		$newlySuppressedRevisionIds = [];
-		foreach ( $visibilityChangeMap as $revisionId => $visibilityChange ) {
-			$wasSuppressed = $this->isSuppressed( (int)$visibilityChange['oldBits'] );
-			$isSuppressed = $this->isSuppressed( (int)$visibilityChange['newBits'] );
+		foreach ( $affectedRevIds as $revisionId ) {
+			$wasSuppressed = $this->isSuppressed( $event->getVisibilityBefore( $revisionId ) );
+			$isSuppressed = $this->isSuppressed( $event->getVisibilityAfter( $revisionId ) );
 			if ( !$wasSuppressed && $isSuppressed ) {
-				$newlySuppressedRevisionIds[] = (int)$revisionId;
+				$newlySuppressedRevisionIds[] = $revisionId;
 			}
 		}
 
@@ -43,7 +46,7 @@ class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 			return;
 		}
 
-		$this->notificationModerator->hideForRevisions( $title->getId(), $newlySuppressedRevisionIds );
+		$this->notificationModerator->hideForRevisions( $pageIdentity->getId(), $newlySuppressedRevisionIds );
 
 		$dbr = $this->dbProvider->getReplicaDatabase();
 		$revisionsIdsTaggedWithPersonalInfoTag = $dbr->newSelectQueryBuilder()
@@ -56,6 +59,7 @@ class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 			->fetchFieldValues();
 		$revisionsIdsTaggedWithPersonalInfoTag = array_map( 'intval', $revisionsIdsTaggedWithPersonalInfoTag );
 
+		$title = $this->titleFactory->newFromPageIdentity( $pageIdentity );
 		foreach ( $newlySuppressedRevisionIds as $revisionId ) {
 			$this->instrumentationClient->submitInteraction(
 				RequestContext::getMain(),
@@ -66,6 +70,17 @@ class RevisionVisibilityHandler implements ArticleRevisionVisibilitySetHook {
 						: 'personal-info-not-tagged',
 					'identifier' => $revisionId,
 					'identifier_type' => 'revision',
+					'page' => [
+						'id' => $pageIdentity->getId(),
+						'title' => $pageIdentity->getDBkey(),
+						'namespace_id' => $pageIdentity->getNamespace(),
+						'namespace_name' => $this->namespaceInfo
+							->getCanonicalName( $pageIdentity->getNamespace() ) ?: '',
+						'revision_id' => $event->getLatestRevisionId(),
+						'content_language' => $title->getPageLanguage()->getCode(),
+						'is_redirect' => $title->isRedirect(),
+					],
+					'reason' => $event->getReason(),
 				]
 			);
 		}

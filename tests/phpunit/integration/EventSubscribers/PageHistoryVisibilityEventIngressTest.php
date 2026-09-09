@@ -2,30 +2,31 @@
 
 declare( strict_types=1 );
 
-namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Hooks\Handlers;
+namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\EventSubscribers;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers\PageHistoryVisibilityEventIngress;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\RevisionVisibilityHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
+use MediaWiki\Page\Event\PageHistoryVisibilityChangedEvent;
 use MediaWiki\Page\WikiPage;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWikiIntegrationTestCase;
 
 /**
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\RevisionVisibilityHandler
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers\PageHistoryVisibilityEventIngress
  * @group Database
  */
-class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
+class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase {
 
 	private const OTHER_EVENT_TYPE = 'wikimedia-anti-abuse-test-other';
 
 	private ?bool $originalAlwaysInsert = null;
-	private RevisionVisibilityHandler $handler;
+	private PageHistoryVisibilityEventIngress $listener;
 	private IAbuseReviewInstrumentationClient $instrumentationClient;
 	private WikiPage $page;
 
@@ -48,14 +49,16 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 
 		$this->instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
 
-		$this->handler = new RevisionVisibilityHandler(
+		$this->listener = new PageHistoryVisibilityEventIngress(
 			new EchoPersonalInfoFlagNotificationModerator(
 				$this->getServiceContainer()->get( 'EchoEventMapper' )
 			),
 			$this->getServiceContainer()->getConnectionProvider(),
-			$this->instrumentationClient
+			$this->instrumentationClient,
+			$this->getServiceContainer()->getNamespaceInfo(),
+			$this->getServiceContainer()->getTitleFactory()
 		);
-		$this->page = $this->getExistingTestPage( 'WikimediaAntiAbuse visibility test page' );
+		$this->page = $this->getExistingTestPage( 'Template talk:WikimediaAntiAbuse visibility test page' );
 	}
 
 	protected function tearDown(): void {
@@ -75,6 +78,7 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		bool $expectedDeleted
 	): void {
 		$revisionId = 1001;
+		$latestRevisionId = 1002;
 		$this->getServiceContainer()->getChangeTagsStore()->addTags(
 			[ ChangeTagsHandler::PERSONAL_INFO_TAG ],
 			null,
@@ -96,16 +100,34 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 					'action_subtype' => 'personal-info-tagged',
 					'identifier' => $revisionId,
 					'identifier_type' => 'revision',
+					'page' => $this->getExpectedPageInstrumentationData( $latestRevisionId ),
+					'reason' => 'test reason',
 				]
 			);
 
-		$this->handler->onArticleRevisionVisibilitySet(
-			$this->page->getTitle(),
-			[ $revisionId ],
-			[ $revisionId => [ 'oldBits' => $oldBits, 'newBits' => $newBits ] ]
-		);
+		$this->listener->handlePageHistoryVisibilityChangedEvent( $this->createVisibilityChangedEvent(
+			$latestRevisionId,
+			[ $revisionId => [ 'oldBits' => $oldBits, 'newBits' => $newBits ] ],
+			$oldBits,
+			$newBits,
+			'test reason'
+		) );
 
 		$this->assertEventDeleted( $eventId, $expectedDeleted );
+	}
+
+	private function getExpectedPageInstrumentationData( int $expectedLatestRevisionId ): array {
+		return [
+			'id' => $this->page->getTitle()->getArticleID(),
+			'title' => $this->page->getTitle()->getDBkey(),
+			'namespace_id' => $this->page->getTitle()->getNamespace(),
+			'namespace_name' => $this->getServiceContainer()->getNamespaceInfo()->getCanonicalName(
+				$this->page->getTitle()->getNamespace()
+			),
+			'revision_id' => $expectedLatestRevisionId,
+			'content_language' => $this->page->getTitle()->getPageLanguage()->getCode(),
+			'is_redirect' => $this->page->getTitle()->isRedirect(),
+		];
 	}
 
 	public static function provideVisibilityTransition(): array {
@@ -144,14 +166,16 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		$otherRevisionEventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $otherRevisionId );
 		$otherTypeEventId = $this->createEvent( self::OTHER_EVENT_TYPE, $targetRevisionId );
 
-		$this->handler->onArticleRevisionVisibilitySet(
-			$this->page->getTitle(),
-			[ $targetRevisionId ],
+		$this->listener->handlePageHistoryVisibilityChangedEvent( $this->createVisibilityChangedEvent(
+			$otherRevisionId,
 			[ $targetRevisionId => [
 				'oldBits' => 0,
 				'newBits' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
-			] ]
-		);
+			] ],
+			RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
+			0,
+			'test reason'
+		) );
 
 		$this->assertEventDeleted( $targetEventId, true, 'The event for the suppressed revision must be moderated' );
 		$this->assertEventDeleted( $otherRevisionEventId, false, 'An event for a different revision is untouched' );
@@ -162,6 +186,7 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 		$unsuppressedRevisionId = 1001;
 		$suppressedRevisionIdWithoutTag = 1002;
 		$suppressedRevisionIdWithTag = 1003;
+		$latestRevisionId = 1004;
 
 		$this->getServiceContainer()->getChangeTagsStore()->addTags(
 			[ ChangeTagsHandler::PERSONAL_INFO_TAG ],
@@ -174,11 +199,15 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 				'action_subtype' => 'personal-info-not-tagged',
 				'identifier' => $suppressedRevisionIdWithoutTag,
 				'identifier_type' => 'revision',
+				'page' => $this->getExpectedPageInstrumentationData( $latestRevisionId ),
+				'reason' => 'test reason abc',
 			],
 			$suppressedRevisionIdWithTag => [
 				'action_subtype' => 'personal-info-tagged',
 				'identifier' => $suppressedRevisionIdWithTag,
 				'identifier_type' => 'revision',
+				'page' => $this->getExpectedPageInstrumentationData( $latestRevisionId ),
+				'reason' => 'test reason abc',
 			],
 		];
 		$this->instrumentationClient->expects( $this->exactly( count( $expectedInstrumentationData ) ) )
@@ -197,18 +226,15 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 					array_keys( $expectedInstrumentationData ),
 					'Revision was not expected to be instrumented as suppressed'
 				);
-				$this->assertArrayEquals(
+				$this->assertSame(
 					$expectedInstrumentationData[$interactionData['identifier']],
 					$interactionData,
-					false,
-					true,
 					'Interaction data was not as expected'
 				);
 			} );
 
-		$this->handler->onArticleRevisionVisibilitySet(
-			$this->page->getTitle(),
-			[ $unsuppressedRevisionId, $suppressedRevisionIdWithoutTag, $suppressedRevisionIdWithTag ],
+		$this->listener->handlePageHistoryVisibilityChangedEvent( $this->createVisibilityChangedEvent(
+			$latestRevisionId,
 			[
 				$unsuppressedRevisionId => [
 					'oldBits' => 0,
@@ -222,8 +248,11 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 					'oldBits' => 0,
 					'newBits' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
 				],
-			]
-		);
+			],
+			RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
+			0,
+			'test reason abc'
+		) );
 	}
 
 	private function createEvent( string $type, int $revisionId ): int {
@@ -239,6 +268,27 @@ class RevisionVisibilityHandlerTest extends MediaWikiIntegrationTestCase {
 			$expectedDeleted,
 			( new EventMapper() )->fetchById( $eventId, true )->isDeleted(),
 			$message
+		);
+	}
+
+	private function createVisibilityChangedEvent(
+		int $latestRevisionId,
+		array $visibilityMap,
+		int $bitsSet,
+		int $bitsUnset,
+		string $reason
+	): PageHistoryVisibilityChangedEvent {
+		return new PageHistoryVisibilityChangedEvent(
+			$this->page,
+			$this->getTestUser()->getUserIdentity(),
+			$latestRevisionId,
+			$bitsSet,
+			$bitsUnset,
+			$visibilityMap,
+			$reason,
+			[],
+			[],
+			false
 		);
 	}
 }
