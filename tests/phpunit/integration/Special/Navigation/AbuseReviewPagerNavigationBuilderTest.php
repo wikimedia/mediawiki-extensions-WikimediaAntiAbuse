@@ -72,12 +72,64 @@ class AbuseReviewPagerNavigationBuilderTest extends MediaWikiIntegrationTestCase
 		);
 	}
 
+	public function testGetHiddenFields(): void {
+		$navBuilder = $this->initializeNavBuilder(
+			0,
+			[
+				'sort' => 'timestamp',
+				'asc' => '1',
+				'desc' => '0',
+				'limit' => '15',
+				'arrayfield' => [ 'value1', 'value2' ],
+			]
+		);
+		$actualHiddenFieldsHtml = $navBuilder->getHiddenFields( [ 'limit' ] );
+		$actualHiddenFields = DOMUtils::parseHTML( $actualHiddenFieldsHtml );
+
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="sort"][value="timestamp"]'
+		);
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="asc"][value="1"]'
+		);
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="desc"][value="0"]'
+		);
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="arrayfield[]"][value="value1"]'
+		);
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="arrayfield[]"][value="value2"]'
+		);
+		$this->assertNull( DOMCompat::querySelector( $actualHiddenFields, 'input[name="limit"]' ) );
+	}
+
+	public function testGetHiddenFieldsWithNestedArrayValue(): void {
+		$navBuilder = $this->initializeNavBuilder(
+			0,
+			[ 'nested' => [ 'a' => [ 'b' => '1' ] ], 'sort' => 'timestamp' ]
+		);
+		$actualHiddenFields = DOMUtils::parseHTML( $navBuilder->getHiddenFields() );
+
+		$this->assertNull( DOMCompat::querySelector( $actualHiddenFields, 'input[name="nested[]"]' ) );
+		$this->assertSelectorMatchesOneElementInNode(
+			$actualHiddenFields,
+			'input[type="hidden"][name="sort"]'
+		);
+	}
+
 	private function initializeNavBuilder(
-		int $numberOfFiltersApplied
+		int $numberOfFiltersApplied,
+		array $queryValues = []
 	): AbuseReviewPagerNavigationBuilder {
 		return new AbuseReviewPagerNavigationBuilder(
 			RequestContext::getMain(),
-			[],
+			$queryValues,
 			$numberOfFiltersApplied
 		);
 	}

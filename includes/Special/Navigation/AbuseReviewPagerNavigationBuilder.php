@@ -13,7 +13,7 @@ use Wikimedia\Codex\Utility\Codex;
 class AbuseReviewPagerNavigationBuilder extends CodexPagerNavigationBuilder {
 	public function __construct(
 		private readonly IContextSource $context,
-		array $queryValues,
+		private readonly array $queryValues,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct( $this->context, $queryValues );
@@ -64,5 +64,34 @@ class AbuseReviewPagerNavigationBuilder extends CodexPagerNavigationBuilder {
 			],
 			$buttonLabelHtml
 		);
+	}
+
+	/**
+	 * Get the hidden fields for the GET forms. This is modified to allow array fields to
+	 * be set as hidden fields as the base implementation disables this for "security reasons" but
+	 * the need for this is unclear.
+	 *
+	 * @inheritDoc
+	 */
+	public function getHiddenFields( array $noResubmit = [] ): string {
+		$query = $this->queryValues;
+		foreach ( $noResubmit as $name ) {
+			unset( $query[$name] );
+		}
+
+		$s = '';
+		foreach ( $query as $name => $value ) {
+			if ( is_array( $value ) ) {
+				foreach ( $value as $item ) {
+					if ( is_array( $item ) ) {
+						continue;
+					}
+					$s .= Html::hidden( $name . '[]', $item ) . "\n";
+				}
+			} else {
+				$s .= Html::hidden( $name, $value ) . "\n";
+			}
+		}
+		return $s;
 	}
 }
