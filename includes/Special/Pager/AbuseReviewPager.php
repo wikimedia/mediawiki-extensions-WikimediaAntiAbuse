@@ -72,6 +72,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly bool $includeHandledRevisions,
 		private readonly array $usernamesFilter,
 		private readonly array $revisionsFilter,
+		private readonly array $pagesFilter,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
@@ -1050,6 +1051,18 @@ class AbuseReviewPager extends CodexTablePager {
 			} else {
 				$queryBuilder->where( $this->getDatabase()->expr( 'ar_rev_id', '=', $this->revisionsFilter ) );
 			}
+		}
+
+		if ( $this->pagesFilter ) {
+			$titleField = $table === 'revision' ? 'page_title' : 'ar_title';
+			$namespaceField = $table === 'revision' ? 'page_namespace' : 'ar_namespace';
+			$queryBuilder->where( $this->getDatabase()->orExpr( array_map(
+				fn ( Title $title ) => $this->getDatabase()->andExpr( [
+					$this->getDatabase()->expr( $titleField, '=', $title->getDBkey() ),
+					$this->getDatabase()->expr( $namespaceField, '=', $title->getNamespace() )
+				] ),
+				$this->pagesFilter
+			) ) );
 		}
 
 		return $queryBuilder->getQueryInfo();

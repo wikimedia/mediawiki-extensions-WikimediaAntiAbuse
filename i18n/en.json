@@ -16,6 +16,8 @@
 	"wikimediaantiabuse-special-abuse-review-filter-verdicts-header": "Show additional items",
 	"wikimediaantiabuse-special-abuse-review-filter-username-header": "User",
 	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Type username...",
+	"wikimediaantiabuse-special-abuse-review-filter-page-header": "Page",
+	"wikimediaantiabuse-special-abuse-review-filter-page-placeholder": "Type page title...",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Revision",
 	"wikimediaantiabuse-special-abuse-review-heading-flags": "Flags",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Timestamp",

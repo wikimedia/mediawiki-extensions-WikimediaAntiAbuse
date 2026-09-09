@@ -18,6 +18,8 @@ use MediaWiki\Parser\ParserOptions;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionStore;
 use MediaWiki\SpecialPage\SpecialPage;
+use MediaWiki\Title\Title;
+use MediaWiki\Title\TitleFactory;
 use MediaWiki\User\User;
 
 class SpecialAbuseReview extends SpecialPage {
@@ -35,6 +37,8 @@ class SpecialAbuseReview extends SpecialPage {
 	private bool $includeHandledRevisions;
 	private array $usernamesFilter;
 	private array $revisionsFilter;
+	/** @var Title[] */
+	private array $pagesFilter;
 
 	/**
 	 * @var int The number of filters applied (counting all filters present in the filters dialog)
@@ -50,6 +54,7 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
+		private readonly TitleFactory $titleFactory,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -125,12 +130,25 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->numberOfFiltersApplied += count( $this->revisionsFilter );
 		}
 
+		$this->pagesFilter = array_values( array_filter( array_map(
+			$this->titleFactory->newFromText( ... ),
+			$this->getArrayParam( 'page' )
+		) ) );
+		if ( $this->pagesFilter ) {
+			$this->numberOfFiltersApplied += count( $this->pagesFilter );
+		}
+
+		$pagersFilterAsStringArray = array_map(
+			static fn ( Title $title ): string => $title->getPrefixedText(),
+			$this->pagesFilter
+		);
 		$this->getOutput()->addJsConfigVars(
 			'wgWikimediaAntiAbuseActiveFilters',
 			[
 				'showFalsePositives' => $showFalsePositives,
 				'showHandledRevisions' => $showHandledRevisions,
 				'username' => $this->usernamesFilter,
+				'page' => $pagersFilterAsStringArray,
 			]
 		);
 
@@ -139,6 +157,7 @@ class SpecialAbuseReview extends SpecialPage {
 			'show_handled_revisions' => $showHandledRevisions,
 			'username' => $this->usernamesFilter,
 			'revision' => $this->revisionsFilter,
+			'page' => $pagersFilterAsStringArray,
 		];
 	}
 
@@ -172,6 +191,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->includeHandledRevisions,
 			$this->usernamesFilter,
 			$this->revisionsFilter,
+			$this->pagesFilter,
 			$this->numberOfFiltersApplied
 		);
 		$this->getOutput()->addParserOutputContent(

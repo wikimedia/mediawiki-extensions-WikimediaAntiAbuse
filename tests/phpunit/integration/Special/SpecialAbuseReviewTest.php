@@ -132,6 +132,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 						'show_handled_revisions' => false,
 						'username' => [ $firstTestUser->getName() ],
 						'revision' => [],
+						'page' => [],
 					],
 				]
 			);
@@ -150,6 +151,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'showFalsePositives' => false,
 				'showHandledRevisions' => false,
 				'username' => [ $firstTestUser->getName() ],
+				'page' => [],
 			],
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
 			false,
@@ -184,6 +186,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'show_handled_revisions' => false,
 				'username' => [],
 				'revision' => [],
+				'page' => [],
 			]
 		];
 		if ( $expectedReferrer !== null ) {

@@ -18,6 +18,8 @@
 	"wikimediaantiabuse-special-abuse-review-filter-verdicts-header": "The label for the group of checkboxes in the [[Special:AbuseReview]] filter dialog that add normally hidden revisions to the list, such as handled revisions and false positives.",
 	"wikimediaantiabuse-special-abuse-review-filter-username-header": "The label for a field in the [[Special:AbuseReview]] filter dialog that allows filtering for flagged revisions performed by any of the specified accounts.",
 	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Placeholder text for a field in the [[Special:AbuseReview]] filter dialog that allows filtering for flagged revisions performed by any of the specified accounts.",
+	"wikimediaantiabuse-special-abuse-review-filter-page-header": "The label for a field in the [[Special:AbuseReview]] filter dialog that allows filtering for flagged revisions made on the specified pages.",
+	"wikimediaantiabuse-special-abuse-review-filter-page-placeholder": "Placeholder text for a field in the [[Special:AbuseReview]] filter dialog that allows filtering for flagged revisions made on the specified pages.",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Column heading on [[Special:AbuseReview]] for the column that shows the page a flagged edit was made to and the user who made it.",
 	"wikimediaantiabuse-special-abuse-review-heading-flags": "Column heading on [[Special:AbuseReview]] for the column that shows which flag an edit was tagged with, and the buttons that record a verdict on that flag.",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Column heading on [[Special:AbuseReview]] for the column that shows the timestamp the revision was made at, which is linked to the revision itself.",

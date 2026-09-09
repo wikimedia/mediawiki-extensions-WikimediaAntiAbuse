@@ -133,7 +133,8 @@
 				"ArchivedRevisionLookup",
 				"LinkBatchFactory",
 				"RowCommentFormatter",
-				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
+				"TitleFactory"
 			]
 		}
 	},
@@ -182,6 +183,7 @@
 				"components/FilterDialog.vue",
 				"components/FilterDialogMultiselectLookup.vue",
 				"components/FilterDialogUsernameFilter.vue",
+				"components/FilterDialogPageFilter.vue",
 				"mountFilterDialog.js",
 				{
 					"name": "icons.json",
@@ -214,7 +216,9 @@
 				"wikimediaantiabuse-special-abuse-review-filter-open-button",
 				"wikimediaantiabuse-special-abuse-review-filter-username-header",
 				"wikimediaantiabuse-special-abuse-review-filter-username-placeholder",
-				"wikimediaantiabuse-special-abuse-review-filter-verdicts-header"
+				"wikimediaantiabuse-special-abuse-review-filter-verdicts-header",
+				"wikimediaantiabuse-special-abuse-review-filter-page-header",
+				"wikimediaantiabuse-special-abuse-review-filter-page-placeholder"
 			]
 		}
 	},
@@ -230,6 +234,7 @@
 			"tests/qunit/components/FilterDialog.test.js",
 			"tests/qunit/components/FilterDialogMultiselectLookup.test.js",
 			"tests/qunit/components/FilterDialogUsernameFilter.test.js",
+			"tests/qunit/components/FilterDialogPageFilter.test.js",
 			"tests/qunit/mountFilterDialog.test.js"
 		],
 		"dependencies": [

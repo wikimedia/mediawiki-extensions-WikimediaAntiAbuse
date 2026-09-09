@@ -45,6 +45,8 @@
 		</cdx-field>
 		<filter-dialog-username-filter v-model:selected-usernames="selectedUsernames">
 		</filter-dialog-username-filter>
+		<filter-dialog-page-filter v-model:selected-pages="selectedPages">
+		</filter-dialog-page-filter>
 	</cdx-dialog>
 </template>
 
@@ -52,6 +54,7 @@
 const { ref } = require( 'vue' ),
 	{ CdxDialog, CdxField, CdxCheckbox } = require( './../codex.js' ),
 	FilterDialogUsernameFilter = require( './FilterDialogUsernameFilter.vue' ),
+	FilterDialogPageFilter = require( './FilterDialogPageFilter.vue' ),
 	utils = require( './../utils.js' );
 
 // @vue/component
@@ -61,7 +64,8 @@ module.exports = exports = {
 		CdxDialog,
 		CdxField,
 		CdxCheckbox,
-		FilterDialogUsernameFilter
+		FilterDialogUsernameFilter,
+		FilterDialogPageFilter
 	},
 	props: {
 		/**
@@ -73,6 +77,7 @@ module.exports = exports = {
 		 *  - showHandledRevisions: Boolean. If true, show revisions that have
 		 *      been marked as no further action
 		 *  - username: Array of strings. A list of usernames to filter by
+		 *  - page: Array of strings. A list of page titles to filter by
 		 */
 		initialFilters: {
 			type: Object,
@@ -92,6 +97,8 @@ module.exports = exports = {
 
 		const selectedUsernames = ref( props.initialFilters.username );
 
+		const selectedPages = ref( props.initialFilters.page );
+
 		function onCloseButtonClick() {
 			open.value = false;
 		}
@@ -102,7 +109,8 @@ module.exports = exports = {
 		 */
 		function onShowResultsButtonClick() {
 			const filters = {
-				username: selectedUsernames.value
+				username: selectedUsernames.value,
+				page: selectedPages.value
 			};
 
 			if ( showFalsePositivesCheckboxValue.value ) {
@@ -132,6 +140,7 @@ module.exports = exports = {
 			showFalsePositivesCheckboxValue,
 			showHandledRevisionsCheckboxValue,
 			selectedUsernames,
+			selectedPages,
 			onCloseButtonClick,
 			onShowResultsButtonClick
 		};

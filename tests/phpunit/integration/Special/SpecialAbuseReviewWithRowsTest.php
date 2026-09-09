@@ -39,6 +39,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $revertableTaggedContentRevId;
 	private static int $revertableTaggedContentParentRevId;
 
+	private static string $firstPageName;
+	private static string $deletedNoFurtherActionPageName;
+
 	/** @dataProvider provideViewWhenRevisionsPresent */
 	public function testViewWhenRevisionsPresent(
 		bool $includeFalsePositiveRevisions,
@@ -47,6 +50,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		callable $extraQueryParamsCallback,
 		array $authorityRights,
 		callable $expectedRevIdsCallback,
+		int $expectedFiltersAppliedCount
 	): void {
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
@@ -63,6 +67,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$data = array_merge( $data, $extraQueryParamsCallback() );
 
 		$expectedRevisionIdFilter = array_values( array_filter( array_map( 'intval', $data['revision'] ?? [] ) ) );
+		$expectedPageFilter = array_values( array_filter(
+			$data['page'] ?? [],
+			$this->getServiceContainer()->getTitleFactory()->newFromText( ... )
+		) );
 
 		$context = RequestContext::getMain();
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
@@ -79,6 +87,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'show_handled_revisions' => $includeHandledRevisions,
 						'username' => [],
 						'revision' => $expectedRevisionIdFilter,
+						'page' => $expectedPageFilter,
 					]
 				]
 			);
@@ -93,6 +102,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'showFalsePositives' => $includeFalsePositiveRevisions,
 			'showHandledRevisions' => $includeHandledRevisions,
 			'username' => [],
+			'page' => $expectedPageFilter,
 		];
 		$this->assertArrayEquals(
 			$expectedActiveFiltersArray,
@@ -107,9 +117,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$specialPageSummaryHtml
 		);
 
-		$expectedFiltersAppliedChipValue = count( array_filter( $expectedActiveFiltersArray ) );
-		$expectedFiltersAppliedChipValue += count( $expectedRevisionIdFilter );
-		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedChipValue );
+		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedCount );
 
 		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
 
@@ -508,6 +516,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 0,
 			],
 			'False positives included, handled revisions excluded' => [
 				'includeFalsePositiveRevisions' => true,
@@ -521,6 +530,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$falsePositiveRevId,
 					static::$taggedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 1,
 			],
 			'False positives included, handled revisions excluded in reverse order' => [
 				'includeFalsePositiveRevisions' => true,
@@ -534,6 +544,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$deletedTaggedContentRevId,
 					static::$revertableTaggedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 1,
 			],
 			'False positives excluded, handled revisions included' => [
 				'includeFalsePositiveRevisions' => false,
@@ -549,6 +560,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$noFurtherActionRevId,
 					static::$deletedNoFurtherActionRevId,
 				],
+				'expectedFiltersAppliedCount' => 1,
 			],
 			'False positives and handled revisions included' => [
 				'includeFalsePositiveRevisions' => true,
@@ -566,6 +578,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$noFurtherActionRevId,
 					static::$deletedNoFurtherActionRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'False positives and handled revisions included with limit of 2' => [
 				'includeFalsePositiveRevisions' => true,
@@ -577,6 +590,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$revertableTaggedContentRevId,
 					static::$deletedTaggedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'False positives and handled revisions included with limit of 2 with offset' => [
 				'includeFalsePositiveRevisions' => true,
@@ -591,6 +605,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 					static::$suppressedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'False positives and handled revisions included with offset and prev direction' => [
 				'includeFalsePositiveRevisions' => true,
@@ -606,6 +621,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedFalsePositiveRevId,
 					static::$falsePositiveRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'Oldest page via the last pagination link' => [
 				'includeFalsePositiveRevisions' => true,
@@ -620,6 +636,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$noFurtherActionRevId,
 					static::$deletedNoFurtherActionRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'False positives and handled revisions included but user lacks access to deleted history' => [
 				'includeFalsePositiveRevisions' => true,
@@ -635,6 +652,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$suppressedContentRevId,
 					static::$noFurtherActionRevId,
 				],
+				'expectedFiltersAppliedCount' => 2,
 			],
 			'Filters for specific revision' => [
 				'includeFalsePositiveRevisions' => true,
@@ -643,6 +661,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [ 'revision' => [ static::$taggedContentRevId ] ],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedFiltersAppliedCount' => 3,
 			],
 			'Filters for specific archived revision' => [
 				'includeFalsePositiveRevisions' => true,
@@ -651,6 +670,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'extraQueryParamsCallback' => static fn () => [ 'revision' => [ static::$deletedTaggedContentRevId ] ],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [ static::$deletedTaggedContentRevId ],
+				'expectedFiltersAppliedCount' => 3,
 			],
 			'Ignores invalid revision filter' => [
 				'includeFalsePositiveRevisions' => false,
@@ -663,6 +683,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$deletedTaggedContentRevId,
 					static::$taggedContentRevId,
 				],
+				'expectedFiltersAppliedCount' => 0,
 			],
 			'Filters for specific revision, ignoring an invalid one' => [
 				'includeFalsePositiveRevisions' => true,
@@ -673,6 +694,29 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				],
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedFiltersAppliedCount' => 3,
+			],
+			'Filters to specific title, ignoring invalid page titles' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'page' => [ ':', static::$firstPageName ],
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$suppressedContentRevId ],
+				'expectedFiltersAppliedCount' => 2,
+			],
+			'Filters for title which is deleted' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'page' => [ static::$deletedNoFurtherActionPageName ],
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$deletedNoFurtherActionRevId ],
+				'expectedFiltersAppliedCount' => 2,
 			],
 		];
 	}
@@ -826,6 +870,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 		$this->assertStatusGood( $deletedNoFurtherActionEditStatus );
 		static::$deletedNoFurtherActionRevId = $deletedNoFurtherActionEditStatus->getNewRevision()->getId();
+		static::$deletedNoFurtherActionPageName = $deletedNoFurtherActionPage->getTitle()->getPrefixedText();
 
 		ConvertibleTimestamp::setFakeTime( '20260101010100' );
 		$noFurtherActionEditStatus = $this->editPage(
@@ -845,6 +890,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$notTaggedContentEditStatus = $this->editPage( $firstPage, 'Not tagged content' );
 		$this->assertStatusGood( $notTaggedContentEditStatus );
 		static::$notTaggedContentRevId = $notTaggedContentEditStatus->getNewRevision()->getId();
+
+		static::$firstPageName = $firstPage->getTitle()->getPrefixedText();
 
 		ConvertibleTimestamp::setFakeTime( '20260101010103' );
 		$secondPage = $this->getNonexistingTestPage();

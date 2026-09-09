@@ -23,7 +23,7 @@ class AbuseReviewInstrumentationClientTest extends MediaWikiIntegrationTestCase 
 			->method( 'submitInteraction' )
 			->with(
 				'mediawiki.wikimedia_antiabuse.abuse_review_interaction',
-				'/analytics/mediawiki/wikimedia_antiabuse/abuse_review_interaction/1.1.1',
+				'/analytics/mediawiki/wikimedia_antiabuse/abuse_review_interaction/1.1.2',
 				'test_action',
 				[ 'mock' => 'data' ]
 			);
