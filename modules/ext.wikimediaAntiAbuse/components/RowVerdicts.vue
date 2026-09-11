@@ -23,18 +23,20 @@
 		</template>
 
 		<template v-else>
-			<cdx-button
-				v-for="button in buttons"
-				:key="button.verdict"
-				size="small"
-				:disabled="busy || button.disabled"
-				:aria-label="button.label"
-				:title="button.title"
-				:aria-describedby="button.note ? noteId : null"
-				@click="setVerdict( button.verdict )"
-			>
-				<cdx-icon :icon="button.icon"></cdx-icon>
-			</cdx-button>
+			<span class="mw-wikimediaantiabuse-abuse-review-verdict-controls">
+				<cdx-button
+					v-for="button in buttons"
+					:key="button.verdict"
+					size="small"
+					:disabled="busy || button.disabled"
+					:aria-label="button.label"
+					:title="button.title"
+					:aria-describedby="button.note ? noteId : null"
+					@click="setVerdict( button.verdict )"
+				>
+					<cdx-icon :icon="button.icon"></cdx-icon>
+				</cdx-button>
+			</span>
 
 			<span
 				v-if="disabledNote"

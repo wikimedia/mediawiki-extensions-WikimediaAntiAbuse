@@ -325,11 +325,17 @@ class AbuseReviewPager extends CodexTablePager {
 			);
 		}
 
+		$controls = Html::rawElement(
+			'span',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdict-controls' ],
+			$this->buildVerdictButton( 'no-further-action', $rowRefuses, $noteId, $noteMessage )
+				. $this->buildVerdictButton( 'false-positive', $rowRefuses, $noteId, $noteMessage )
+		);
+
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts' ],
-			$this->buildVerdictButton( 'no-further-action', $rowRefuses, $noteId, $noteMessage )
-				. $this->buildVerdictButton( 'false-positive', $rowRefuses, $noteId, $noteMessage )
+			$controls
 				. $note
 				. $bylineHtml
 		);

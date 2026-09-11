@@ -78,6 +78,11 @@ html {
 }
 
 .mw-wikimediaantiabuse-abuse-review-table {
+	@col-flags: 32%;
+	@col-timestamp: 20%;
+	@col-details: 16%;
+	// Derived: summary > div does not shrink, so the columns must total 100%.
+	@col-target: 100% - @col-flags - @col-timestamp - @col-details;
 	table-layout: fixed;
 	width: 100%;
 
@@ -88,17 +93,20 @@ html {
 		box-sizing: border-box;
 	}
 
-	.cdx-table-pager__col--target,
+	.cdx-table-pager__col--target {
+		width: @col-target;
+	}
+
 	.cdx-table-pager__col--flags {
-		width: 32%;
+		width: @col-flags;
 	}
 
 	.cdx-table-pager__col--timestamp {
-		width: 20%;
+		width: @col-timestamp;
 	}
 
 	.cdx-table-pager__col--details {
-		width: 16%;
+		width: @col-details;
 	}
 
 	.cdx-table__table__sort-button {
@@ -276,6 +284,12 @@ html {
 	.mw-wikimediaantiabuse-abuse-review-verdicts {
 		display: contents;
 		cursor: auto;
+	}
+
+	// One flex item, so the pair never splits.
+	.mw-wikimediaantiabuse-abuse-review-verdict-controls {
+		display: inline-flex;
+		gap: @spacing-25;
 	}
 }
 

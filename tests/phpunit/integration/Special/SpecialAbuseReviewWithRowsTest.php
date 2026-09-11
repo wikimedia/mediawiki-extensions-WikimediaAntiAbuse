@@ -214,7 +214,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$timestampCellHtml = DOMCompat::getInnerHTML( $timestampCellNode );
 			$this->assertStringContainsString(
 				$qqxLanguage->userTimeAndDate( $actualRevision->getTimestamp(), $testUser ),
-				$timestampCellHtml
+				$timestampCellHtml,
+				'The timestamp cell carries the formatted time of the revision'
 			);
 
 			// Link to diff should only exist if the user can see the revision text
@@ -1137,8 +1138,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
 			'a row that holds no verdict names none'
 		);
-		$buttons = DOMCompat::querySelectorAll( $verdicts, 'button' );
-		$this->assertSameSize( $expected, $buttons, 'one button per verdict' );
+		$controls = $this->assertSelectorMatchesOneElementInNode(
+			$verdicts, '.mw-wikimediaantiabuse-abuse-review-verdict-controls'
+		);
+		$buttons = DOMCompat::querySelectorAll( $controls, 'button' );
+		$this->assertSameSize( $expected, $buttons, 'the controls wrapper holds one button per verdict' );
+		$this->assertSameSize(
+			$buttons,
+			DOMCompat::querySelectorAll( $verdicts, 'button' ),
+			'every verdict button of the row sits inside the controls wrapper'
+		);
 
 		foreach ( $expected as $index => $state ) {
 			$button = $buttons[$index];
