@@ -259,6 +259,7 @@
 			"services": [
 				"MainConfig",
 				"RevisionLookup",
+				"ArchivedRevisionLookup",
 				"WikimediaAntiAbuseHookRunner",
 				"WikimediaAntiAbuseContentPolicyEvaluator",
 				"ChangeTagsStore",

@@ -18,6 +18,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogg
 use MediaWiki\JobQueue\IJobSpecification;
 use MediaWiki\JobQueue\Job;
 use MediaWiki\JobQueue\JobSpecification;
+use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,7 @@ class CheckRevisionJob extends Job {
 		array $params,
 		private readonly Config $config,
 		private readonly RevisionLookup $revisionLookup,
+		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly HookRunner $hookRunner,
 		private readonly ContentPolicyEvaluator $contentPolicyEvaluator,
 		private readonly ChangeTagsStore $changeTagsStore,
@@ -95,6 +97,9 @@ class CheckRevisionJob extends Job {
 		$revisionRecord = $this->revisionLookup->getRevisionById( $revisionId );
 		if ( !$revisionRecord ) {
 			$revisionRecord = $this->revisionLookup->getRevisionById( $revisionId, IDBAccessObject::READ_LATEST );
+		}
+		if ( !$revisionRecord ) {
+			$revisionRecord = $this->archivedRevisionLookup->getArchivedRevisionRecord( null, $revisionId );
 		}
 
 		return $revisionRecord;

@@ -13,6 +13,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
+use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWikiIntegrationTestCase;
@@ -140,6 +141,36 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			$calls,
 			'The job must query the replica first, then fall back to the primary with READ_LATEST'
 		);
+	}
+
+	public function testWhenRevisionIdIsInArchiveTable(): void {
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+		$this->setModelToRunHook();
+
+		$revisionRecord = $this->createMock( RevisionRecord::class );
+
+		$revisionLookup = $this->createMock( RevisionLookup::class );
+		$revisionLookup->method( 'getRevisionById' )
+			->willReturn( null );
+
+		$archivedRevisionLookup = $this->createMock( ArchivedRevisionLookup::class );
+		$archivedRevisionLookup->expects( $this->once() )
+			->method( 'getArchivedRevisionRecord' )
+			->with( null, 123 )
+			->willReturn( $revisionRecord );
+
+		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
+		$evaluator->expects( $this->once() )
+			->method( 'evaluateCoPEModel' )
+			->with( 'Test policy text', 'test-content-policy-name', 'test content' )
+			->willReturn( null );
+
+		$this->assertTrue( $this->newJob(
+			123,
+			$evaluator,
+			$revisionLookup,
+			archivedRevisionLookup: $archivedRevisionLookup
+		)->run() );
 	}
 
 	public function testModelResultAddingNoTagsWritesNoChangeTag(): void {
@@ -412,7 +443,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		ContentPolicyEvaluator $evaluator,
 		?RevisionLookup $revisionLookup = null,
 		?PersonalInfoFlagNotifier $notifier = null,
-		?IContentPolicyScoreEventLogger $eventLogger = null
+		?IContentPolicyScoreEventLogger $eventLogger = null,
+		?ArchivedRevisionLookup $archivedRevisionLookup = null
 	): CheckRevisionJob {
 		$services = $this->getServiceContainer();
 
@@ -420,6 +452,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			[ 'revisionId' => $revisionId ],
 			$services->getMainConfig(),
 			$revisionLookup ?? $services->getRevisionLookup(),
+			$archivedRevisionLookup ?? $services->getArchivedRevisionLookup(),
 			$services->get( 'WikimediaAntiAbuseHookRunner' ),
 			$evaluator,
 			$services->getChangeTagsStore(),
