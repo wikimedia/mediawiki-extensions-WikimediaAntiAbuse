@@ -17,6 +17,7 @@ use MediaWiki\Title\Title;
 use MediaWiki\User\User;
 use MediaWiki\User\UserIdentityValue;
 use MediaWikiIntegrationTestCase;
+use Psr\Log\LoggerInterface;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
@@ -32,6 +33,7 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 	private const string PERSONAL_INFO_NO_FURTHER_ACTION_TAG = 'mw-private-personal-info-no-further-action';
 	private const string PAGE_NAME = 'Abuse review verdict test page';
 	private const string VERDICT_TIME = '20260901133152';
+	private const string SENT_BACK_TIME = '20260902094410';
 
 	private ?bool $originalAlwaysInsert = null;
 
@@ -671,33 +673,72 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
-	public function testFlagRestoredFromFalsePositiveCarriesNoAttribution(): void {
+	public function testFlagRestoredFromFalsePositiveNamesWhoSentItBack(): void {
 		$reviewer = $this->realReviewer();
+		$actorId = $this->reviewerActorId( $reviewer );
 		$revId = $this->createRevisionId();
 		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
 
 		$service = $this->getService();
 		$this->assertStatusGood( $service->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		ConvertibleTimestamp::setFakeTime( self::SENT_BACK_TIME );
 		$this->assertStatusGood( $service->unmarkFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
 
-		$this->assertNull(
+		$this->assertSame(
+			[ self::PERSONAL_INFO_TAG ],
+			$this->getTags( $revId ),
+			'Sending a false positive back leaves only the flag returning it to the queue'
+		);
+		$this->assertSame(
+			$this->getAttribution()->encode( $actorId, self::SENT_BACK_TIME ),
 			$this->getTagParams( $revId, self::PERSONAL_INFO_TAG ),
-			'Attribution belongs to a verdict, not to the flag that unmarking restores'
+			'The restored flag must name the reviewer who sent the revision back, and when'
 		);
 	}
 
-	public function testFlagRestoredFromNoFurtherActionCarriesNoAttribution(): void {
+	public function testReFlaggedFalsePositiveSentBackNamesWhoSentItBack(): void {
 		$reviewer = $this->realReviewer();
+		$actorId = $this->reviewerActorId( $reviewer );
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$service = $this->getService();
+		$this->assertStatusGood( $service->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		// CheckRevisionJob flags the revision again on a later model check.
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		ConvertibleTimestamp::setFakeTime( self::SENT_BACK_TIME );
+		$this->assertStatusGood( $service->unmarkFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		$this->assertSame(
+			$this->getAttribution()->encode( $actorId, self::SENT_BACK_TIME ),
+			$this->getTagParams( $revId, self::PERSONAL_INFO_TAG ),
+			'A flag the revision already carried must still name who sent the revision back'
+		);
+	}
+
+	public function testFlagRestoredFromNoFurtherActionNamesWhoSentItBack(): void {
+		$reviewer = $this->realReviewer();
+		$actorId = $this->reviewerActorId( $reviewer );
 		$revId = $this->createRevisionId();
 		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
 
 		$service = $this->getService();
 		$this->assertStatusGood( $service->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+
+		ConvertibleTimestamp::setFakeTime( self::SENT_BACK_TIME );
 		$this->assertStatusGood( $service->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
 
-		$this->assertNull(
+		$this->assertSame(
+			[ self::PERSONAL_INFO_TAG ],
+			$this->getTags( $revId ),
+			'Sending a no-further-action revision back leaves only the flag returning it to the queue'
+		);
+		$this->assertSame(
+			$this->getAttribution()->encode( $actorId, self::SENT_BACK_TIME ),
 			$this->getTagParams( $revId, self::PERSONAL_INFO_TAG ),
-			'Attribution belongs to a verdict, not to the flag that unmarking restores'
+			'The restored flag must name the reviewer who sent the revision back, and when'
 		);
 	}
 
@@ -764,5 +805,38 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 			),
 			'The second revision names the other reviewer, not the first'
 		);
+	}
+
+	public function testSendingBackNamesNobodyWhenTheRevisionLostItsFlag(): void {
+		$reviewer = $this->realReviewer();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+
+		$logger = $this->createMock( LoggerInterface::class );
+		$logger->expects( $this->once() )
+			->method( 'warning' )
+			->with(
+				'Cannot record who sent the revision back: the revision does not have the tag',
+				[ 'revisionId' => $revId, 'tag' => self::PERSONAL_INFO_TAG ]
+			);
+		$this->setLogger( 'WikimediaAntiAbuse', $logger );
+
+		$service = $this->getService();
+		$this->assertStatusGood( $service->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		$this->removeFlagTagFromRevision( $revId );
+
+		$this->assertStatusGood( $service->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		$this->assertSame(
+			[],
+			$this->getTags( $revId ),
+			'The revision keeps no tag, so the write had nothing to name a reviewer on'
+		);
+	}
+
+	/** Removes the flag tag from the revision, so the write finds no tag to name the reviewer on. */
+	private function removeFlagTagFromRevision( int $revId ): void {
+		$rcId = null;
+		$this->getServiceContainer()->getChangeTagsStore()
+			->updateTags( [], [ self::PERSONAL_INFO_TAG ], $rcId, $revId );
 	}
 }

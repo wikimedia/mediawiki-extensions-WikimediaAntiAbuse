@@ -66,7 +66,12 @@ class AbuseReviewTagService {
 		}
 
 		if ( in_array( $tag, $tags, true ) ) {
-			$this->changeTags( $revisionId, [ $falsePositiveTag ], [ $tag ], $this->buildVerdictParams( $authority ) );
+			$this->changeTags(
+				$revisionId,
+				[ $falsePositiveTag ],
+				[ $tag ],
+				$this->buildAttributionParams( $authority )
+			);
 			$this->logger->info( 'Marked revision as false positive', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -111,6 +116,7 @@ class AbuseReviewTagService {
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
 			$this->changeTags( $revisionId, [ $tag ], [ $falsePositiveTag ] );
+			$this->writeAttributionToExistingTag( $revisionId, $tag, $this->buildAttributionParams( $authority ) );
 			$this->logger->info( 'Unmarked revision as false positive', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -173,7 +179,7 @@ class AbuseReviewTagService {
 			);
 		}
 
-		$this->changeTags( $revisionId, [ $noFurtherActionTag ], [], $this->buildVerdictParams( $authority ) );
+		$this->changeTags( $revisionId, [ $noFurtherActionTag ], [], $this->buildAttributionParams( $authority ) );
 		$this->logger->info( 'Marked revision as needing no further action', [
 			'revisionId' => $revisionId,
 			'tag' => $tag,
@@ -206,6 +212,7 @@ class AbuseReviewTagService {
 
 		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
 			$this->changeTags( $revisionId, [], [ $noFurtherActionTag ] );
+			$this->writeAttributionToExistingTag( $revisionId, $tag, $this->buildAttributionParams( $authority ) );
 			$this->logger->info( 'Unmarked revision as needing no further action', [
 				'revisionId' => $revisionId,
 				'tag' => $tag,
@@ -311,12 +318,21 @@ class AbuseReviewTagService {
 		array $tagsToRemove,
 		?string $params = null
 	): void {
-		$rcId = null;
-		$this->changeTagsStore->updateTags( $tagsToAdd, $tagsToRemove, $rcId, $revisionId, params: $params );
+		$this->changeTagsStore->updateTags( $tagsToAdd, $tagsToRemove, rev_id: $revisionId, params: $params );
 	}
 
-	/** Attribution for a verdict, keyed by actor ID so it survives a rename of the reviewer. */
-	private function buildVerdictParams( Authority $authority ): string {
+	private function writeAttributionToExistingTag( int $revisionId, string $tag, string $attributionParams ): void {
+		$updated = $this->changeTagsStore->updateTagParams( $tag, $attributionParams, revId: $revisionId );
+		if ( !$updated ) {
+			$this->logger->warning( 'Cannot record who sent the revision back: the revision does not have the tag', [
+				'revisionId' => $revisionId,
+				'tag' => $tag,
+			] );
+		}
+	}
+
+	/** Keyed by actor ID, so the attribution survives a rename of the reviewer. */
+	private function buildAttributionParams( Authority $authority ): string {
 		$actorId = $this->actorNormalization->acquireActorId(
 			$authority->getUser(),
 			$this->connectionProvider->getPrimaryDatabase()
