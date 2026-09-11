@@ -156,7 +156,7 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		$detailsAttribs = [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ];
-		if ( !$this->rowRendered ) {
+		if ( !$this->rowRendered || $this->revisionsFilter ) {
 			$detailsAttribs['open'] = '';
 		}
 		$this->rowRendered = true;
@@ -310,8 +310,8 @@ class AbuseReviewPager extends CodexTablePager {
 				$isFalsePositive,
 				$isNoFurtherAction,
 				$isSuppressed,
-				// The first row arrives open, all others do not
-				!$this->rowRendered
+				// If revisions filter applied all rows are open. Otherwise only first row is open
+				!$this->rowRendered || $this->revisionsFilter
 			)
 		);
 

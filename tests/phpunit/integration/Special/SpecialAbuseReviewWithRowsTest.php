@@ -201,11 +201,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			);
 			$detailsCellHtml = DOMCompat::getOuterHTML( $detailsCellNode );
 
-			$isOpenRow = $tableRowIndex === 0;
+			$isOpenRow = $tableRowIndex === 0 || count( $expectedRevisionIdFilter ) !== 0;
 			$this->assertSame(
 				$isOpenRow,
 				DOMCompat::getAttribute( $detailsCellNode, 'open' ) !== null,
-				'only the first row arrives open'
+				'Only first row should be open by default, or all rows should be open if revision filter set'
 			);
 
 			// The row header names the edited page and offers the show/hide toggle.
@@ -696,6 +696,20 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
 				'expectedFiltersAppliedCount' => 3,
+			],
+			'Filters for multiple revisions' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'revision' => [ static::$falsePositiveRevId, static::$taggedContentRevId ],
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$falsePositiveRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedFiltersAppliedCount' => 4,
 			],
 			'Filters to specific title, ignoring invalid page titles' => [
 				'includeFalsePositiveRevisions' => false,
