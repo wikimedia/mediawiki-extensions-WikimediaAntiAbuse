@@ -9,6 +9,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHa
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
+use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\DOM\Document;
@@ -804,6 +805,55 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
 			$rowHtml,
 			'and the link to the full diff stays, core refusing it there in the same terms'
+		);
+	}
+
+	public function testDoesNotShowEchoNotificationBannerWhenNoReferrer(): void {
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( [
+			'revision' => [ static::$taggedContentRevId ],
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$this->assertStringNotContainsString(
+			'mw-wikimediaantiabuse-abuse-review-echo-notification-banner',
+			$html,
+			'The echo notification banner should not be shown if referrer is not echo_notification'
+		);
+	}
+
+	public function testShowsEchoNotificationBannerWhenReferrerIsEchoNotification(): void {
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( [
+			'referrer' => 'echo_notification',
+			'revision' => [ static::$taggedContentRevId ],
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$echoBanner = $this->assertSelectorMatchesOneElementInNode(
+			DOMUtils::parseHTML( $html ),
+			'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+		);
+
+		$echoBannerContent = $this->assertSelectorMatchesOneElementInNode(
+			$echoBanner,
+			'.cdx-message__content'
+		);
+
+		$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
+			SpecialPage::getTitleValueFor( 'AbuseReview' ),
+			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)'
+		);
+		// Parameter 2 is 2 because of the deleted tagged content revision and the revertable tagged content revision
+		$this->assertSame(
+			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, ' . $expectedLinkParameter . ')',
+			trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
+			'The echo notification banner should have the expected label'
 		);
 	}
 

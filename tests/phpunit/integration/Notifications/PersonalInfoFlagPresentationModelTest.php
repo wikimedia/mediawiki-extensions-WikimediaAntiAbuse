@@ -51,7 +51,7 @@ class PersonalInfoFlagPresentationModelTest extends MediaWikiIntegrationTestCase
 		$this->page = $this->getExistingTestPage( 'PIFlagTitle' );
 	}
 
-	public function testGetPrimaryLink(): void {
+	public function testGetPrimaryLinkForSingleNotification(): void {
 		$link = $this->newModel( $this->createEvent( 1001 ) )->getPrimaryLink();
 
 		$urlParts = $this->getServiceContainer()->getUrlUtils()->parse( $link['url'] );
@@ -59,10 +59,28 @@ class PersonalInfoFlagPresentationModelTest extends MediaWikiIntegrationTestCase
 			[
 				'referrer' => 'echo_notification',
 				'title' => 'Special:AbuseReview',
+				'revision' => [ '1001' ],
 			],
 			wfCgiToArray( $urlParts['query'] )
 		);
-		$this->assertSame( '(notification-link-text-personal-info-flagged)', $link['label'] );
+		$this->assertSame( '(notification-link-text-personal-info-flagged: 1)', $link['label'] );
+	}
+
+	public function testGetPrimaryLinkForBundledNotification(): void {
+		$event = $this->createEvent( 1001 );
+		$event->setBundledEvents( [ $this->createEvent( 1002 ) ] );
+		$link = $this->newModel( $event )->getPrimaryLink();
+
+		$urlParts = $this->getServiceContainer()->getUrlUtils()->parse( $link['url'] );
+		$this->assertArrayContains(
+			[
+				'referrer' => 'echo_notification',
+				'title' => 'Special:AbuseReview',
+				'revision' => [ '1002', '1001' ],
+			],
+			wfCgiToArray( $urlParts['query'] )
+		);
+		$this->assertSame( '(notification-link-text-personal-info-flagged: 2)', $link['label'] );
 	}
 
 	public function testGetHeaderMessageForSingleNotification(): void {

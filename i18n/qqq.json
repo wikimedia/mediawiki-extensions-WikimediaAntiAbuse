@@ -8,6 +8,8 @@
 	"wikimediaantiabuse-special-abuse-review": "The page title for [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-caption": "The caption text for the table on [[Special:AbuseReview]] that shows revisions that have been flagged for review.",
 	"wikimediaantiabuse-special-abuse-review-summary": "Introductory text shown on [[Special:AbuseReview]].",
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Content of a banner shown on [[Special:AbuseReview]] when the user has clicked an Echo notification about flagged edits likely containing personal info that need review. The banner gives them a way to return to the default view of the page.\n\nParameters:\n* $1 - The number of edits shown on the page\n* $2 - The number of of edits shown if the user clicks on the link\n* $3 - the link to [[Special:AbuseReview]] that returns them to the default view of the queue. The link text is {{msg-mw|wikimediaantiabuse-special-abuse-review-echo-notification-banner-link}}.",
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "The link text for a link that returns the user to the default view of [[Special:AbuseReview]]. Used in {{msg-mw|wikimediaantiabuse-special-abuse-review-echo-notification-banner}}.",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "A filter that when checked shows revisions that were manually reviewed and considered a false positive.",
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "A filter that when checked also shows revisions that have already been handled (suppressed or marked as needing no further action), in addition to the pending revisions.",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "Help text shown on [[Special:AbuseReview]] explaining what the {{msg-mw|wikimediaantiabuse-special-abuse-review-show-handled-revisions}} filter does.",
@@ -71,5 +73,5 @@
 	"echo-pref-tooltip-personal-info-learn-more": "Help-page link shown in the notification preferences tooltip, below {{msg-mw|Echo-pref-tooltip-personal-info}}, so someone who discovers the category can learn what it is. Translate the link label; keep the link target.",
 	"notification-header-personal-info-flagged": "Notification header shown when a single edit is flagged as likely containing personal information.\n\nParameters:\n* $1 - the title of the page that was edited",
 	"notification-bundle-header-personal-info-flagged": "Notification header shown when several personal-information flags are bundled together.\n\nParameters:\n* $1 - the number of flagged edits",
-	"notification-link-text-personal-info-flagged": "Label for the notification's primary link, which points to the list of flagged edits on [[Special:RecentChanges]]."
+	"notification-link-text-personal-info-flagged": "Label for the notification's primary link, which points to the list of flagged edits on [[Special:RecentChanges]].\n\nParameters:\n* $1 - the number of flagged edits (used for PLURAL only, not shown in the parsed message)"
 }

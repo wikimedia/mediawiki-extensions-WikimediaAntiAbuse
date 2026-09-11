@@ -49,11 +49,19 @@ class PersonalInfoFlagPresentationModel extends EchoEventPresentationModel {
 
 	/** @inheritDoc */
 	public function getPrimaryLink(): array {
+		$revisionIds = array_map(
+			static fn ( $event ) => $event->getExtraParam( 'revisionId' ),
+			array_merge( $this->getBundledEvents(), [ $this->event ] )
+		);
+
 		return [
 			'url' => SpecialPage::getTitleFor( 'AbuseReview' )->getFullURL( [
 				'referrer' => 'echo_notification',
+				'revision' => $revisionIds,
 			] ),
-			'label' => $this->msg( 'notification-link-text-personal-info-flagged' )->text(),
+			'label' => $this->msg( 'notification-link-text-personal-info-flagged' )
+				->numParams( count( $revisionIds ) )
+				->text(),
 		];
 	}
 

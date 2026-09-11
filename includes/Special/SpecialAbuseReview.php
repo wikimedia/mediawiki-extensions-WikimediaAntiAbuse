@@ -21,6 +21,10 @@ use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
 use MediaWiki\Title\TitleFactory;
 use MediaWiki\User\User;
+use Wikimedia\Codex\Component\HtmlSnippet;
+use Wikimedia\Codex\Localization\MediaWikiLocalization;
+use Wikimedia\Codex\Utility\Codex;
+use Wikimedia\Rdbms\IConnectionProvider;
 
 class SpecialAbuseReview extends SpecialPage {
 
@@ -55,6 +59,7 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 		private readonly TitleFactory $titleFactory,
+		private readonly IConnectionProvider $dbProvider,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -179,15 +184,32 @@ class SpecialAbuseReview extends SpecialPage {
 	 * Displays the abuse review pager, returning the instance of the pager for use in instrumentation.
 	 */
 	private function displayPager(): AbuseReviewPager {
-		$pager = new AbuseReviewPager(
-			$this->getContext(),
-			$this->getLinkRenderer(),
-			$this->changeTagsStore,
-			$this->changeTagsFormatter,
-			$this->revisionStore,
-			$this->archivedRevisionLookup,
-			$this->linkBatchFactory,
-			$this->rowCommentFormatter,
+		// If user is viewing revisions from a notification, then show a banner linking them back to the main view
+		if (
+			$this->getRequest()->getVal( 'referrer' ) === 'echo_notification' &&
+			$this->revisionsFilter
+		) {
+			$otherRevisionsToReviewCount = $this->getDefaultViewRowCount( $this->revisionsFilter );
+			if ( $otherRevisionsToReviewCount ) {
+				$bannerContentHtml = $this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner' )
+					->numParams( count( $this->revisionsFilter ), $otherRevisionsToReviewCount )
+					->rawParams( $this->getLinkRenderer()->makeKnownLink(
+						$this->getPageTitle(),
+						$this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner-link' )->text()
+					) )
+					->parse();
+
+				$bannerHtml = ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
+					->message()
+					->setType( 'notice' )
+					->setContent( new HtmlSnippet( $bannerContentHtml ) )
+					->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-echo-notification-banner' ] )
+					->getHtml();
+				$this->getOutput()->addHTML( $bannerHtml );
+			}
+		}
+
+		$pager = $this->getPager(
 			$this->tagsFilter,
 			$this->includeHandledRevisions,
 			$this->usernamesFilter,
@@ -200,6 +222,68 @@ class SpecialAbuseReview extends SpecialPage {
 			ParserOptions::newFromContext( $this->getContext() )
 		);
 		return $pager;
+	}
+
+	/**
+	 * Fetches the number of rows over all pages in the default view of Special:AbuseReview
+	 *
+	 * @param int[] $excludeRevisions The list of revision IDs to exclude from the count.
+	 *   Must not be an empty array.
+	 */
+	private function getDefaultViewRowCount( array $excludeRevisions ): int {
+		// Re-use the query construction logic in the pager class to avoid code duplication
+		$pager = $this->getPager( $this->changeTagsStore->filterViewableTags(
+			array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
+			$this->getAuthority()
+		) );
+
+		// Using the query info for each table, fetch the row count for the default view
+		// excluding the revisions in $excludeRevisions
+		$defaultViewRowCount = 0;
+		$tablesToQuery = [ 'revision' => 'rev_id', 'archive' => 'ar_rev_id' ];
+		$dbr = $this->dbProvider->getReplicaDatabase();
+		foreach ( $tablesToQuery as $table => $revIdField ) {
+			$defaultViewRowCount += $dbr->newSelectQueryBuilder()
+				->queryInfo( $pager->getQueryInfo( $table ) )
+				->clearFields()
+				->select( 'changetagdisplay.ct_id' )
+				->where( $dbr->expr( $revIdField, '!=', $excludeRevisions ) )
+				->limit( 5000 )
+				->caller( __METHOD__ )
+				->fetchRowCount();
+		}
+
+		return $defaultViewRowCount;
+	}
+
+	/**
+	 * Constructs an instance of the {@link AbuseReviewPager} with the provided filters applied,
+	 * or the defaults for each filter if not provided.
+	 */
+	private function getPager(
+		array $tagsFilter,
+		bool $includeHandledRevisions = false,
+		array $usernamesFilter = [],
+		array $revisionsFilter = [],
+		array $pagesFilter = [],
+		int $numberOfFiltersApplied = 0
+	): AbuseReviewPager {
+		return new AbuseReviewPager(
+			$this->getContext(),
+			$this->getLinkRenderer(),
+			$this->changeTagsStore,
+			$this->changeTagsFormatter,
+			$this->revisionStore,
+			$this->archivedRevisionLookup,
+			$this->linkBatchFactory,
+			$this->rowCommentFormatter,
+			$tagsFilter,
+			$includeHandledRevisions,
+			$usernamesFilter,
+			$revisionsFilter,
+			$pagesFilter,
+			$numberOfFiltersApplied
+		);
 	}
 
 	/** @inheritDoc */

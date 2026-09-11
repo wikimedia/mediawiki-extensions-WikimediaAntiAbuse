@@ -138,7 +138,8 @@
 				"LinkBatchFactory",
 				"RowCommentFormatter",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
-				"TitleFactory"
+				"TitleFactory",
+				"ConnectionProvider"
 			]
 		}
 	},
