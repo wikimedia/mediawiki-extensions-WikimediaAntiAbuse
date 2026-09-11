@@ -10,6 +10,8 @@ use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
@@ -60,6 +62,8 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly TitleFactory $titleFactory,
 		private readonly IConnectionProvider $dbProvider,
 		private readonly AbuseReviewEnabledTagsProvider $abuseReviewEnabledTagsProvider,
+		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
+		private readonly AbuseReviewVerdictAttributionFormatter $verdictAttributionFormatter,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -277,6 +281,8 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->archivedRevisionLookup,
 			$this->linkBatchFactory,
 			$this->rowCommentFormatter,
+			$this->verdictPerformerLookup,
+			$this->verdictAttributionFormatter,
 			$tagsFilter,
 			$includeHandledRevisions,
 			$usernamesFilter,

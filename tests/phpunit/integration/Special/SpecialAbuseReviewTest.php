@@ -6,9 +6,11 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\DOM\Element;
 use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
@@ -17,6 +19,8 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
  * @group Database
  */
 class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
+
+	private const string PERSONAL_INFO_TAG = 'mw-private-personal-info';
 
 	/** @dataProvider provideQueueViewers */
 	public function testUserCanExecute(
@@ -290,8 +294,180 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		];
 	}
 
-	/** @inheritDoc */
-	protected function newSpecialPage() {
-		return $this->getServiceContainer()->getSpecialPageFactory()->getPage( 'AbuseReview' );
+	public function testVerdictNamesTheReviewerWhoRecordedIt(): void {
+		$reviewer = $this->getTestUser( [ 'suppress' ] )->getUser();
+		$revId = $this->createFlaggedRevisionId();
+		$this->assertStatusGood(
+			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' )
+				->markFalsePositive( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+
+		[ $html ] = $this->executeSpecialPage(
+			'', new FauxRequest( [ 'wpShowFalsePositives' => '1' ] ), null, $reviewer
+		);
+		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
+
+		$byline = $this->assertSelectorMatchesOneElementInNode(
+			$row,
+			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
+		);
+		$bylineHtml = DOMCompat::getInnerHTML( $byline );
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-verdict-attribution: ' . $reviewer->getName(),
+			$bylineHtml,
+			'the byline carries the reviewer\'s name for the message to resolve GENDER from'
+		);
+		$this->assertStringContainsString(
+			$reviewer->getName(),
+			DOMCompat::getInnerHTML(
+				$this->assertSelectorMatchesOneElementInNode( $byline, 'a.mw-userlink' )
+			),
+			'the reviewer is linked beside the verdict they recorded'
+		);
 	}
+
+	public function testReturnToReviewNamesWhoSentTheRevisionBack(): void {
+		$reviewer = $this->getTestUser( [ 'suppress' ] )->getUser();
+		$revId = $this->createFlaggedRevisionId();
+		$tagService = $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' );
+		$this->assertStatusGood(
+			$tagService->markNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertStatusGood(
+			$tagService->unmarkNoFurtherAction( $reviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+
+		[ $html ] = $this->executeSpecialPage( '', new FauxRequest(), null, $reviewer );
+		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
+
+		$bylineHtml = DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
+			$row,
+			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
+		) );
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-verdict-returned-attribution: '
+				. $reviewer->getName(),
+			$bylineHtml,
+			'a revision back in the queue is bylined to whoever sent it back'
+		);
+	}
+
+	public function testExecuteForAVerdictRecordedBeforeAttributionExisted(): void {
+		$revId = $this->createFlaggedRevisionId(
+			[ self::PERSONAL_INFO_TAG, ChangeTagsHandler::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ]
+		);
+
+		[ $html ] = $this->executeSpecialPage(
+			'',
+			new FauxRequest( [ 'wpShowHandledRevisions' => '1' ] ),
+			null,
+			$this->getTestUser( [ 'suppress' ] )->getUser()
+		);
+		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
+
+		$this->assertCount(
+			0,
+			DOMCompat::querySelectorAll( $row, '.mw-wikimediaantiabuse-abuse-review-verdict-performer' ),
+			'a verdict recorded before attribution existed renders no byline at all'
+		);
+	}
+
+	public function testEachRowNamesTheReviewerWhoJudgedIt(): void {
+		$firstReviewer = $this->getMutableTestUser( [ 'suppress' ] )->getUser();
+		$secondReviewer = $this->getMutableTestUser( [ 'suppress' ] )->getUser();
+		$tagService = $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' );
+		$falsePositiveRevId = $this->createFlaggedRevisionId();
+		$noFurtherActionRevId = $this->createFlaggedRevisionId();
+
+		$this->assertStatusGood( $tagService->markFalsePositive(
+			$firstReviewer, $falsePositiveRevId, self::PERSONAL_INFO_TAG
+		) );
+		$this->assertStatusGood( $tagService->markNoFurtherAction(
+			$secondReviewer, $noFurtherActionRevId, self::PERSONAL_INFO_TAG
+		) );
+
+		[ $html ] = $this->executeSpecialPage(
+			'',
+			new FauxRequest( [ 'wpShowFalsePositives' => '1', 'wpShowHandledRevisions' => '1' ] ),
+			null,
+			$this->getTestUser( [ 'suppress' ] )->getUser()
+		);
+		$document = DOMUtils::parseHTML( $html );
+
+		$falsePositiveByline = $this->getBylineHtml(
+			$this->getRowForRevision( $document, $falsePositiveRevId )
+		);
+		$this->assertStringContainsString(
+			$firstReviewer->getName(),
+			$falsePositiveByline,
+			'each row names the reviewer who judged that revision'
+		);
+		$this->assertStringNotContainsString(
+			$secondReviewer->getName(),
+			$falsePositiveByline,
+			'no row names a reviewer who judged another revision'
+		);
+		$this->assertStringContainsString(
+			$secondReviewer->getName(),
+			$this->getBylineHtml(
+				$this->getRowForRevision( $document, $noFurtherActionRevId )
+			),
+			'a row holding the other verdict names the reviewer who recorded it'
+		);
+	}
+
+	public function testVerdictAttributionOutranksAnEarlierReturnToReview(): void {
+		// Keep both tags in use: dropping a tag's last use deletes its definition
+		$this->createFlaggedRevisionId(
+			[ self::PERSONAL_INFO_TAG, ChangeTagsHandler::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ]
+		);
+		$revId = $this->createFlaggedRevisionId();
+		$returningReviewer = $this->getTestUser( [ 'suppress' ] )->getUser();
+		$judgingReviewer = $this->getMutableTestUser( [ 'suppress' ] )->getUser();
+		$tagService = $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewTagService' );
+		$this->assertStatusGood(
+			$tagService->markNoFurtherAction( $returningReviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertStatusGood(
+			$tagService->unmarkNoFurtherAction( $returningReviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+		$this->assertStatusGood(
+			$tagService->markNoFurtherAction( $judgingReviewer, $revId, self::PERSONAL_INFO_TAG )
+		);
+
+		[ $html ] = $this->executeSpecialPage(
+			'',
+			new FauxRequest( [ 'wpShowHandledRevisions' => '1' ] ),
+			null,
+			$this->getTestUser( [ 'suppress' ] )->getUser()
+		);
+		$byline = $this->getBylineHtml(
+			$this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId )
+		);
+
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-verdict-attribution: '
+				. $judgingReviewer->getName(),
+			$byline,
+			'the row names the reviewer whose verdict it holds'
+		);
+		$this->assertStringNotContainsString(
+			'wikimediaantiabuse-special-abuse-review-verdict-returned-attribution',
+			$byline,
+			'a row holding a verdict is not bylined as one returned to the queue'
+		);
+		$this->assertStringNotContainsString(
+			$returningReviewer->getName(),
+			$byline,
+			'the reviewer who sent the earlier verdict back is no longer named'
+		);
+	}
+
+	private function getBylineHtml( Element $row ): string {
+		return DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
+			$row,
+			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
+		) );
+	}
+
 }

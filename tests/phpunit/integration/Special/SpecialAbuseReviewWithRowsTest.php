@@ -897,17 +897,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		}
 	}
 
-	private function getVerdictsPayload( Document|Element $node ): array {
-		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
-			$node,
-			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
-		);
-
-		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-verdicts' ), true );
-		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
-		return $payload;
-	}
-
 	/** @return array<string,string> The href of each rendered revision action, by its label */
 	private function getActionLinks( Document|Element $node ): array {
 		$links = DOMCompat::querySelectorAll(

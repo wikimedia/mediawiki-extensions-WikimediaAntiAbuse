@@ -4,6 +4,7 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
+use MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\AbuseReviewRevisionTestTrait;
 use MediaWiki\Tests\Specials\SpecialPageTestBase;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\DOM\Document;
@@ -14,6 +15,8 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
  * Base class for tests that test {@link SpecialAbuseReview}
  */
 abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
+
+	use AbuseReviewRevisionTestTrait;
 
 	/** Each row holds core's diff table, which a plain `tbody tr` would also match. */
 	protected const string ROW_SELECTOR = 'tbody tr.mw-wikimediaantiabuse-abuse-review-row';
@@ -130,6 +133,17 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 			}
 		}
 		$this->fail( "No row was rendered for revision $revId" );
+	}
+
+	protected function getVerdictsPayload( Document|Element $node ): array {
+		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
+			$node,
+			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
+		);
+
+		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-verdicts' ), true );
+		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
+		return $payload;
 	}
 
 	/** @inheritDoc */

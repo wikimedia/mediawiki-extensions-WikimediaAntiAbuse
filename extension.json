@@ -140,7 +140,9 @@
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
 				"TitleFactory",
 				"ConnectionProvider",
-				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider"
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
+				"WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup",
+				"WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter"
 			]
 		}
 	},

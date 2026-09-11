@@ -14,6 +14,8 @@ use MediaWiki\Context\IContextSource;
 use MediaWiki\Diff\DifferenceEngine;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
 use MediaWiki\Html\Html;
 use MediaWiki\Linker\LinkRenderer;
@@ -28,6 +30,7 @@ use MediaWiki\Revision\RevisionStore;
 use MediaWiki\Revision\SlotRecord;
 use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
+use MediaWiki\User\UserIdentity;
 use MediaWiki\User\UserIdentityValue;
 use stdClass;
 use Wikimedia\Codex\Component\HtmlSnippet;
@@ -59,6 +62,9 @@ class AbuseReviewPager extends CodexTablePager {
 	/** @var string[] Formatted edit summaries, keyed by revision ID */
 	private array $formattedComments = [];
 
+	/** @var array<string,array<int,UserIdentity>> */
+	private array $verdictPerformers = [];
+
 	public function __construct(
 		IContextSource $context,
 		LinkRenderer $linkRenderer,
@@ -68,6 +74,8 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
+		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
+		private readonly AbuseReviewVerdictAttributionFormatter $verdictAttributionFormatter,
 		private readonly array $tagsFilter,
 		private readonly bool $includeHandledRevisions,
 		private readonly array $usernamesFilter,
@@ -272,7 +280,20 @@ class AbuseReviewPager extends CodexTablePager {
 		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
 		$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' );
 
+		$heldVerdict = null;
+		if ( $isFalsePositive ) {
+			$heldVerdict = 'falsePositive';
+		} elseif ( $isNoFurtherAction ) {
+			$heldVerdict = 'noFurtherAction';
+		}
+
 		$isSuppressed = $this->isSuppressedRow( $row );
+		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
+			$this->getContext(),
+			$this->verdictPerformers[$tag] ?? [],
+			(int)$row->rev_id,
+			$heldVerdict !== null
+		);
 		$mountPoint = Html::rawElement(
 			'span',
 			[
@@ -298,7 +319,7 @@ class AbuseReviewPager extends CodexTablePager {
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
 			$this->getTagDescription( $tag )
-		) . $mountPoint;
+		) . $mountPoint . $this->buildByline( $attributionHtml );
 	}
 
 	private function buildVerdictButtons(
@@ -349,6 +370,18 @@ class AbuseReviewPager extends CodexTablePager {
 				$noteId,
 				$noteMessage
 			) . $note
+		);
+	}
+
+	private function buildByline( ?string $attributionHtml ): string {
+		if ( $attributionHtml === null ) {
+			return '';
+		}
+
+		return Html::rawElement(
+			'span',
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdict-performer' ],
+			$attributionHtml
 		);
 	}
 
@@ -1052,8 +1085,25 @@ class AbuseReviewPager extends CodexTablePager {
 		parent::doBatchLookups();
 
 		$lb = $this->linkBatchFactory->newLinkBatch()->setCaller( __METHOD__ );
+		$revisionIdsByTag = [];
 		foreach ( $this->mResult as $row ) {
 			$lb->addUser( new UserIdentityValue( (int)$row->user, $row->user_text ) );
+			$tag = $this->getFirstReviewableTag( $row->ts_tags );
+			if ( $tag !== null ) {
+				$revisionIdsByTag[$tag][] = (int)$row->rev_id;
+			}
+		}
+
+		foreach ( $revisionIdsByTag as $tag => $taggedRevisionIds ) {
+			$performers = $this->verdictPerformerLookup->lookUpPerformers(
+				$taggedRevisionIds,
+				$tag,
+				$this->getAuthority()
+			);
+			$this->verdictPerformers[$tag] = $performers;
+			foreach ( $performers as $performer ) {
+				$lb->addUser( $performer );
+			}
 		}
 
 		$lb->execute();
