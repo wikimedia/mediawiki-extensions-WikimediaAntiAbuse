@@ -166,34 +166,21 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 			// Link to diff should only exist if the user can see the revision text
 			$timestampLink = DOMCompat::querySelector( $timestampCellNode, 'a' );
-			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
-				$href = DOMCompat::getAttribute( $timestampLink, 'href' );
-				if ( $isArchivedRevision ) {
-					$this->assertStringContainsString( 'Special:Undelete', $href );
-					$this->assertStringContainsString( 'timestamp=' . $actualRevision->getTimestamp(), $href );
-					$this->assertStringContainsString( 'diff=prev', $href );
-				} else {
-					$this->assertStringContainsString( 'oldid=' . $actualRevId, $href );
-				}
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=timestamp',
-					$href,
-					'the timestamp link names the click it stands for'
-				);
-			} else {
-				$this->assertNull( $timestampLink );
-			}
-
-			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
-				$this->assertStringContainsString( 'history-deleted', $timestampCellHtml );
-				$this->assertSame(
-					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
-					str_contains( $timestampCellHtml, 'mw-history-suppressed' ),
-					'suppressed revisions are doubly struck through'
-				);
-			} else {
-				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
-			}
+			$href = DOMCompat::getAttribute( $timestampLink, 'href' );
+			$expectedQueryParamsForTimestampLink = array_merge( $data, [
+				'title' => 'Special:AbuseReview',
+				'revision' => $actualRevId,
+				'ar_revid' => $actualRevId,
+				'ar_subtype' => 'timestamp',
+			] );
+			unset( $expectedQueryParamsForTimestampLink['referrer'] );
+			$this->assertArrayEquals(
+				$expectedQueryParamsForTimestampLink,
+				wfCgiToArray( parse_url( $href )['query'] ),
+				false,
+				true,
+				'The timestamp link query parameters were not as expected'
+			);
 
 			$detailsCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -710,6 +697,18 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					static::$taggedContentRevId,
 				],
 				'expectedFiltersAppliedCount' => 4,
+			],
+			'Filters for specific revision with invalid referrer' => [
+				'includeFalsePositiveRevisions' => true,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [
+					'revision' => [ static::$taggedContentRevId ],
+					'referrer' => 'invalid',
+				],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedFiltersAppliedCount' => 3,
 			],
 			'Filters to specific title, ignoring invalid page titles' => [
 				'includeFalsePositiveRevisions' => false,

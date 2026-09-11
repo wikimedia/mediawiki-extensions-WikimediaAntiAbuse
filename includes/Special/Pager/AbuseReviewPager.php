@@ -201,7 +201,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return match ( $name ) {
 			self::TARGET_FIELD => $this->buildTarget( $title, $row ),
 			self::FLAGS_FIELD => $this->buildFlags( $row ),
-			self::TIMESTAMP_FIELD => $this->buildTimestamp( $title, $row ),
+			self::TIMESTAMP_FIELD => $this->buildTimestamp( $row ),
 		};
 	}
 
@@ -218,48 +218,27 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * When the flagged revision was made, linking to its diff. A revision the viewer may
-	 * not see the text of is left unlinked, and one whose text is deleted is struck
-	 * through, doubly for a suppressed one, matching Special:Contributions.
+	 * Displays a link to Special:AbuseReview that just shows this revision with the text as the timestamp of
+	 * the revision was made.
 	 */
-	private function buildTimestamp( Title $title, stdClass $row ): string {
-		$timestamp = $this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() );
+	private function buildTimestamp( stdClass $row ): string {
+		$queryParams = array_merge(
+			$this->getContext()->getRequest()->getQueryValues(),
+			$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row ),
+			[ 'revision' => $row->rev_id ]
+		);
 
-		if ( !RevisionRecord::userCanBitfield(
-			(int)$row->deleted,
-			RevisionRecord::DELETED_TEXT,
-			$this->getAuthority(),
-			$title
-		) ) {
-			$dateLink = htmlspecialchars( $timestamp );
-		} elseif ( $this->isArchivedRow( $row ) ) {
-			$dateLink = $this->getLinkRenderer()->makeKnownLink(
-				SpecialPage::getTitleValueFor( 'Undelete' ),
-				$timestamp,
-				[],
-				array_merge(
-					$this->buildUndeleteQuery( $title, $row ),
-					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row )
-				)
-			);
-		} else {
-			$dateLink = $this->getLinkRenderer()->makeKnownLink(
-				$title,
-				$timestamp,
-				[],
-				array_merge(
-					[ 'diff' => 'prev', 'oldid' => $row->rev_id ],
-					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row )
-				)
-			);
-		}
+		// title is set via ::makeKnownLink and referrer should change once user changes the filters
+		// (which this link does)
+		unset( $queryParams['title'] );
+		unset( $queryParams['referrer'] );
 
-		$visibilityClasses = $this->visibilityClasses( (int)$row->deleted, RevisionRecord::DELETED_TEXT );
-		if ( !$visibilityClasses ) {
-			return $dateLink;
-		}
-
-		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $dateLink );
+		return $this->getLinkRenderer()->makeKnownLink(
+			SpecialPage::getSafeTitleFor( 'AbuseReview' ),
+			$this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() ),
+			[],
+			$queryParams
+		);
 	}
 
 	/**
