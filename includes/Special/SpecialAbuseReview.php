@@ -149,6 +149,7 @@ class SpecialAbuseReview extends SpecialPage {
 				'showHandledRevisions' => $showHandledRevisions,
 				'username' => $this->usernamesFilter,
 				'page' => $pagersFilterAsStringArray,
+				'revision' => $this->revisionsFilter,
 			]
 		);
 

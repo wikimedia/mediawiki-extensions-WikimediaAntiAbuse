@@ -103,6 +103,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'showHandledRevisions' => $includeHandledRevisions,
 			'username' => [],
 			'page' => $expectedPageFilter,
+			'revision' => $expectedRevisionIdFilter,
 		];
 		$this->assertArrayEquals(
 			$expectedActiveFiltersArray,

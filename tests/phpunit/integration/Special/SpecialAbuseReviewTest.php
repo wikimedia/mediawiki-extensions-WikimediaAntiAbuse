@@ -152,6 +152,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'showHandledRevisions' => false,
 				'username' => [ $firstTestUser->getName() ],
 				'page' => [],
+				'revision' => [],
 			],
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
 			false,

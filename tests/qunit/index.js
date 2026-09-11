@@ -9,4 +9,5 @@ require( './components/FilterDialog.test.js' );
 require( './components/FilterDialogMultiselectLookup.test.js' );
 require( './components/FilterDialogUsernameFilter.test.js' );
 require( './components/FilterDialogPageFilter.test.js' );
+require( './components/FilterDialogRevisionFilter.test.js' );
 require( './mountFilterDialog.test.js' );

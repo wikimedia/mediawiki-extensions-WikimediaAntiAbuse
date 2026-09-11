@@ -12,6 +12,8 @@
 		@primary="onShowResultsButtonClick"
 		@default="onCloseButtonClick"
 	>
+		<filter-dialog-revision-filter v-model:selected-revision-ids="selectedRevisionIds">
+		</filter-dialog-revision-filter>
 		<cdx-field
 			:is-fieldset="true"
 			class="mw-wikimediaantiabuse-abuse-review-filter-dialog-show-additional-items"
@@ -55,6 +57,7 @@ const { ref } = require( 'vue' ),
 	{ CdxDialog, CdxField, CdxCheckbox } = require( './../codex.js' ),
 	FilterDialogUsernameFilter = require( './FilterDialogUsernameFilter.vue' ),
 	FilterDialogPageFilter = require( './FilterDialogPageFilter.vue' ),
+	FilterDialogRevisionFilter = require( './FilterDialogRevisionFilter.vue' ),
 	utils = require( './../utils.js' );
 
 // @vue/component
@@ -65,7 +68,8 @@ module.exports = exports = {
 		CdxField,
 		CdxCheckbox,
 		FilterDialogUsernameFilter,
-		FilterDialogPageFilter
+		FilterDialogPageFilter,
+		FilterDialogRevisionFilter
 	},
 	props: {
 		/**
@@ -90,14 +94,12 @@ module.exports = exports = {
 		const showFalsePositivesCheckboxValue = ref(
 			props.initialFilters.showFalsePositives
 		);
-
 		const showHandledRevisionsCheckboxValue = ref(
 			props.initialFilters.showHandledRevisions
 		);
-
 		const selectedUsernames = ref( props.initialFilters.username );
-
 		const selectedPages = ref( props.initialFilters.page );
+		const selectedRevisionIds = ref( props.initialFilters.revision );
 
 		function onCloseButtonClick() {
 			open.value = false;
@@ -110,7 +112,8 @@ module.exports = exports = {
 		function onShowResultsButtonClick() {
 			const filters = {
 				username: selectedUsernames.value,
-				page: selectedPages.value
+				page: selectedPages.value,
+				revision: selectedRevisionIds.value
 			};
 
 			if ( showFalsePositivesCheckboxValue.value ) {
@@ -141,6 +144,7 @@ module.exports = exports = {
 			showHandledRevisionsCheckboxValue,
 			selectedUsernames,
 			selectedPages,
+			selectedRevisionIds,
 			onCloseButtonClick,
 			onShowResultsButtonClick
 		};

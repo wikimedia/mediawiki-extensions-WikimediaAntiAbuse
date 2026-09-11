@@ -4,6 +4,7 @@ const { mount } = require( 'vue-test-utils' );
 const utils = require( 'ext.wikimediaAntiAbuse/utils.js' );
 const FilterDialogUsernameFilter = require( 'ext.wikimediaAntiAbuse/components/FilterDialogUsernameFilter.vue' );
 const FilterDialogPageFilter = require( 'ext.wikimediaAntiAbuse/components/FilterDialogPageFilter.vue' );
+const FilterDialogRevisionFilter = require( 'ext.wikimediaAntiAbuse/components/FilterDialogRevisionFilter.vue' );
 
 const mounted = [];
 
@@ -34,6 +35,12 @@ const mountDialog = ( initialFilters ) => {
 					template: '<div class="mw-wikimediaantiabuse-abuse-review-filter-dialog-page-filter"></div>',
 					props: [ 'selectedPages' ],
 					emits: [ 'update:selected-pages' ]
+				},
+				FilterDialogRevisionFilter: {
+					name: 'FilterDialogRevisionFilter',
+					template: '<div class="mw-wikimediaantiabuse-abuse-review-filter-dialog-revision-filter"></div>',
+					props: [ 'selectedRevisionIds' ],
+					emits: [ 'update:selected-revision-ids' ]
 				}
 			},
 			mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) }
@@ -56,7 +63,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: false,
 			showHandledRevisions: false,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'False positives shown': {
@@ -64,7 +72,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: true,
 			showHandledRevisions: false,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'Handled revisions shown': {
@@ -72,7 +81,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: false,
 			showHandledRevisions: true,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'Handled revisions and false positives shown': {
@@ -80,7 +90,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: true,
 			showHandledRevisions: true,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'Username filter set': {
@@ -88,7 +99,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: false,
 			showHandledRevisions: false,
 			username: [ 'Test', 'Test2' ],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'Page filter set': {
@@ -96,7 +108,17 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showFalsePositives: false,
 			showHandledRevisions: false,
 			username: [],
-			page: [ 'Page1', 'Page2' ]
+			page: [ 'Page1', 'Page2' ],
+			revision: []
+		}
+	},
+	'Revision filter set': {
+		initialFilters: {
+			showFalsePositives: false,
+			showHandledRevisions: false,
+			username: [],
+			page: [],
+			revision: [ 123, 321 ]
 		}
 	}
 }, async function ( assert, options ) {
@@ -171,6 +193,17 @@ QUnit.test.each( 'Renders correctly when opened', {
 		'Page filter component has the expected initial selected pages'
 	);
 
+	const revisionIdFilter = wrapper.findComponent( FilterDialogRevisionFilter );
+	assert.true(
+		revisionIdFilter.exists(),
+		'Revision ID filter component is rendered'
+	);
+	assert.deepEqual(
+		revisionIdFilter.vm.selectedRevisionIds,
+		options.initialFilters.revision,
+		'Revision ID filter component has the expected initial selected revision IDs'
+	);
+
 	const dialogTitle = wrapper.find( '.cdx-dialog__header__title' );
 	assert.strictEqual(
 		dialogTitle.text(),
@@ -204,40 +237,45 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showFalsePositives: false,
 			showHandledRevisions: false,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		},
-		expectedFiltersForUrl: { username: [], page: [] }
+		expectedFiltersForUrl: { username: [], page: [], revision: [] }
 	},
 	'Only false positives checkbox is checked': {
 		filterState: {
 			showFalsePositives: true,
 			showHandledRevisions: false,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		},
-		expectedFiltersForUrl: { wpShowFalsePositives: 1, username: [], page: [] }
+		expectedFiltersForUrl: { wpShowFalsePositives: 1, username: [], page: [], revision: [] }
 	},
 	'Only handled revisions checkbox is checked': {
 		filterState: {
 			showFalsePositives: false,
 			showHandledRevisions: true,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		},
-		expectedFiltersForUrl: { wpShowHandledRevisions: 1, username: [], page: [] }
+		expectedFiltersForUrl: { wpShowHandledRevisions: 1, username: [], page: [], revision: [] }
 	},
 	'Both verdict checkboxes are checked': {
 		filterState: {
 			showFalsePositives: true,
 			showHandledRevisions: true,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
 			wpShowHandledRevisions: 1,
 			username: [],
-			page: []
+			page: [],
+			revision: []
 		}
 	},
 	'Usernames filter is set': {
@@ -245,13 +283,47 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showFalsePositives: true,
 			showHandledRevisions: true,
 			username: [ 'Test', 'Testing' ],
-			page: []
+			page: [],
+			revision: []
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
 			wpShowHandledRevisions: 1,
 			username: [ 'Test', 'Testing' ],
-			page: []
+			page: [],
+			revision: []
+		}
+	},
+	'Page filter is set': {
+		filterState: {
+			showFalsePositives: true,
+			showHandledRevisions: true,
+			username: [],
+			page: [ 'Test', 'Testing' ],
+			revision: []
+		},
+		expectedFiltersForUrl: {
+			wpShowFalsePositives: 1,
+			wpShowHandledRevisions: 1,
+			username: [],
+			page: [ 'Test', 'Testing' ],
+			revision: []
+		}
+	},
+	'Revision filter is set': {
+		filterState: {
+			showFalsePositives: true,
+			showHandledRevisions: true,
+			username: [],
+			page: [],
+			revision: [ 123, 12123213 ]
+		},
+		expectedFiltersForUrl: {
+			wpShowFalsePositives: 1,
+			wpShowHandledRevisions: 1,
+			username: [],
+			page: [],
+			revision: [ 123, 12123213 ]
 		}
 	}
 }, async function ( assert, options ) {
@@ -272,6 +344,10 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 
 	const pageFilter = wrapper.findComponent( FilterDialogPageFilter );
 	pageFilter.vm.$emit( 'update:selected-pages', options.filterState.page );
+	await wrapper.vm.$nextTick();
+
+	const revisionFilter = wrapper.findComponent( FilterDialogRevisionFilter );
+	revisionFilter.vm.$emit( 'update:selected-revision-ids', options.filterState.revision );
 	await wrapper.vm.$nextTick();
 
 	const dialogPrimaryAction = wrapper.find( '.cdx-dialog__footer__primary-action' );
