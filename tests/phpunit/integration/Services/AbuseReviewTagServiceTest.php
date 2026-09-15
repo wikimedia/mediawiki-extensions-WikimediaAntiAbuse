@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 use MediaWiki\Block\DatabaseBlock;
 use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
+use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
@@ -605,6 +606,41 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 			'markNoFurtherAction' => [ 'method' => 'markNoFurtherAction' ],
 			'unmarkNoFurtherAction' => [ 'method' => 'unmarkNoFurtherAction' ],
 		];
+	}
+
+	/** @dataProvider provideVerdictsOnEveryContentPolicy */
+	public function testEveryEnabledContentPolicyTakesEveryVerdict(
+		string $tag,
+		string $mark,
+		string $unmark,
+		string $verdictTag
+	): void {
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableVandalismTag', true );
+		$service = $this->getService();
+		$reviewer = $this->mockRegisteredUltimateAuthority();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, $tag );
+
+		$this->assertStatusGood( $service->$mark( $reviewer, $revId, $tag ) );
+		$this->assertContains( $verdictTag, $this->getTags( $revId ), "$mark must add the verdict tag" );
+
+		$this->assertStatusGood( $service->$unmark( $reviewer, $revId, $tag ) );
+		$this->assertNotContains( $verdictTag, $this->getTags( $revId ), "$unmark must remove the verdict tag" );
+	}
+
+	/** Derived from the tag map, so a content policy added later is covered without a new case. */
+	public static function provideVerdictsOnEveryContentPolicy(): iterable {
+		foreach ( ChangeTagsHandler::REVIEWABLE_TAGS as $tag => $verdictTags ) {
+			foreach ( $verdictTags as $verdict => $verdictTag ) {
+				$suffix = ucfirst( $verdict );
+				yield "$tag, $verdict" => [
+					'tag' => $tag,
+					'mark' => "mark$suffix",
+					'unmark' => "unmark$suffix",
+					'verdictTag' => $verdictTag,
+				];
+			}
+		}
 	}
 
 	public function testMarkOnRevisionWithBothTagsResolvesToFalsePositive(): void {

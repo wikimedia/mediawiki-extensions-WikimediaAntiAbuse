@@ -54,6 +54,9 @@ return [
 		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
 			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
 		}
+		if ( $config->get( 'WikimediaAntiAbuseEnableVandalismTag' ) ) {
+			$enabledReviewableTags[] = ChangeTagsHandler::VANDALISM_TAG;
+		}
 
 		return new AbuseReviewTagService(
 			$enabledReviewableTags,
