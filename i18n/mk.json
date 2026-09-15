@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Bjankuloski06"
+			"Bjankuloski06",
+			"Vlad5250"
 		]
 	},
 	"wikimediaantiabuse-desc": "Функции против злоупотреба за Викимедиините викија",
@@ -11,8 +12,9 @@
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Прикажи погрешни погодоци",
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Прикажи обработени преработки",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Филтрирај",
-	"wikimediaantiabuse-special-abuse-review-filter-legend": "Филтрирање на преработки",
-	"wikimediaantiabuse-special-abuse-review-filter-close": "Затвори",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Филтри",
+	"wikimediaantiabuse-special-abuse-review-filter-close": "Откажи",
+	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Корисник",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Преработка",
 	"wikimediaantiabuse-special-abuse-review-heading-flags": "Ознаки",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Време и датум",
