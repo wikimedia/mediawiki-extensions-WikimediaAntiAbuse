@@ -30,11 +30,16 @@ class AbuseReviewTabsBuilderTest extends MediaWikiIntegrationTestCase {
 		$context->setTitle( SpecialPage::getTitleFor( 'AbuseReview' ) );
 		$context->setRequest( new FauxRequest( $currentPageQueryParams ) );
 
-		$tabs = [ 'mw-private-test', 'mw-private-personal-info', 'mw-private-vandalism' ];
+		$tabs = [
+			'mw-private-test' => 0,
+			'mw-private-personal-info' => 10,
+			'mw-private-vandalism' => 15,
+		];
 		$tabsBuilder = new AbuseReviewTabsBuilder(
 			$context,
 			$tabs,
-			'mw-private-personal-info'
+			'mw-private-personal-info',
+			10
 		);
 
 		$tabsList = $this->assertSelectorMatchesOneElementInNode(
@@ -56,9 +61,17 @@ class AbuseReviewTabsBuilderTest extends MediaWikiIntegrationTestCase {
 		$actualTabs = DOMCompat::querySelectorAll( $tabsList, '.cdx-tabs__list__item' );
 		$this->assertCount( 3, $actualTabs, 'Three tabs should be present' );
 
-		$expectedTabs = $tabs;
+		$expectedTabs = [
+			'mw-private-test' => [ 'count' => 0, 'countForDisplay' => '0' ],
+			'mw-private-personal-info' => [ 'count' => 10, 'countForDisplay' => '10' ],
+			'mw-private-vandalism' => [
+				'count' => 15,
+				'countForDisplay' => '(wikimediaantiabuse-special-abuse-review-tab-count-capped: 10)'
+			],
+		];
 		foreach ( $actualTabs as $actualTab ) {
-			$expectedTab = array_shift( $expectedTabs );
+			$expectedTab = array_key_first( $expectedTabs );
+			[ 'count' => $expectedCount, 'countForDisplay' => $expectedCountForDisplay ] = array_shift( $expectedTabs );
 
 			$this->assertSame(
 				'tab',
@@ -95,10 +108,27 @@ class AbuseReviewTabsBuilderTest extends MediaWikiIntegrationTestCase {
 				true
 			);
 
-			$this->assertSame(
-				'(wikimediaantiabuse-special-abuse-review-tab-' . $expectedTab . ')',
+			// Use a regex to assert on the message key, as the displayed count has HTML we assert on further below
+			$this->assertMatchesRegularExpression(
+				'/' . preg_quote( '(wikimediaantiabuse-special-abuse-review-tab-' . $expectedTab, '/' ) .
+					':[\s\S]*' . preg_quote( $expectedCountForDisplay, '/' ) . '[\s\S]*, ' . $expectedCount . '\)/',
 				$actualTab->textContent,
 				'Tab should have the expected label'
+			);
+
+			$infoChipElement = $this->assertSelectorMatchesOneElementInNode(
+				$actualTab,
+				'.mw-wikimediaantiabuse-abuse-review-tabs__count'
+			);
+
+			$infoChipText = $this->assertSelectorMatchesOneElementInNode(
+				$infoChipElement,
+				'.cdx-info-chip__text'
+			);
+			$this->assertSame(
+				$expectedCountForDisplay,
+				DOMCompat::getInnerHTML( $infoChipText ),
+				'Info chip text should be match the expected text'
 			);
 		}
 	}

@@ -986,6 +986,35 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'No tab should be selected when an unknown tab is selected'
 				);
 			}
+
+			// The number of rows is the number of rows created in ::addDBDataOnce that remain in the "needs review"
+			// state.
+			$expectedTabs = [
+				'mw-private-personal-info' => '3',
+				'mw-private-vandalism' => '1',
+			];
+			$actualTabs = DOMCompat::querySelectorAll( $tabsElement, '.cdx-tabs__list__item' );
+			foreach ( $actualTabs as $actualTab ) {
+				$expectedTab = array_key_first( $expectedTabs );
+				$expectedCount = array_shift( $expectedTabs );
+
+				$this->assertSame(
+					'cdx-tabs__list__item mw-wikimediaantiabuse-abuse-review-tab-' . $expectedTab,
+					$actualTab->getAttribute( 'class' ),
+					'Tab should have the expected classes'
+				);
+
+				$infoChipTextElement = $this->assertSelectorMatchesOneElementInNode(
+					$actualTab,
+					'.mw-wikimediaantiabuse-abuse-review-tabs__count .cdx-info-chip__text'
+				);
+
+				$this->assertSame(
+					$expectedCount,
+					DOMCompat::getInnerHTML( $infoChipTextElement ),
+					'Info chip text should have the expected row count'
+				);
+			}
 		} else {
 			$this->assertNull(
 				DOMCompat::querySelector(

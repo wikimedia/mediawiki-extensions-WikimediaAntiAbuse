@@ -423,4 +423,21 @@ html {
 			box-shadow: inset 0 -2px 0 0 @color-progressive--hover;
 		}
 	}
+
+	.mw-wikimediaantiabuse-abuse-review-tabs__count {
+		background-color: @background-color-interactive;
+		border: 0;
+
+		.cdx-info-chip__text {
+			color: @color-base;
+		}
+	}
+
+	[ aria-selected='true' ] .mw-wikimediaantiabuse-abuse-review-tabs__count {
+		background-color: @background-color-progressive;
+
+		.cdx-info-chip__text {
+			color: @color-inverted-fixed;
+		}
+	}
 }

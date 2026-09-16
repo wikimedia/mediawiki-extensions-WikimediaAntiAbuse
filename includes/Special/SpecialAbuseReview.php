@@ -40,6 +40,9 @@ class SpecialAbuseReview extends SpecialPage {
 	// The paging and ordering the pager reads out of the query string.
 	private const array PAGER_STATE_PARAMS = [ 'limit', 'sort', 'asc', 'desc' ];
 
+	/** @var int The limit of rows to count when building the tabs or Echo banner */
+	private const int ROW_COUNT_CAP = 100;
+
 	private array $tagsFilter;
 	private bool $includeHandledRevisions;
 	private array $usernamesFilter;
@@ -264,23 +267,32 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->getAuthority()
 		) );
 
-		// Using the query info for each table, fetch the row count for the default view
-		// excluding the revisions in $excludeRevisions
-		$defaultViewRowCount = 0;
+		return $this->getRowCount( $pager, $excludeRevisions );
+	}
+
+	/**
+	 * Fetches the number of rows over all pages for the provided pager, optionally excluding specific revisions
+	 * from the count.
+	 */
+	private function getRowCount( AbuseReviewPager $pager, array $excludeRevisions ): int {
+		$rowCount = 0;
 		$tablesToQuery = [ 'revision' => 'rev_id', 'archive' => 'ar_rev_id' ];
 		$dbr = $this->dbProvider->getReplicaDatabase();
 		foreach ( $tablesToQuery as $table => $revIdField ) {
-			$defaultViewRowCount += $dbr->newSelectQueryBuilder()
+			$rowCountQueryBuilder = $dbr->newSelectQueryBuilder()
 				->queryInfo( $pager->getQueryInfo( $table ) )
 				->clearFields()
-				->select( 'changetagdisplay.ct_id' )
-				->where( $dbr->expr( $revIdField, '!=', $excludeRevisions ) )
-				->limit( 5000 )
+				->select( 'changetagdisplay.ct_id' );
+			if ( $excludeRevisions ) {
+				$rowCountQueryBuilder->where( $dbr->expr( $revIdField, '!=', $excludeRevisions ) );
+			}
+			$rowCount += $rowCountQueryBuilder
+				->limit( self::ROW_COUNT_CAP + 1 )
 				->caller( __METHOD__ )
 				->fetchRowCount();
 		}
 
-		return $defaultViewRowCount;
+		return $rowCount;
 	}
 
 	/**
@@ -319,8 +331,32 @@ class SpecialAbuseReview extends SpecialPage {
 	 * Builds the HTML for the tabs which allow the user to switch between the different abuse review queues.
 	 */
 	private function buildTabs(): string {
-		$tabsBuilder = new AbuseReviewTabsBuilder( $this->getContext(), $this->reviewableFlags, $this->selectedTab );
+		$tabsBuilder = new AbuseReviewTabsBuilder(
+			$this->getContext(),
+			$this->getFlagsForTabsWithCounts(),
+			$this->selectedTab,
+			self::ROW_COUNT_CAP
+		);
 		return $tabsBuilder->getHtml();
+	}
+
+	/**
+	 * Gets the list of flags to be used as tabs, along with the number of revisions that would be shown
+	 * in the specified tab.
+	 *
+	 * @return array<string,int>
+	 */
+	private function getFlagsForTabsWithCounts(): array {
+		if ( count( $this->reviewableFlags ) < 2 ) {
+			return array_fill_keys( $this->reviewableFlags, 0 );
+		}
+
+		$counts = [];
+		foreach ( $this->reviewableFlags as $flag ) {
+			$counts[$flag] = $this->getRowCount( $this->getPager( [ $flag ] ), [] );
+		}
+
+		return $counts;
 	}
 
 	/** @inheritDoc */
