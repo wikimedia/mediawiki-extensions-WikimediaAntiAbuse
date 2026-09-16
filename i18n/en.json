@@ -46,6 +46,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Needs further action",
 	"wikimediaantiabuse-special-abuse-review-closed-row-note": "Show the details of this edit to judge it.",
 	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "This revision has already been suppressed.",
+	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Recorded {{GENDER:$1|by}} $2",
+	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Returned to review {{GENDER:$1|by}} $2",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Could not update the revision. Please try again.",
 	"wikimediaantiabuse-special-abuse-review-permission-error": "You do not have any of the permissions needed to view this page.",
 	"tag-mw-private-personal-info": "Likely contains personal information",
