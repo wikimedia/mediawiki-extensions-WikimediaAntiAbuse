@@ -57,7 +57,7 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewLinkClickHandler",
 			"services": [
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
-				"WikimediaAntiAbuseAbuseReviewPermissionManager"
+				"ChangeTagsStore"
 			]
 		},
 		"ChangeTagsHandler": {
@@ -131,7 +131,6 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
 			"services": [
 				"ChangeTagsStore",
-				"WikimediaAntiAbuseAbuseReviewPermissionManager",
 				"ChangeTagsFormatter",
 				"RevisionStore",
 				"ArchivedRevisionLookup",

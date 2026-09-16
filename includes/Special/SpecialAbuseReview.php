@@ -9,7 +9,6 @@ use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewPermissionManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
@@ -51,7 +50,6 @@ class SpecialAbuseReview extends SpecialPage {
 
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
-		private readonly AbuseReviewPermissionManager $permissionManager,
 		private readonly ChangeTagsFormatter $changeTagsFormatter,
 		private readonly RevisionStore $revisionStore,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
@@ -306,7 +304,11 @@ class SpecialAbuseReview extends SpecialPage {
 
 	/** @inheritDoc */
 	public function userCanExecute( User $user ): bool {
-		return $this->permissionManager->canViewQueue( $user );
+		// A tag declares its view rights only while it is enabled, so a disabled tag is viewable by nobody.
+		return (bool)$this->changeTagsStore->filterViewableTags(
+			ChangeTagsHandler::allReviewableTagNames(),
+			$user
+		);
 	}
 
 	/**

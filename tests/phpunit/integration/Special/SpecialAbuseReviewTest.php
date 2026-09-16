@@ -18,6 +18,68 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
  */
 class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 
+	/** @dataProvider provideQueueViewers */
+	public function testUserCanExecute(
+		bool $personalInfoTagEnabled,
+		bool $vandalismTagEnabled,
+		array $rights,
+		bool $expected
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
+			'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+		] );
+		$this->setGroupPermissions( [ 'abuse-review-viewer' => array_fill_keys( $rights, true ) ] );
+
+		$this->assertSame(
+			$expected,
+			$this->newSpecialPage()->userCanExecute(
+				$this->getTestUser( [ 'abuse-review-viewer' ] )->getUser()
+			)
+		);
+	}
+
+	public static function provideQueueViewers(): array {
+		return [
+			'holds a right over the enabled personal information tag' => [
+				'personalInfoTagEnabled' => true,
+				'vandalismTagEnabled' => false,
+				'rights' => [ 'viewsuppressed' ],
+				'expected' => true,
+			],
+			'holds the other right over the enabled personal information tag' => [
+				'personalInfoTagEnabled' => true,
+				'vandalismTagEnabled' => false,
+				'rights' => [ 'suppressrevision' ],
+				'expected' => true,
+			],
+			'holds a right over the enabled vandalism tag' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => true,
+				'rights' => [ 'rollback' ],
+				'expected' => true,
+			],
+			'holds a right over the disabled tag only' => [
+				'personalInfoTagEnabled' => true,
+				'vandalismTagEnabled' => false,
+				'rights' => [ 'rollback' ],
+				'expected' => false,
+			],
+			'holds every right while no tag is enabled' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => false,
+				'rights' => [ 'viewsuppressed', 'suppressrevision', 'rollback' ],
+				'expected' => false,
+			],
+			'holds none of the rights' => [
+				'personalInfoTagEnabled' => true,
+				'vandalismTagEnabled' => true,
+				'rights' => [],
+				'expected' => false,
+			],
+		];
+	}
+
 	public function testViewWhenCannotSeeAnyAbuseTag(): void {
 		$this->expectException( ErrorPageError::class );
 		$this->expectExceptionMessage( 'You do not have any of the permissions needed to view this page' );
