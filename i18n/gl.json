@@ -8,6 +8,8 @@
 	"wikimediaantiabuse-special-abuse-review": "Revisión de abusos",
 	"wikimediaantiabuse-special-abuse-review-caption": "Revisións marcadas para a súa revisión",
 	"wikimediaantiabuse-special-abuse-review-summary": "Esta páxina mostra as revisións que foron marcadas automaticamente para a súa revisión. Se a revisión é un falso positivo para a etiqueta coa que coincidiu, utiliza os botóns da columna de accións para marcala como un falso positivo. Se a revisión é un positivo de verdade, ao suprimir o texto da revisión, esta marcarase como xestionada. Se a revisión é un positivo de verdade pero non se necesita ningunha acción adicional, indica que non necesita ningunha acción adicional para marcala como xestionada.",
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "{{PLURAL:$1|Móstrase unha revisión marcada|Móstranse $1 revisións marcadas}} dunha notificación. Hai {{PLURAL:$2|outra edición|outras $2 edicións}} que probablemente {{PLURAL:$2|contén|conteñen}} información persoal á espera de revisión. $3.",
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Mostrar todas as posibles edicións que conteñen información persoal",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Incluír os falsos positivos",
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Incluír as revisións xestionadas",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "As revisións xestionadas inclúen elementos eliminados da cola predeterminada porque o contido foi suprimido ou un revisor marcou que non se necesita ningunha acción adicional.",
@@ -65,5 +67,5 @@
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Máis información sobre esta notificación]]",
 	"notification-header-personal-info-flagged": "Unha edición feita en «<strong>$1</strong>» pode conter información persoal.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edición pode|edicións poden}} conter información persoal.",
-	"notification-link-text-personal-info-flagged": "Ver as edicións marcadas"
+	"notification-link-text-personal-info-flagged": "Ver {{PLURAL:$1|a edición marcada|as edicións marcadas}}"
 }

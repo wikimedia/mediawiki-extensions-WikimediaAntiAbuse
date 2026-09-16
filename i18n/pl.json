@@ -4,8 +4,14 @@
 			"PanWor"
 		]
 	},
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Wyświetlono {{PLURAL:$1|jedną oznaczoną wersję|$1 oznaczone wersje|$1 oznaczonych wersji}} z powiadomienia. {{PLURAL:$2|Istnieje jeszcze jedna edycja|Istnieją jeszcze $2 inne edycje|Istnieje jeszcze $2 innych edycji}}, {{PLURAL:$2|która|które}} prawdopodobnie {{PLURAL:$2|dotyczy|dotyczą}} danych osobowych i {{PLURAL:$2|oczekuje|oczekują}} na przejrzenie. $3.",
+	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Pokaż wszystkie edycje, które prawdopodobnie dotyczą danych osobowych.",
 	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Konto",
 	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Wpisz nazwę konta…",
+	"wikimediaantiabuse-special-abuse-review-filter-page-placeholder": "Wpisz tytuł strony…",
+	"wikimediaantiabuse-special-abuse-review-filter-revision-header": "Identyfikator wersji",
+	"wikimediaantiabuse-special-abuse-review-filter-revision-placeholder": "Wpisz identyfikator wersji…",
+	"wikimediaantiabuse-special-abuse-review-filter-revision-not-integer-error": "Identyfikator wersji musi być liczbą całkowitą",
 	"wikimediaantiabuse-special-abuse-review-show-details": "Pokaż szczegóły",
 	"wikimediaantiabuse-special-abuse-review-edit-summary": "Opis zmian:",
 	"wikimediaantiabuse-special-abuse-review-action-suppress": "Ukryj…",
@@ -13,5 +19,6 @@
 	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Wymagane dalsze działania",
 	"tag-mw-private-personal-info-no-further-action": "Nie są wymagane dalsze działania (dane osobowe)",
 	"tag-mw-private-personal-info-no-further-action-description": "Zmiany automatycznie oznaczone jako zawierające dane osobowe i zaklasyfikowane jako niewymagające dalszych działań",
-	"tag-mw-private-vandalism-no-further-action": "Nie są wymagane dalsze działania (wandalizm)"
+	"tag-mw-private-vandalism-no-further-action": "Nie są wymagane dalsze działania (wandalizm)",
+	"notification-link-text-personal-info-flagged": "Wyświetl {{PLURAL:$1|oznaczoną edycję|oznaczone edycje}}"
 }
