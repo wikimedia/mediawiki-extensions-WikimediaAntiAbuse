@@ -26,7 +26,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-revision-placeholder": "Placeholder text for a field in the [[Special:AbuseReview]] filter dialog that allows filtering for flagged revisions with the specified revision IDs.",
 	"wikimediaantiabuse-special-abuse-review-filter-revision-not-integer-error": "Error message shown in the [[Special:AbuseReview]] filter dialog when the user enters a non-integer value in the revision ID field.",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Column heading on [[Special:AbuseReview]] for the column that shows the page a flagged edit was made to and the user who made it.",
-	"wikimediaantiabuse-special-abuse-review-heading-flags": "Column heading on [[Special:AbuseReview]] for the column that shows which flag an edit was tagged with, and the buttons that record a verdict on that flag.",
+	"wikimediaantiabuse-special-abuse-review-heading-flag": "Column heading on [[Special:AbuseReview]] for the column that shows the flag an edit was tagged with, and the buttons that record a verdict on that flag. Each row shows one flag.",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Column heading on [[Special:AbuseReview]] for the column that shows the timestamp the revision was made at, which is linked to the revision itself.",
 	"wikimediaantiabuse-special-abuse-review-empty-title": "Shown inside the table on [[Special:AbuseReview]] when no revisions are waiting for review.",
 	"wikimediaantiabuse-special-abuse-review-empty-description": "First line of the body text shown under {{msg-mw|Wikimediaantiabuse-special-abuse-review-empty-title}}, stating that the queue is empty. Rendered on a line of its own.",

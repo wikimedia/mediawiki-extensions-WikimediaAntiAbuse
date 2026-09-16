@@ -88,7 +88,7 @@ class AbuseReviewPager extends CodexTablePager {
 			self::TARGET_FIELD =>
 				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-revision' )->text(),
 			self::FLAGS_FIELD =>
-				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-flags' )->text(),
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-flag' )->text(),
 			self::TIMESTAMP_FIELD =>
 				$this->msg( 'wikimediaantiabuse-special-abuse-review-heading-timestamp' )->text(),
 			self::DETAILS_FIELD => '',

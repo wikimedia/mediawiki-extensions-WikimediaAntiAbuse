@@ -99,7 +99,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 		$this->assertCount( 4, $headings );
 		foreach ( [
 			'(wikimediaantiabuse-special-abuse-review-heading-revision)',
-			'(wikimediaantiabuse-special-abuse-review-heading-flags)',
+			'(wikimediaantiabuse-special-abuse-review-heading-flag)',
 			'(wikimediaantiabuse-special-abuse-review-heading-timestamp)',
 		] as $index => $expectedHeading ) {
 			$this->assertStringContainsString(
