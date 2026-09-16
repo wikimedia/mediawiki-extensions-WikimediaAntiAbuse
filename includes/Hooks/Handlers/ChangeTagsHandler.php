@@ -66,22 +66,6 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	}
 
 	/**
-	 * Returns all reviewable tags, including the associated verdict tags.
-	 * Does not consider whether the user can see the tags, so appropriately redact these when
-	 * displaying them
-	 *
-	 * @return string[]
-	 */
-	public static function allReviewableTagNames(): array {
-		$tags = array_keys( self::REVIEWABLE_TAGS );
-		foreach ( self::REVIEWABLE_TAGS as $verdictTags ) {
-			$tags = array_merge( $tags, array_values( $verdictTags ) );
-		}
-
-		return $tags;
-	}
-
-	/**
 	 * Every enabled abuse review tag: each flag, then its verdict tags. All three hooks
 	 * read this list, so a new tag cannot be defined without also being restricted.
 	 *

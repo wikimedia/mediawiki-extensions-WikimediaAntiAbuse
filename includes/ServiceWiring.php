@@ -3,12 +3,12 @@
 declare( strict_types=1 );
 
 use MediaWiki\Config\ServiceOptions;
-use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
@@ -30,6 +30,15 @@ use MediaWiki\Registration\ExtensionRegistry;
 
 /** @phpcs-require-sorted-array */
 return [
+	'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewEnabledTagsProvider(
+		new ServiceOptions(
+			AbuseReviewEnabledTagsProvider::CONSTRUCTOR_OPTIONS,
+			$services->getMainConfig()
+		)
+	),
+
 	'WikimediaAntiAbuseAbuseReviewInstrumentationClient' => static function (
 		MediaWikiServices $services
 	): IAbuseReviewInstrumentationClient {
@@ -42,17 +51,8 @@ return [
 	},
 
 	'WikimediaAntiAbuseAbuseReviewTagService' => static function ( MediaWikiServices $services ) {
-		$config = $services->getMainConfig();
-		$enabledReviewableTags = [];
-		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
-			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
-		}
-		if ( $config->get( 'WikimediaAntiAbuseEnableVandalismTag' ) ) {
-			$enabledReviewableTags[] = ChangeTagsHandler::VANDALISM_TAG;
-		}
-
 		return new AbuseReviewTagService(
-			$enabledReviewableTags,
+			$services->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' ),
 			$services->getChangeTagsStore(),
 			$services->getActorNormalization(),
 			$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' ),

@@ -171,7 +171,8 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 	): void {
 		$handler = new AbuseReviewLinkClickHandler(
 			$client,
-			$this->getServiceContainer()->getChangeTagsStore()
+			$this->getServiceContainer()->getChangeTagsStore(),
+			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' )
 		);
 
 		$handler->onBeforeInitialize(

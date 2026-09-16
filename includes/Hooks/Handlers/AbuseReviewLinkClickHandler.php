@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 
 use MediaWiki\ChangeTags\ChangeTagsStore;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Hook\BeforeInitializeHook;
 use MediaWiki\Output\OutputPage;
@@ -42,6 +43,7 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 	public function __construct(
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly AbuseReviewEnabledTagsProvider $abuseReviewEnabledTagsProvider,
 	) {
 	}
 
@@ -76,7 +78,7 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 		// Only a viewer of the queue can have followed one of its links. Anyone else is left
 		// alone entirely, so neither the stream nor the redirect answers to a crafted URL.
 		$viewableTags = $this->changeTagsStore->filterViewableTags(
-			ChangeTagsHandler::allReviewableTagNames(),
+			$this->abuseReviewEnabledTagsProvider->getAllEnabledTags(),
 			$output->getAuthority()
 		);
 		if ( !$viewableTags ) {

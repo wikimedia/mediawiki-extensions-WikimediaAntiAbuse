@@ -99,18 +99,4 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 		$this->expectExceptionMessage( 'Unknown tag: mw-private-unknown' );
 		TestingAccessWrapper::newFromObject( $changeTagsHandler )->isTagEnabled( 'mw-private-unknown' );
 	}
-
-	public function testAllReviewableTagNames(): void {
-		$this->assertSame(
-			[
-				'mw-private-personal-info',
-				'mw-private-vandalism',
-				'mw-private-personal-info-false-positive',
-				'mw-private-personal-info-no-further-action',
-				'mw-private-vandalism-false-positive',
-				'mw-private-vandalism-no-further-action',
-			],
-			ChangeTagsHandler::allReviewableTagNames()
-		);
-	}
 }

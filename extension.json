@@ -57,7 +57,8 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewLinkClickHandler",
 			"services": [
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
-				"ChangeTagsStore"
+				"ChangeTagsStore",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider"
 			]
 		},
 		"ChangeTagsHandler": {
@@ -138,7 +139,8 @@
 				"RowCommentFormatter",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
 				"TitleFactory",
-				"ConnectionProvider"
+				"ConnectionProvider",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider"
 			]
 		}
 	},

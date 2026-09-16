@@ -29,8 +29,7 @@ class AbuseReviewTagService {
 	private const int HTTP_SERVICE_UNAVAILABLE = 503;
 
 	public function __construct(
-		/** @var string[] Base reviewable tags enabled on this wiki */
-		private readonly array $enabledReviewableTags,
+		private readonly AbuseReviewEnabledTagsProvider $abuseReviewEnabledTagsProvider,
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly ActorNormalization $actorNormalization,
 		private readonly AbuseReviewVerdictAttribution $verdictAttribution,
@@ -261,7 +260,7 @@ class AbuseReviewTagService {
 			);
 		}
 
-		if ( !in_array( $tag, $this->enabledReviewableTags, true ) ) {
+		if ( !in_array( $tag, $this->abuseReviewEnabledTagsProvider->getEnabledReviewableTags(), true ) ) {
 			return $this->fatal( self::HTTP_NOT_FOUND, 'wikimediaantiabuse-api-review-disabled' );
 		}
 
