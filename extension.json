@@ -132,7 +132,6 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
 			"services": [
 				"ChangeTagsStore",
-				"ChangeTagsFormatter",
 				"RevisionStore",
 				"ArchivedRevisionLookup",
 				"LinkBatchFactory",

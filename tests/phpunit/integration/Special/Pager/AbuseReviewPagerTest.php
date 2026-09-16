@@ -23,7 +23,6 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			RequestContext::getMain(),
 			$this->getServiceContainer()->getLinkRenderer(),
 			$this->getServiceContainer()->getChangeTagsStore(),
-			$this->getServiceContainer()->getChangeTagsFormatter(),
 			$this->getServiceContainer()->getRevisionStore(),
 			$this->getServiceContainer()->getArchivedRevisionLookup(),
 			$this->getServiceContainer()->getLinkBatchFactory(),

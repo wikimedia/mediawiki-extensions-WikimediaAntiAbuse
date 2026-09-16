@@ -369,15 +369,17 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'history-deleted', $authorCellHtml );
 			}
 
-			$tagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+			$tagsCell = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.mw-wikimediaantiabuse-abuse-review-row__tags',
-				true
+				'.mw-wikimediaantiabuse-abuse-review-row__tags'
 			);
+			$tagsCellHtml = DOMCompat::getOuterHTML( $tagsCell );
 			$this->assertStringContainsString(
-				"(tag-$expectedFlag)",
-				$tagsCellHtml
+				"(wikimediaantiabuse-special-abuse-review-flag-chip-$expectedFlag)",
+				$tagsCellHtml,
+				'the flag is named by its own chip label, not the wiki-wide tag description'
 			);
+			$this->assertSelectorMatchesOneElementInNode( $tagsCell, '.cdx-info-chip' );
 			$this->assertStringNotContainsString(
 				"(tag-$expectedFlag-false-positive)",
 				$tagsCellHtml,

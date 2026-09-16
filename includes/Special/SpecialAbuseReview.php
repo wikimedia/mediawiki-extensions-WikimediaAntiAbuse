@@ -4,7 +4,6 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Special;
 
-use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
@@ -62,7 +61,6 @@ class SpecialAbuseReview extends SpecialPage {
 
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
-		private readonly ChangeTagsFormatter $changeTagsFormatter,
 		private readonly RevisionStore $revisionStore,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
@@ -313,7 +311,6 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->getContext(),
 			$this->getLinkRenderer(),
 			$this->changeTagsStore,
-			$this->changeTagsFormatter,
 			$this->revisionStore,
 			$this->archivedRevisionLookup,
 			$this->linkBatchFactory,

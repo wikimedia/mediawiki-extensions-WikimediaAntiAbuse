@@ -52,6 +52,8 @@
 	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "This revision has already been suppressed.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Recorded {{GENDER:$1|by}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Returned to review {{GENDER:$1|by}} $2",
+	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Likely personal info",
+	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism": "Likely vandalism",
 	"wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive": "Marked as false positive",
 	"wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action": "No further action needed",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Could not update the revision. Please try again.",

@@ -6,7 +6,6 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager;
 
 use InvalidArgumentException;
 use LogicException;
-use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Context\DerivativeContext;
@@ -56,9 +55,6 @@ class AbuseReviewPager extends CodexTablePager {
 	/** @var true Always default to paging in a descending order */
 	public $mDefaultDirection = IndexPager::DIR_DESCENDING;
 
-	/** @var array<string,string> Tag description HTML, keyed by tag name */
-	private array $tagDescriptions = [];
-
 	/** @var string[] Formatted edit summaries, keyed by revision ID */
 	private array $formattedComments = [];
 
@@ -69,7 +65,6 @@ class AbuseReviewPager extends CodexTablePager {
 		IContextSource $context,
 		LinkRenderer $linkRenderer,
 		private readonly ChangeTagsStore $changeTagsStore,
-		private readonly ChangeTagsFormatter $changeTagsFormatter,
 		private readonly RevisionStore $revisionStore,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
@@ -304,7 +299,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
-			$this->getTagDescription( $this->abuseReviewTag )
+			$this->buildFlagChip( $this->abuseReviewTag )
 		) . $mountPoint;
 	}
 
@@ -338,6 +333,19 @@ class AbuseReviewPager extends CodexTablePager {
 				. $note
 				. $bylineHtml
 		);
+	}
+
+	private function buildFlagChip( string $tag ): string {
+		// Generates:
+		// * wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info
+		// * wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism
+		$label = $this->msg( 'wikimediaantiabuse-special-abuse-review-flag-chip-' . $tag )->text();
+
+		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
+			->infoChip()
+			->setStatus( 'notice' )
+			->setText( $label )
+			->getHtml();
 	}
 
 	private function buildHeldVerdict( string $heldVerdict, string $bylineHtml ): string {
@@ -1171,15 +1179,6 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	private function splitTags( ?string $tsTags ): array {
 		return $tsTags !== null && $tsTags !== '' ? explode( ',', $tsTags ) : [];
-	}
-
-	/** A tag description is the same on every row, so parse each one only once per page. */
-	private function getTagDescription( string $tag ): string {
-		$this->tagDescriptions[$tag] ??= $this->changeTagsFormatter->getTagDescription(
-			$tag,
-			$this->getContext()
-		);
-		return $this->tagDescriptions[$tag];
 	}
 
 	/** @inheritDoc */
