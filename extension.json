@@ -313,6 +313,7 @@
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
 	},
 	"TestAutoloadClasses": {
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\Integration\\AbuseReviewRevisionTestTrait": "tests/phpunit/integration/AbuseReviewRevisionTestTrait.php",
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\Integration\\Special\\SpecialAbuseReviewTestBase": "tests/phpunit/integration/Special/SpecialAbuseReviewTestBase.php"
 	},
 	"ServiceWiringFiles": [

@@ -794,7 +794,9 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame(
 			$actorStore->findActorId( $firstReviewer, $this->getDb() ),
 			$this->getAttribution()->decodeActorId(
-				$this->getTagParams( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+				$this->getTagParams( $revId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG ),
+				$revId,
+				self::PERSONAL_INFO_FALSE_POSITIVE_TAG
 			),
 			'The reviewer who first judged the revision keeps the attribution'
 		);
@@ -830,14 +832,18 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->assertSame(
 			$firstActorId,
 			$this->getAttribution()->decodeActorId(
-				$this->getTagParams( $firstRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+				$this->getTagParams( $firstRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG ),
+				$firstRevId,
+				self::PERSONAL_INFO_FALSE_POSITIVE_TAG
 			),
 			'The first revision names the reviewer who judged it'
 		);
 		$this->assertSame(
 			$secondActorId,
 			$this->getAttribution()->decodeActorId(
-				$this->getTagParams( $secondRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG )
+				$this->getTagParams( $secondRevId, self::PERSONAL_INFO_FALSE_POSITIVE_TAG ),
+				$secondRevId,
+				self::PERSONAL_INFO_FALSE_POSITIVE_TAG
 			),
 			'The second revision names the other reviewer, not the first'
 		);

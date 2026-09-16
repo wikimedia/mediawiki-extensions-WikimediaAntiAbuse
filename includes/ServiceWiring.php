@@ -12,6 +12,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvid
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
@@ -68,6 +69,16 @@ return [
 	'WikimediaAntiAbuseAbuseReviewVerdictAttribution' => static fn (
 		MediaWikiServices $services
 	) => new AbuseReviewVerdictAttribution( $services->get( 'WikimediaAntiAbuseLogger' ) ),
+
+	'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewVerdictPerformerLookup(
+		$services->getChangeTagsStore(),
+		$services->getUserIdentityLookup(),
+		$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' ),
+		$services->getConnectionProvider(),
+		$services->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' )
+	),
 
 	'WikimediaAntiAbuseContentPolicyEvaluator' => static fn (
 		MediaWikiServices $services

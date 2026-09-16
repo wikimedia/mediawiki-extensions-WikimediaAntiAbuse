@@ -14,6 +14,8 @@ use Psr\Log\NullLogger;
  */
 class AbuseReviewVerdictAttributionTest extends MediaWikiUnitTestCase {
 
+	private const string TAG = 'mw-private-personal-info-false-positive';
+
 	private AbuseReviewVerdictAttribution $attribution;
 
 	protected function setUp(): void {
@@ -24,15 +26,27 @@ class AbuseReviewVerdictAttributionTest extends MediaWikiUnitTestCase {
 
 	/** @dataProvider provideParams */
 	public function testDecodeActorId( ?string $params, ?int $expected ): void {
-		$this->assertSame( $expected, $this->attribution->decodeActorId( $params ) );
+		$this->assertSame( $expected, $this->attribution->decodeActorId( $params, 123, self::TAG ) );
 	}
 
 	public static function provideParams(): array {
 		return [
-			'a verdict recorded before attribution existed' => [ 'params' => null, 'expected' => null ],
-			'an actor ID another writer wrote as a string' => [ 'params' => '{"actor":"12"}', 'expected' => 12 ],
-			'an actor field that is not a number' => [ 'params' => '{"actor":"someone"}', 'expected' => null ],
-			'an actor ID' => [ 'params' => '{"actor":12}', 'expected' => 12 ],
+			'a verdict recorded before attribution existed' => [
+				'params' => null,
+				'expected' => null,
+			],
+			'an actor ID another writer wrote as a string' => [
+				'params' => '{"actor":"12"}',
+				'expected' => 12,
+			],
+			'an actor field that is not a number' => [
+				'params' => '{"actor":"someone"}',
+				'expected' => null,
+			],
+			'an actor ID recorded with the time it happened' => [
+				'params' => '{"actor":12,"recordedAt":"20260901133152"}',
+				'expected' => 12,
+			],
 		];
 	}
 
@@ -47,11 +61,17 @@ class AbuseReviewVerdictAttributionTest extends MediaWikiUnitTestCase {
 	public function testDecodeActorIdLogsMalformedParams(): void {
 		$logger = $this->createMock( LoggerInterface::class );
 		$logger->expects( $this->once() )
-			->method( 'warning' );
+			->method( 'warning' )
+			->with(
+				'Ignoring a review verdict whose ct_params is not valid JSON',
+				$this->callback( static fn ( array $context ): bool =>
+					$context['revisionId'] === 123 && $context['tag'] === self::TAG
+				)
+			);
 
 		$this->assertNull(
-			( new AbuseReviewVerdictAttribution( $logger ) )->decodeActorId( 'actor=12' ),
-			'A verdict whose ct_params cannot be parsed names nobody'
+			( new AbuseReviewVerdictAttribution( $logger ) )->decodeActorId( 'actor=12', 123, self::TAG ),
+			'A verdict whose ct_params cannot be parsed names no reviewer'
 		);
 	}
 }
