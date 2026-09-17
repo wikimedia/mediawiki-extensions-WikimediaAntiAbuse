@@ -48,6 +48,15 @@
 		<cdx-progress-indicator v-if="busy">
 			{{ $i18n( 'wikimediaantiabuse-special-abuse-review-action-in-progress' ).text() }}
 		</cdx-progress-indicator>
+
+		<!-- HTML derived from message parsed on server-side -->
+		<!-- eslint-disable vue/no-v-html -->
+		<span
+			v-if="attribution"
+			class="mw-wikimediaantiabuse-abuse-review-verdict-performer"
+			v-html="attribution"
+		></span>
+		<!-- eslint-enable vue/no-v-html -->
 	</span>
 </template>
 
@@ -100,6 +109,7 @@ module.exports = exports = defineComponent( {
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
 		isSuppressed: { type: Boolean, default: false },
+		attributionHtml: { type: String, default: null },
 		actionsElement: { type: Object, default: null },
 		detailsElement: { type: Object, default: null },
 		referrer: { type: String, default: '' }
@@ -108,6 +118,8 @@ module.exports = exports = defineComponent( {
 	setup( props, { emit } ) {
 		const busy = ref( false );
 		const verdict = ref( null );
+		const attribution = ref( props.attributionHtml );
+		const viewerBylines = mw.config.get( 'wgWikimediaAntiAbuseViewerBylines' ) || {};
 		if ( props.isFalsePositive ) {
 			verdict.value = 'falsePositive';
 		} else if ( props.isNoFurtherAction ) {
@@ -203,11 +215,12 @@ module.exports = exports = defineComponent( {
 				return;
 			}
 			verdict.value = next;
+			attribution.value = viewerBylines[ next === null ? 'returned' : 'recorded' ] || null;
 			emit( 'verdict-changed', next );
 		}
 
 		return {
-			busy, verdict, buttons, chip, disabledNote, isOpen,
+			busy, verdict, buttons, chip, disabledNote, isOpen, attribution,
 			sendBackLabel: mw.msg( SEND_BACK_LABEL ),
 			sendBackTooltip: mw.msg( SEND_BACK_TOOLTIP ),
 			noteId: 'mw-wikimediaantiabuse-abuse-review-disabled-note-' + props.revId,

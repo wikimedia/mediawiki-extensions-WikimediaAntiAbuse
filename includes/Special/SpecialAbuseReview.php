@@ -87,6 +87,21 @@ class SpecialAbuseReview extends SpecialPage {
 			'mediawiki.interface.helpers.styles',
 		] );
 		$this->getOutput()->addModules( 'ext.wikimediaAntiAbuse' );
+		$this->getOutput()->addJsConfigVars(
+			'wgWikimediaAntiAbuseViewerBylines',
+			[
+				'recorded' => $this->verdictAttributionFormatter->format(
+					$this->getContext(),
+					$this->getUser(),
+					true
+				),
+				'returned' => $this->verdictAttributionFormatter->format(
+					$this->getContext(),
+					$this->getUser(),
+					false
+				),
+			]
+		);
 		$this->getOutput()->addHtml( '<div id="mw-wikimediaantiabuse-abuse-review-filter-app"></div>' );
 
 		$appliedFilters = $this->parseFilters();

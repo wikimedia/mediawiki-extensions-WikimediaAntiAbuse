@@ -281,7 +281,9 @@ class AbuseReviewPager extends CodexTablePager {
 			(int)$row->rev_id,
 			$heldVerdict !== null
 		);
+		$bylineHtml = $this->buildByline( $attributionHtml );
 		$isOpen = !$this->rowRendered || $this->revisionsFilter;
+		// @phan-suppress-next-line SecurityCheck-DoubleEscaped
 		$mountPoint = Html::rawElement(
 			'span',
 			[
@@ -291,21 +293,22 @@ class AbuseReviewPager extends CodexTablePager {
 					'isFalsePositive' => $heldVerdict === 'falsePositive',
 					'isNoFurtherAction' => $heldVerdict === 'noFurtherAction',
 					'isSuppressed' => $isSuppressed,
+					'attributionHtml' => $attributionHtml,
 				], JSON_THROW_ON_ERROR ),
 			],
 			$heldVerdict === null
-				? $this->buildVerdictButtons( (int)$row->rev_id, $isSuppressed, $isOpen )
-				: $this->buildHeldVerdict( $heldVerdict )
+				? $this->buildVerdictButtons( (int)$row->rev_id, $isSuppressed, $isOpen, $bylineHtml )
+				: $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
 		);
 
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
 			$this->getTagDescription( $this->abuseReviewTag )
-		) . $mountPoint . $this->buildByline( $attributionHtml );
+		) . $mountPoint;
 	}
 
-	private function buildVerdictButtons( int $revId, bool $isSuppressed, bool $isOpen ): string {
+	private function buildVerdictButtons( int $revId, bool $isSuppressed, bool $isOpen, string $bylineHtml ): string {
 		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
 		$rowRefuses = $isSuppressed || !$isOpen;
 
@@ -333,10 +336,11 @@ class AbuseReviewPager extends CodexTablePager {
 			$this->buildVerdictButton( 'no-further-action', $rowRefuses, $noteId, $noteMessage )
 				. $this->buildVerdictButton( 'false-positive', $rowRefuses, $noteId, $noteMessage )
 				. $note
+				. $bylineHtml
 		);
 	}
 
-	private function buildHeldVerdict( string $heldVerdict ): string {
+	private function buildHeldVerdict( string $heldVerdict, string $bylineHtml ): string {
 		$chipLabelMsgKey = match ( $heldVerdict ) {
 			'falsePositive' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive',
 			'noFurtherAction' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action',
@@ -353,7 +357,7 @@ class AbuseReviewPager extends CodexTablePager {
 				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts',
 				'data-verdict-held' => $heldVerdict,
 			],
-			$chipHtml
+			$chipHtml . $bylineHtml
 		);
 	}
 

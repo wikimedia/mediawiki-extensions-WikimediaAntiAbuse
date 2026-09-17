@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
@@ -139,6 +140,18 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
 			false,
 			true
+		);
+
+		/** @var AbuseReviewVerdictAttributionFormatter $attributionFormatter */
+		$attributionFormatter = $this->getServiceContainer()->get(
+			'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter'
+		);
+		$this->assertSame(
+			[
+				'recorded' => $attributionFormatter->format( $context, $testUser, true ),
+				'returned' => $attributionFormatter->format( $context, $testUser, false ),
+			],
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseViewerBylines']
 		);
 
 		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );

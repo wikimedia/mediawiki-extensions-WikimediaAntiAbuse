@@ -315,6 +315,11 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
 		);
 		$bylineHtml = DOMCompat::getInnerHTML( $byline );
+		$this->assertSame(
+			$bylineHtml,
+			$this->getVerdictsPayload( $row )['attributionHtml'],
+			'the row hands the client the unwrapped byline it rendered'
+		);
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-verdict-attribution: ' . $reviewer->getName(),
 			$bylineHtml,
@@ -368,6 +373,12 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		);
 		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
 
+		$verdicts = $this->getVerdictsPayload( $row );
+		$this->assertArrayHasKey( 'attributionHtml', $verdicts );
+		$this->assertNull(
+			$verdicts['attributionHtml'],
+			'a verdict recorded before attribution existed names nobody'
+		);
 		$this->assertCount(
 			0,
 			DOMCompat::querySelectorAll( $row, '.mw-wikimediaantiabuse-abuse-review-verdict-performer' ),

@@ -18,10 +18,22 @@ const SEND_BACK_TOOLTIP =
 	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip)';
 const SUPPRESSED_NOTE = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
 const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
+const PRIOR_ATTRIBUTION =
+	'Recorded by <a href="/wiki/User:PriorReviewer">PriorReviewer</a>';
+const RECORDED_ATTRIBUTION =
+	'Recorded by <a href="/wiki/User:CurrentUser">CurrentUser</a>';
+const RETURNED_ATTRIBUTION =
+	'Returned to review by <a href="/wiki/User:CurrentUser">CurrentUser</a>';
 
 const mounted = [];
 
 QUnit.module( 'ext.wikimediaAntiAbuse.RowVerdicts', QUnit.newMwEnvironment( {
+	beforeEach() {
+		mw.config.set( 'wgWikimediaAntiAbuseViewerBylines', {
+			recorded: RECORDED_ATTRIBUTION,
+			returned: RETURNED_ATTRIBUTION
+		} );
+	},
 	afterEach() {
 		// Left mounted, wrappers accumulate across the module and eventually wedge the runner.
 		while ( mounted.length ) {
@@ -69,6 +81,7 @@ const mountRow = ( given, options ) => {
 };
 
 const PROGRESS_INDICATOR = '.cdx-progress-indicator';
+const PERFORMER = '.mw-wikimediaantiabuse-abuse-review-verdict-performer';
 const CHIP = '.cdx-info-chip';
 const CHIP_TEXT = '.cdx-info-chip__text';
 
@@ -350,7 +363,10 @@ QUnit.test( 'a failed send-back leaves the verdict standing and reports the erro
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 	const notify = this.sandbox.stub( mw, 'notify' );
 
-	const wrapper = mountRow( { isNoFurtherAction: true } );
+	const wrapper = mountRow( {
+		isNoFurtherAction: true,
+		attributionHtml: PRIOR_ATTRIBUTION
+	} );
 	await sendBackButton( wrapper ).trigger( 'click' );
 	await flushPromises();
 
@@ -368,6 +384,11 @@ QUnit.test( 'a failed send-back leaves the verdict standing and reports the erro
 		wrapper.find( CHIP_TEXT ).text(),
 		CHIP_NO_FURTHER_ACTION,
 		'the chip still names the verdict the row holds'
+	);
+	assert.strictEqual(
+		wrapper.find( PERFORMER ).element.innerHTML,
+		PRIOR_ATTRIBUTION,
+		'the byline of the verdict still held is untouched'
 	);
 } );
 
@@ -508,4 +529,59 @@ QUnit.test( 'a click on a button does not reach the row it would open', async ( 
 	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
 
 	assert.strictEqual( reachedAncestor, 0, 'the click stops at the buttons' );
+} );
+
+QUnit.test( 'a row holding a verdict names the reviewer who recorded it', ( assert ) => {
+	const wrapper = mountRow( {
+		isNoFurtherAction: true,
+		attributionHtml: PRIOR_ATTRIBUTION
+	} );
+
+	assert.strictEqual(
+		wrapper.find( PERFORMER ).element.innerHTML,
+		PRIOR_ATTRIBUTION,
+		'showing the byline the server composed, as the markup it sent'
+	);
+} );
+
+QUnit.test.each( 'a row names nobody', {
+	'holding no verdict': {},
+	'holding a verdict predating attribution': { isFalsePositive: true, attributionHtml: null }
+}, ( assert, props ) => {
+	assert.false( mountRow( props ).find( PERFORMER ).exists(), 'no reviewer is named' );
+} );
+
+QUnit.test( 'recording a verdict names the viewer', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( restResolving( {} ) );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const wrapper = mountRow();
+	await buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).trigger( 'click' );
+	await flushPromises();
+
+	assert.strictEqual(
+		wrapper.find( PERFORMER ).element.innerHTML,
+		RECORDED_ATTRIBUTION,
+		'showing the byline the page carries for the viewer'
+	);
+} );
+
+QUnit.test( 'sending a row back names who sent it back', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( restResolving( {} ) );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const wrapper = mountRow( {
+		isNoFurtherAction: true,
+		attributionHtml: PRIOR_ATTRIBUTION
+	} );
+	await sendBackButton( wrapper ).trigger( 'click' );
+	await flushPromises();
+
+	assert.strictEqual(
+		wrapper.find( PERFORMER ).element.innerHTML,
+		RETURNED_ATTRIBUTION,
+		'the viewer byline replaces the one the verdict had'
+	);
 } );
