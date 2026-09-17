@@ -1,31 +1,51 @@
 <template>
 	<!-- A click reaching the row's summary element opens or closes it. -->
-	<span class="mw-wikimediaantiabuse-abuse-review-verdicts" @click.stop.prevent>
-		<cdx-toggle-button
-			v-for="button in buttons"
-			:key="button.verdict"
-			size="small"
-			:model-value="verdict === button.verdict"
-			:disabled="busy || button.disabled"
-			:aria-label="button.label"
-			:title="button.title"
-			:aria-describedby="button.note ? noteId : null"
-			@update:model-value="setVerdict( verdict === button.verdict ? null : button.verdict )"
-		>
-			<cdx-icon :icon="button.icon"></cdx-icon>
-		</cdx-toggle-button>
+	<span
+		class="mw-wikimediaantiabuse-abuse-review-verdicts"
+		:data-verdict-held="verdict"
+		@click.stop.prevent
+	>
+		<template v-if="chip">
+			<cdx-info-chip :status="chip.status">
+				{{ chip.label }}
+			</cdx-info-chip>
+
+			<cdx-button
+				v-if="isOpen"
+				:disabled="busy"
+				:title="sendBackTooltip"
+				@click="setVerdict( null )"
+			>
+				{{ sendBackLabel }}
+			</cdx-button>
+		</template>
+
+		<template v-else>
+			<cdx-button
+				v-for="button in buttons"
+				:key="button.verdict"
+				size="small"
+				:disabled="busy || button.disabled"
+				:aria-label="button.label"
+				:title="button.title"
+				:aria-describedby="button.note ? noteId : null"
+				@click="setVerdict( button.verdict )"
+			>
+				<cdx-icon :icon="button.icon"></cdx-icon>
+			</cdx-button>
+
+			<span
+				v-if="disabledNote"
+				:id="noteId"
+				class="mw-wikimediaantiabuse-abuse-review-disabled-note"
+			>
+				{{ disabledNote }}
+			</span>
+		</template>
 
 		<cdx-progress-indicator v-if="busy">
 			{{ $i18n( 'wikimediaantiabuse-special-abuse-review-action-in-progress' ).text() }}
 		</cdx-progress-indicator>
-
-		<span
-			v-if="disabledNote"
-			:id="noteId"
-			class="mw-wikimediaantiabuse-abuse-review-disabled-note"
-		>
-			{{ disabledNote }}
-		</span>
 	</span>
 </template>
 
@@ -33,7 +53,7 @@
 const { defineComponent, ref, computed, onMounted, onUnmounted } = require( 'vue' );
 // CodexModule's codexComponents option injects this synthetic file; requiring
 // '@wikimedia/codex' directly only works for a full-library dependency.
-const { CdxIcon, CdxProgressIndicator, CdxToggleButton } = require( './../codex.js' );
+const { CdxButton, CdxIcon, CdxInfoChip, CdxProgressIndicator } = require( './../codex.js' );
 const { cdxIconCheck, cdxIconClose } = require( './../icons.json' );
 const {
 	markAsFalsePositive,
@@ -48,21 +68,30 @@ const REQUESTS = {
 	noFurtherAction: { mark: markNoFurtherAction, unmark: unmarkNoFurtherAction }
 };
 
-const LABEL_KEYS = {
+const MARK_LABEL_KEYS = {
+	falsePositive: 'wikimediaantiabuse-special-abuse-review-action-mark-false-positive',
+	noFurtherAction: 'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action'
+};
+
+const SEND_BACK_LABEL = 'wikimediaantiabuse-special-abuse-review-action-send-back-for-review';
+const SEND_BACK_TOOLTIP =
+	'wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip';
+
+const CHIPS = {
 	falsePositive: {
-		mark: 'wikimediaantiabuse-special-abuse-review-action-mark-false-positive',
-		unmark: 'wikimediaantiabuse-special-abuse-review-action-unmark-false-positive'
+		status: 'warning',
+		message: 'wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive'
 	},
 	noFurtherAction: {
-		mark: 'wikimediaantiabuse-special-abuse-review-action-mark-no-further-action',
-		unmark: 'wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action'
+		status: 'success',
+		message: 'wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action'
 	}
 };
 
 // @vue/component
 module.exports = exports = defineComponent( {
 	name: 'RowVerdicts',
-	components: { CdxIcon, CdxProgressIndicator, CdxToggleButton },
+	components: { CdxButton, CdxIcon, CdxInfoChip, CdxProgressIndicator },
 	props: {
 		revId: { type: Number, required: true },
 		tag: { type: String, required: true },
@@ -111,29 +140,17 @@ module.exports = exports = defineComponent( {
 		);
 
 		/**
-		 * The server refuses two verdicts on one flag, so holding one disables the
-		 * other's button.
-		 *
-		 * @param {string} own
-		 * @return {boolean}
-		 */
-		function isDisabled( own ) {
-			return rowRefuses.value || ( verdict.value !== null && verdict.value !== own );
-		}
-
-		/**
 		 * @param {string} own
 		 * @param {Object} icon
 		 * @return {Object}
 		 */
 		function toButton( own, icon ) {
-			const held = verdict.value === own;
-			const label = mw.msg( LABEL_KEYS[ own ][ held ? 'unmark' : 'mark' ] );
+			const label = mw.msg( MARK_LABEL_KEYS[ own ] );
 
 			return {
 				verdict: own,
 				icon,
-				disabled: isDisabled( own ),
+				disabled: rowRefuses.value,
 				note: disabledNote.value,
 				label,
 				title: disabledNote.value || label
@@ -144,6 +161,17 @@ module.exports = exports = defineComponent( {
 			toButton( 'noFurtherAction', cdxIconCheck ),
 			toButton( 'falsePositive', cdxIconClose )
 		] );
+
+		const chip = computed( () => {
+			if ( verdict.value === null ) {
+				return null;
+			}
+
+			return {
+				status: CHIPS[ verdict.value ].status,
+				label: mw.msg( CHIPS[ verdict.value ].message )
+			};
+		} );
 
 		/**
 		 * @param {string|null} next The verdict to set, or null to clear the one held
@@ -176,7 +204,9 @@ module.exports = exports = defineComponent( {
 		}
 
 		return {
-			busy, verdict, buttons, disabledNote,
+			busy, verdict, buttons, chip, disabledNote, isOpen,
+			sendBackLabel: mw.msg( SEND_BACK_LABEL ),
+			sendBackTooltip: mw.msg( SEND_BACK_TOOLTIP ),
 			noteId: 'mw-wikimediaantiabuse-abuse-review-disabled-note-' + props.revId,
 			setVerdict
 		};

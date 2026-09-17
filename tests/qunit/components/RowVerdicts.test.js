@@ -7,12 +7,15 @@ const RowVerdicts = require( 'ext.wikimediaAntiAbuse/components/RowVerdicts.vue'
 
 const MARK_FALSE_POSITIVE =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)';
-const UNMARK_FALSE_POSITIVE =
-	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
 const MARK_NO_FURTHER_ACTION =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
-const UNMARK_NO_FURTHER_ACTION =
-	'(wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action)';
+const CHIP_FALSE_POSITIVE =
+	'(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)';
+const CHIP_NO_FURTHER_ACTION =
+	'(wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action)';
+const SEND_BACK = '(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
+const SEND_BACK_TOOLTIP =
+	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip)';
 const SUPPRESSED_NOTE = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
 const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 
@@ -36,6 +39,7 @@ QUnit.module( 'ext.wikimediaAntiAbuse.RowVerdicts', QUnit.newMwEnvironment( {
 function makeDetails( open ) {
 	const details = document.createElement( 'details' );
 	details.open = open;
+	details.appendChild( document.createElement( 'summary' ) );
 	document.getElementById( 'qunit-fixture' ).appendChild( details );
 	return details;
 }
@@ -65,11 +69,16 @@ const mountRow = ( given, options ) => {
 };
 
 const PROGRESS_INDICATOR = '.cdx-progress-indicator';
+const CHIP = '.cdx-info-chip';
+const CHIP_TEXT = '.cdx-info-chip__text';
 
 // The buttons carry an icon rather than a label, so what tells them apart is the name
 // they are given for assistive technology.
 const buttonWithLabel = ( wrapper, label ) => wrapper.findAll( 'button' )
 	.find( ( button ) => button.attributes( 'aria-label' ) === label );
+
+const sendBackButton = ( wrapper ) => wrapper.findAll( 'button' )
+	.find( ( button ) => button.text() === SEND_BACK );
 
 // mw.Rest#post rejects jQuery-style with ( code, details ), which a native promise cannot
 // express, so stand in a thenable carrying the same contract rest.js is written against.
@@ -79,7 +88,7 @@ const restRejecting = ( code, details ) => ( {
 	then: ( onSuccess, onError ) => onError( code, details )
 } );
 
-QUnit.test( 'both verdicts are offered, neither pressed', ( assert ) => {
+QUnit.test( 'both verdicts are offered, as push buttons', ( assert ) => {
 	const wrapper = mountRow();
 
 	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
@@ -87,8 +96,8 @@ QUnit.test( 'both verdicts are offered, neither pressed', ( assert ) => {
 		assert.notStrictEqual( button, undefined, '"' + label + '" is offered' );
 		assert.strictEqual(
 			button.attributes( 'aria-pressed' ),
-			'false',
-			'"' + label + '" is not pressed'
+			undefined,
+			'"' + label + '" is not announced as a toggle, the chip carrying the state instead'
 		);
 		assert.false( button.element.disabled, '"' + label + '" is usable' );
 	} );
@@ -144,35 +153,63 @@ QUnit.test( 'a suppressed revision cannot be marked, and says why', ( assert ) =
 	);
 } );
 
-QUnit.test( 'a suppressed revision that was called a false positive can still be unmarked', ( assert ) => {
-	const wrapper = mountRow( { isSuppressed: true, isFalsePositive: true } );
-	const unmark = buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE );
-
-	assert.notStrictEqual( unmark, undefined, 'the undo control is offered' );
-	assert.false(
-		unmark.element.disabled,
-		'the undo control is usable, suppression blocking marking but not unmarking'
-	);
-	assert.strictEqual(
-		unmark.attributes( 'aria-describedby' ),
-		undefined,
-		'the undo control is undescribed, the note explaining a disabled control'
-	);
-} );
-
-QUnit.test( 'the verdict a row holds blocks the other one', ( assert ) => {
+QUnit.test( 'the verdict a row holds shows as a chip', ( assert ) => {
 	const wrapper = mountRow( { isNoFurtherAction: true } );
 
-	const held = buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION );
-	assert.strictEqual( held.attributes( 'aria-pressed' ), 'true', 'the verdict held is pressed' );
-	assert.false( held.element.disabled, 'and can be cleared' );
+	assert.strictEqual(
+		wrapper.find( CHIP_TEXT ).text(),
+		CHIP_NO_FURTHER_ACTION,
+		'the chip names the verdict the row holds'
+	);
 	assert.true(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'the other verdict is out of reach, the server refusing two on one flag'
+		wrapper.find( CHIP ).classes().includes( 'cdx-info-chip--success' ),
+		'the chip carries the no-further-action status'
+	);
+	assert.strictEqual(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ),
+		undefined,
+		'the mark buttons give way to the chip'
+	);
+	assert.strictEqual(
+		wrapper.attributes( 'data-verdict-held' ),
+		'noFurtherAction',
+		'the wrapper names the verdict held, which is what the queue steps over'
 	);
 } );
 
-QUnit.test( 'marking a false positive presses its button and blocks the other', async function ( assert ) {
+QUnit.test( 'only a row holding a verdict offers to send it back', ( assert ) => {
+	const sendBack = sendBackButton( mountRow( { isFalsePositive: true } ) );
+
+	assert.notStrictEqual(
+		sendBack,
+		undefined,
+		'a row holding a verdict offers to send it back, under its own label'
+	);
+	assert.strictEqual(
+		sendBack.attributes( 'title' ),
+		SEND_BACK_TOOLTIP,
+		'the send-back control says on hover what sending the row back does'
+	);
+	assert.false( sendBack.element.disabled, 'the send-back control is usable' );
+	assert.strictEqual(
+		sendBackButton( mountRow() ),
+		undefined,
+		'a row holding no verdict offers no way to send it back'
+	);
+} );
+
+QUnit.test( 'suppression blocks recording a verdict, not clearing the one held', ( assert ) => {
+	const sendBack = sendBackButton( mountRow( { isFalsePositive: true, isSuppressed: true } ) );
+
+	assert.notStrictEqual(
+		sendBack,
+		undefined,
+		'a suppressed row holding a verdict still offers to send it back'
+	);
+	assert.false( sendBack.element.disabled, 'the send-back control is usable on a suppressed row' );
+} );
+
+QUnit.test( 'marking a false positive replaces the buttons with its chip', async function ( assert ) {
 	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
@@ -192,12 +229,19 @@ QUnit.test( 'marking a false positive presses its button and blocks the other', 
 		{ token: 'token', referrer: '' },
 		'The mark endpoint body carries the CSRF token and referrer'
 	);
-	const marked = buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE );
-	assert.notStrictEqual( marked, undefined, 'the button now offers to undo the verdict' );
-	assert.strictEqual( marked.attributes( 'aria-pressed' ), 'true', 'and reads as pressed' );
+	assert.strictEqual(
+		wrapper.find( CHIP_TEXT ).text(),
+		CHIP_FALSE_POSITIVE,
+		'the verdict just recorded shows as a chip'
+	);
 	assert.true(
-		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
-		'the other verdict is out of reach, a row holding one at a time'
+		wrapper.find( CHIP ).classes().includes( 'cdx-info-chip--warning' ),
+		'the chip carries the false-positive status'
+	);
+	assert.strictEqual(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ),
+		undefined,
+		'the mark buttons give way to the chip'
 	);
 } );
 
@@ -220,30 +264,42 @@ QUnit.test( 'marking as needing no further action uses its own endpoint', async 
 		{ token: 'token', referrer: 'echo_notification' },
 		'The mark endpoint body carries the CSRF token and referrer'
 	);
-	assert.notStrictEqual(
-		buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION ),
-		undefined,
-		'the button now offers to undo the verdict'
-	);
-	assert.true(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'the false-positive verdict is out of reach'
+	assert.strictEqual(
+		wrapper.find( CHIP_TEXT ).text(),
+		CHIP_NO_FURTHER_ACTION,
+		'the verdict just recorded shows as a chip'
 	);
 } );
 
-QUnit.test( 'unmarking no further action calls its own unmark endpoint', async function ( assert ) {
+QUnit.test.each( 'sending a row back unmarks the verdict it holds', {
+	'a false positive': {
+		props: { isFalsePositive: true },
+		path: '/wikimediaantiabuse/v0/unmark/revision/991/mw-private-personal-info/false-positive'
+	},
+	'no further action': {
+		props: { isNoFurtherAction: true },
+		path: '/wikimediaantiabuse/v0/unmark/revision/991/mw-private-personal-info/no-further-action'
+	}
+}, async function ( assert, data ) {
 	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
 
-	const wrapper = mountRow( { isNoFurtherAction: true } );
-	await buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION ).trigger( 'click' );
+	const wrapper = mountRow( data.props );
+	await sendBackButton( wrapper ).trigger( 'click' );
 	await flushPromises();
 
+	assert.strictEqual( post.callCount, 1, 'one REST call' );
 	assert.strictEqual(
 		post.firstCall.args[ 0 ],
-		'/wikimediaantiabuse/v0/unmark/revision/991/mw-private-personal-info/no-further-action',
-		'the no-further-action unmark endpoint is used'
+		data.path,
+		'the unmark endpoint of the verdict the row held is called'
+	);
+	assert.false( wrapper.find( CHIP ).exists(), 'the chip goes with the verdict it named' );
+	assert.strictEqual(
+		wrapper.attributes( 'data-verdict-held' ),
+		undefined,
+		'the wrapper names no verdict held, so the queue stops stepping over the row'
 	);
 	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
 		assert.false(
@@ -251,27 +307,6 @@ QUnit.test( 'unmarking no further action calls its own unmark endpoint', async f
 			'"' + label + '" is offered again'
 		);
 	} );
-} );
-
-QUnit.test( 'unmarking a false positive calls the unmark endpoint', async function ( assert ) {
-	const post = this.sandbox.stub( mw.Rest.prototype, 'post' )
-		.returns( restResolving( {} ) );
-	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
-
-	const wrapper = mountRow( { isFalsePositive: true } );
-	await buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE ).trigger( 'click' );
-	await flushPromises();
-
-	assert.strictEqual(
-		post.firstCall.args[ 0 ],
-		'/wikimediaantiabuse/v0/unmark/revision/991/mw-private-personal-info/false-positive',
-		'the unmark endpoint is used'
-	);
-	assert.notStrictEqual(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ),
-		undefined,
-		'the mark control comes back'
-	);
 } );
 
 QUnit.test( 'a failed mark leaves the control alone and reports the error', async function ( assert ) {
@@ -300,6 +335,36 @@ QUnit.test( 'a failed mark leaves the control alone and reports the error', asyn
 	assert.false( wrapper.vm.busy, 'the row is usable again' );
 } );
 
+QUnit.test( 'a failed send-back leaves the verdict standing and reports the error', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns(
+		restRejecting( 'http', { xhr: { responseJSON: {
+			messageTranslations: { en: 'You may not do that.' }
+		} } } )
+	);
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	const notify = this.sandbox.stub( mw, 'notify' );
+
+	const wrapper = mountRow( { isNoFurtherAction: true } );
+	await sendBackButton( wrapper ).trigger( 'click' );
+	await flushPromises();
+
+	assert.deepEqual(
+		notify.firstCall.args,
+		[ 'You may not do that.', { type: 'error' } ],
+		'the REST message is surfaced'
+	);
+	assert.strictEqual(
+		wrapper.attributes( 'data-verdict-held' ),
+		'noFurtherAction',
+		'the wrapper still names the verdict held'
+	);
+	assert.strictEqual(
+		wrapper.find( CHIP_TEXT ).text(),
+		CHIP_NO_FURTHER_ACTION,
+		'the chip still names the verdict the row holds'
+	);
+} );
+
 QUnit.test( 'marking reports upwards, since the tag chips live outside the app', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restResolving( {} ) );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
@@ -311,14 +376,6 @@ QUnit.test( 'marking reports upwards, since the tag chips live outside the app',
 		wrapper.emitted( 'verdict-changed' ),
 		[ [ 'falsePositive' ] ],
 		'marking reports the new verdict so the row summary can be flipped'
-	);
-
-	await buttonWithLabel( wrapper, UNMARK_FALSE_POSITIVE ).trigger( 'click' );
-	await flushPromises();
-	assert.deepEqual(
-		wrapper.emitted( 'verdict-changed' )[ 1 ],
-		[ null ],
-		'unmarking reports that the row now carries no verdict'
 	);
 } );
 
@@ -358,51 +415,43 @@ QUnit.test( 'a closed row cannot be judged, and says so', ( assert ) => {
 	} );
 } );
 
-QUnit.test( 'a closed row cannot clear the verdict it holds', ( assert ) => {
-	const wrapper = mountRow( { isOpen: false, isNoFurtherAction: true } );
-
-	const held = buttonWithLabel( wrapper, UNMARK_NO_FURTHER_ACTION );
-	assert.strictEqual( held.attributes( 'aria-pressed' ), 'true', 'the verdict reads as pressed' );
-	assert.true(
-		held.element.disabled,
-		'but is out of reach, a verdict changing only on a row the reviewer has opened'
-	);
-	assert.strictEqual(
-		held.attributes( 'title' ),
-		CLOSED_ROW_NOTE,
-		'and says why on hover, rather than what clearing it would do'
-	);
-	const other = buttonWithLabel( wrapper, MARK_FALSE_POSITIVE );
-	assert.true( other.element.disabled, 'the verdict the row does not hold is out of reach too' );
-	assert.strictEqual(
-		other.attributes( 'title' ),
-		CLOSED_ROW_NOTE,
-		'and says why on hover too'
-	);
-} );
-
 QUnit.test( 'opening the row brings its buttons into reach', async ( assert ) => {
 	const details = document.createElement( 'details' );
 	document.getElementById( 'qunit-fixture' ).appendChild( details );
 	const wrapper = mountRow( { detailsElement: details } );
 
 	assert.true(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
+		'The mark no further action needed button is out of reach while the row is closed'
+	);
+	assert.true(
 		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'out of reach while the row is closed'
+		'The mark false positive button is out of reach while the row is closed'
 	);
 
 	details.open = true;
 	details.dispatchEvent( new Event( 'toggle' ) );
 	await wrapper.vm.$nextTick();
 
+	const noFurtherActionButton = buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION );
 	assert.false(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'and in reach once it is open'
+		noFurtherActionButton.element.disabled,
+		'The mark no further action needed button is usable once the row is opened'
 	);
 	assert.strictEqual(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).attributes( 'title' ),
+		noFurtherActionButton.attributes( 'title' ),
+		MARK_NO_FURTHER_ACTION,
+		'the tooltip says what pressing the mark as handled button does'
+	);
+	const falsePositiveButton = buttonWithLabel( wrapper, MARK_FALSE_POSITIVE );
+	assert.false(
+		falsePositiveButton.element.disabled,
+		'The mark false positive button is usable once the row is opened'
+	);
+	assert.strictEqual(
+		falsePositiveButton.attributes( 'title' ),
 		MARK_FALSE_POSITIVE,
-		'with the tooltip back to what pressing it does'
+		'the tooltip says what pressing the false positive button does'
 	);
 
 	details.open = false;
@@ -411,7 +460,11 @@ QUnit.test( 'opening the row brings its buttons into reach', async ( assert ) =>
 
 	assert.true(
 		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'and out of reach again once it is closed'
+		'The mark false positive button is out of reach again once the row is closed'
+	);
+	assert.true(
+		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
+		'The mark no further action needed button is out of reach again once the row is closed'
 	);
 } );
 

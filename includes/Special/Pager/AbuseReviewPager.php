@@ -273,16 +273,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildFlags( stdClass $row ): string {
-		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $this->abuseReviewTag, 'falsePositive' );
-		$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $this->abuseReviewTag, 'noFurtherAction' );
-
-		$heldVerdict = null;
-		if ( $isFalsePositive ) {
-			$heldVerdict = 'falsePositive';
-		} elseif ( $isNoFurtherAction ) {
-			$heldVerdict = 'noFurtherAction';
-		}
-
+		$heldVerdict = $this->heldVerdict( $row, $this->abuseReviewTag );
 		$isSuppressed = $this->isSuppressedRow( $row );
 		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
 			$this->getContext(),
@@ -290,25 +281,21 @@ class AbuseReviewPager extends CodexTablePager {
 			(int)$row->rev_id,
 			$heldVerdict !== null
 		);
+		$isOpen = !$this->rowRendered || $this->revisionsFilter;
 		$mountPoint = Html::rawElement(
 			'span',
 			[
 				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
 				'data-verdicts' => json_encode( [
 					'tag' => $this->abuseReviewTag,
-					'isFalsePositive' => $isFalsePositive,
-					'isNoFurtherAction' => $isNoFurtherAction,
+					'isFalsePositive' => $heldVerdict === 'falsePositive',
+					'isNoFurtherAction' => $heldVerdict === 'noFurtherAction',
 					'isSuppressed' => $isSuppressed,
 				], JSON_THROW_ON_ERROR ),
 			],
-			$this->buildVerdictButtons(
-				(int)$row->rev_id,
-				$isFalsePositive,
-				$isNoFurtherAction,
-				$isSuppressed,
-				// If revisions filter applied all rows are open. Otherwise only first row is open
-				!$this->rowRendered || $this->revisionsFilter
-			)
+			$heldVerdict === null
+				? $this->buildVerdictButtons( (int)$row->rev_id, $isSuppressed, $isOpen )
+				: $this->buildHeldVerdict( $heldVerdict )
 		);
 
 		return Html::rawElement(
@@ -318,20 +305,12 @@ class AbuseReviewPager extends CodexTablePager {
 		) . $mountPoint . $this->buildByline( $attributionHtml );
 	}
 
-	private function buildVerdictButtons(
-		int $revId,
-		bool $isFalsePositive,
-		bool $isNoFurtherAction,
-		bool $isSuppressed,
-		bool $isOpen
-	): string {
-		// A suppressed revision takes no new verdict, but one it holds can be cleared.
-		$suppressedBlocksMark = $isSuppressed && !$isFalsePositive && !$isNoFurtherAction;
+	private function buildVerdictButtons( int $revId, bool $isSuppressed, bool $isOpen ): string {
 		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
-		$rowRefuses = $suppressedBlocksMark || !$isOpen;
+		$rowRefuses = $isSuppressed || !$isOpen;
 
 		$noteMessage = null;
-		if ( $suppressedBlocksMark ) {
+		if ( $isSuppressed ) {
 			$noteMessage = 'wikimediaantiabuse-special-abuse-review-already-suppressed-note';
 		} elseif ( !$isOpen ) {
 			$noteMessage = 'wikimediaantiabuse-special-abuse-review-closed-row-note';
@@ -351,21 +330,30 @@ class AbuseReviewPager extends CodexTablePager {
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts' ],
-			$this->buildVerdictButton(
-				'no-further-action',
-				$isNoFurtherAction,
-				$rowRefuses,
-				$isFalsePositive,
-				$noteId,
-				$noteMessage
-			) . $this->buildVerdictButton(
-				'false-positive',
-				$isFalsePositive,
-				$rowRefuses,
-				$isNoFurtherAction,
-				$noteId,
-				$noteMessage
-			) . $note
+			$this->buildVerdictButton( 'no-further-action', $rowRefuses, $noteId, $noteMessage )
+				. $this->buildVerdictButton( 'false-positive', $rowRefuses, $noteId, $noteMessage )
+				. $note
+		);
+	}
+
+	private function buildHeldVerdict( string $heldVerdict ): string {
+		$chipLabelMsgKey = match ( $heldVerdict ) {
+			'falsePositive' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive',
+			'noFurtherAction' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action',
+		};
+		$chipHtml = ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
+			->infoChip()
+			->setStatus( $heldVerdict === 'falsePositive' ? 'warning' : 'success' )
+			->setText( $this->msg( $chipLabelMsgKey )->text() )
+			->getHtml();
+
+		return Html::rawElement(
+			'span',
+			[
+				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts',
+				'data-verdict-held' => $heldVerdict,
+			],
+			$chipHtml
 		);
 	}
 
@@ -383,43 +371,35 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/**
 	 * @param string $verdict
-	 * @param bool $pressed Whether the row holds this verdict
 	 * @param bool $rowRefuses Whether the row itself refuses it, which the note explains
-	 * @param bool $otherVerdictHeld Whether the row holds the other verdict instead
 	 * @param string|null $noteId
 	 * @param string|null $noteMessage
 	 * @return string
 	 */
 	private function buildVerdictButton(
 		string $verdict,
-		bool $pressed,
 		bool $rowRefuses,
-		bool $otherVerdictHeld,
 		?string $noteId,
 		?string $noteMessage
 	): string {
-		$disabled = $rowRefuses || $otherVerdictHeld;
-		$label = $this->msg(
-			'wikimediaantiabuse-special-abuse-review-action-'
-				. ( $pressed ? 'unmark-' : 'mark-' ) . $verdict
-		)->text();
+		$label = $this->msg( 'wikimediaantiabuse-special-abuse-review-action-mark-' . $verdict )->text();
 
 		$attribs = [
 			'type' => 'button',
-			'aria-pressed' => $pressed ? 'true' : 'false',
 			'aria-label' => $label,
 			'title' => $rowRefuses && $noteMessage !== null
 				? $this->msg( $noteMessage )->text()
 				: $label,
 			'class' => [
-				'cdx-toggle-button',
-				'cdx-toggle-button--framed',
-				$pressed ? 'cdx-toggle-button--toggled-on' : 'cdx-toggle-button--toggled-off',
-				'cdx-toggle-button--icon-only',
-				'cdx-toggle-button--size-small',
+				'cdx-button',
+				'cdx-button--action-default',
+				'cdx-button--weight-normal',
+				'cdx-button--size-small',
+				'cdx-button--framed',
+				'cdx-button--icon-only',
 			],
 		];
-		if ( $disabled ) {
+		if ( $rowRefuses ) {
 			$attribs['disabled'] = true;
 		}
 		if ( $rowRefuses && $noteId !== null ) {
@@ -1123,6 +1103,20 @@ class AbuseReviewPager extends CodexTablePager {
 			$tableClasses[] = 'mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar';
 		}
 		return parent::getTableClass() . ' ' . implode( ' ', $tableClasses );
+	}
+
+	/**
+	 * Returns the verdict held for the row, or `null` if no verdict has been applied.
+	 */
+	private function heldVerdict( stdClass $row, string $tag ): ?string {
+		if ( $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' ) ) {
+			return 'falsePositive';
+		}
+		if ( $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' ) ) {
+			return 'noFurtherAction';
+		}
+
+		return null;
 	}
 
 	/**

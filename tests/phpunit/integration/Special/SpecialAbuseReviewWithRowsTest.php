@@ -29,6 +29,17 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		'(wikimediaantiabuse-special-abuse-review-action-revision-delete)';
 	private const string REVERT_LABEL = '(wikimediaantiabuse-special-abuse-review-action-revert)';
 
+	private const array VERDICT_CHIPS = [
+		'falsePositive' => [
+			'class' => 'cdx-info-chip--warning',
+			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)',
+		],
+		'noFurtherAction' => [
+			'class' => 'cdx-info-chip--success',
+			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action)',
+		],
+	];
+
 	private static int $suppressedContentRevId;
 	private static int $notTaggedContentRevId;
 	private static int $taggedContentRevId;
@@ -405,30 +416,37 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'the row reports whether it has already been marked as needing no further action'
 			);
 
-			$suppressedBlocksMark = $isSuppressedRow && !$isFalsePositiveRow && !$isNoFurtherActionRow;
-			$rowRefuses = $suppressedBlocksMark || !$isOpenRow;
-			$note = $suppressedBlocksMark
-				? '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)'
-				: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
-			$this->assertVerdictButtons(
-				$tableRow,
-				[
+			$heldVerdict = null;
+			if ( $isFalsePositiveRow ) {
+				$heldVerdict = 'falsePositive';
+			} elseif ( $isNoFurtherActionRow ) {
+				$heldVerdict = 'noFurtherAction';
+			}
+			if ( $heldVerdict !== null ) {
+				$this->assertVerdictChip( $tableRow, $heldVerdict );
+			} else {
+				$rowRefuses = $isSuppressedRow || !$isOpenRow;
+				$note = $isSuppressedRow
+					? '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)'
+					: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
+				$this->assertVerdictButtons(
+					$tableRow,
 					[
-						'pressed' => $isNoFurtherActionRow,
-						'disabled' => $rowRefuses || $isFalsePositiveRow,
-						'title' => $rowRefuses
-							? $note
-							: self::getExpectedVerdictLabel( 'no-further-action', $isNoFurtherActionRow ),
-					],
-					[
-						'pressed' => $isFalsePositiveRow,
-						'disabled' => $rowRefuses || $isNoFurtherActionRow,
-						'title' => $rowRefuses
-							? $note
-							: self::getExpectedVerdictLabel( 'false-positive', $isFalsePositiveRow ),
-					],
-				]
-			);
+						[
+							'disabled' => $rowRefuses,
+							'title' => $rowRefuses
+								? $note
+								: '(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
+						],
+						[
+							'disabled' => $rowRefuses,
+							'title' => $rowRefuses
+								? $note
+								: '(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
+						],
+					]
+				);
+			}
 
 			$actionLinks = $this->getActionLinks( $tableRow );
 
@@ -950,11 +968,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		];
 	}
 
-	private static function getExpectedVerdictLabel( string $verdict, bool $held ): string {
-		return '(wikimediaantiabuse-special-abuse-review-action-'
-			. ( $held ? 'unmark-' : 'mark-' ) . $verdict . ')';
-	}
-
 	/**
 	 * Validates the tab element in the given HTML node.
 	 */
@@ -1029,22 +1042,56 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	}
 
 	/**
+	 * Asserts the verdict chip in the provided row is as expected
+	 */
+	private function assertVerdictChip( Element $row, string $heldVerdict ): void {
+		$verdicts = $this->assertSelectorMatchesOneElementInNode(
+			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
+		);
+		$this->assertSame(
+			$heldVerdict,
+			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
+			'the row names the verdict it holds, which the queue steps over'
+		);
+		$chip = $this->assertSelectorMatchesOneElementInNode( $verdicts, '.cdx-info-chip' );
+		$this->assertTrue(
+			DOMCompat::getClassList( $chip )->contains( self::VERDICT_CHIPS[$heldVerdict]['class'] ),
+			'the chip carries the status its verdict stands for'
+		);
+		$this->assertSame(
+			self::VERDICT_CHIPS[$heldVerdict]['label'],
+			DOMCompat::getInnerHTML(
+				$this->assertSelectorMatchesOneElementInNode( $chip, '.cdx-info-chip__text' )
+			),
+			'the chip names the verdict the row holds'
+		);
+		$this->assertCount(
+			0,
+			DOMCompat::querySelectorAll( $verdicts, 'button' ),
+			'a row that holds a verdict offers no button to record one'
+		);
+	}
+
+	/**
 	 * @param Element $row
-	 * @param array[] $expected One [ 'pressed' => bool, 'disabled' => bool, 'title' => string ]
-	 *   per button
+	 * @param array[] $expected One [ 'disabled' => bool, 'title' => string ] per button
 	 */
 	private function assertVerdictButtons( Element $row, array $expected ): void {
-		$buttons = DOMCompat::querySelectorAll(
-			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts button'
+		$verdicts = $this->assertSelectorMatchesOneElementInNode(
+			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
 		);
+		$this->assertNull(
+			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
+			'a row that holds no verdict names none'
+		);
+		$buttons = DOMCompat::querySelectorAll( $verdicts, 'button' );
 		$this->assertSameSize( $expected, $buttons, 'one button per verdict' );
 
 		foreach ( $expected as $index => $state ) {
 			$button = $buttons[$index];
-			$this->assertSame(
-				$state['pressed'] ? 'true' : 'false',
+			$this->assertNull(
 				DOMCompat::getAttribute( $button, 'aria-pressed' ),
-				"button $index reads as pressed only when the row holds that verdict"
+				"button $index is not announced as a toggle, the chip carrying the state instead"
 			);
 			$this->assertSame(
 				$state['disabled'],

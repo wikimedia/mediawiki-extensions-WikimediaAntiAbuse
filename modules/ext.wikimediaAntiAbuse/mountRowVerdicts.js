@@ -7,7 +7,7 @@ const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
 const DETAILS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row__details';
 const HELD_VERDICT_SELECTOR =
-	'.mw-wikimediaantiabuse-abuse-review-verdicts button[aria-pressed="true"]';
+	'.mw-wikimediaantiabuse-abuse-review-verdicts[data-verdict-held]';
 const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**

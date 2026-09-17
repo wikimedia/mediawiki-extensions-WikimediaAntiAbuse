@@ -6,8 +6,8 @@ const { mountRowVerdicts } = require( 'ext.wikimediaAntiAbuse/mountRowVerdicts.j
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
-const UNMARK_BUTTON_LABEL =
-	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
+const SEND_BACK_BUTTON_LABEL =
+	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
 
 QUnit.module( 'ext.wikimediaAntiAbuse.mountRowVerdicts', QUnit.newMwEnvironment() );
 
@@ -81,16 +81,15 @@ const payloadFor = ( overrides ) => Object.assign( {
 const isOpen = ( row ) => row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__details' ).open;
 
 /**
- * Click the row's control carrying the given name. The buttons carry an icon rather than
- * a label, so the accessible name is what tells them apart.
+ * Mark buttons carry an accessible name; the send-back control carries its label as text.
  *
  * @param {HTMLElement} row
  * @param {string} label
  */
 function clickButton( row, label ) {
 	const buttons = Array.prototype.filter.call(
-		row.querySelectorAll( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ),
-		( button ) => button.getAttribute( 'aria-label' ) === label
+		row.querySelectorAll( 'button' ),
+		( button ) => ( button.getAttribute( 'aria-label' ) || button.textContent.trim() ) === label
 	);
 	if ( buttons.length !== 1 ) {
 		throw new Error( 'Expected one "' + label + '" control, found ' + buttons.length );
@@ -130,7 +129,7 @@ QUnit.test( 'only the open row can be judged', async ( assert ) => {
 	);
 	assert.true(
 		second.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
-		'a closed one cannot'
+		'a closed row cannot be judged'
 	);
 } );
 
@@ -150,7 +149,7 @@ QUnit.test( 'a verdict closes its row and opens the next one waiting', async fun
 
 	assert.false( isOpen( first ), 'the row just judged is closed' );
 	assert.true( isOpen( second ), 'the next row is opened' );
-	assert.false( isOpen( third ), 'and only that one' );
+	assert.false( isOpen( third ), 'the row after the one opened stays closed' );
 } );
 
 QUnit.test( 'a verdict skips a row that is already open', async function ( assert ) {
@@ -168,7 +167,7 @@ QUnit.test( 'a verdict skips a row that is already open', async function ( asser
 	await flushPromises();
 
 	assert.true( isOpen( second ), 'the row already open is left open' );
-	assert.true( isOpen( third ), 'and the next closed one is the one opened' );
+	assert.true( isOpen( third ), 'the next closed row is the one opened' );
 } );
 
 QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( assert ) {
@@ -187,11 +186,11 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	await flushPromises();
 
 	assert.false( isOpen( judged ), 'the row holding a verdict is stepped over' );
-	assert.false( isOpen( suppressed ), 'so is the one already suppressed' );
-	assert.true( isOpen( waiting ), 'and the next row waiting for review is opened' );
+	assert.false( isOpen( suppressed ), 'the suppressed row is stepped over as well' );
+	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
-QUnit.test( 'clearing a verdict does not advance the queue', async function ( assert ) {
+QUnit.test( 'sending a row back does not advance the queue', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
@@ -201,11 +200,11 @@ QUnit.test( 'clearing a verdict does not advance the queue', async function ( as
 	mountRowVerdicts();
 	await flushPromises();
 
-	clickButton( first, UNMARK_BUTTON_LABEL );
+	clickButton( first, SEND_BACK_BUTTON_LABEL );
 	await flushPromises();
 
 	assert.true( isOpen( first ), 'the row put back in the queue stays open' );
-	assert.false( isOpen( second ), 'and nothing else is opened' );
+	assert.false( isOpen( second ), 'nothing else is opened' );
 } );
 
 QUnit.test( 'a verdict on the last row opens nothing', async function ( assert ) {
