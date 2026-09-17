@@ -209,6 +209,7 @@ class AbuseReviewVerdictPerformerLookupTest extends MediaWikiIntegrationTestCase
 	}
 
 	public function testLookUpPerformersForAContentPolicyTheWikiHasSwitchedOff(): void {
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableVandalismTag', false );
 		$reviewer = $this->getTestUser()->getUser();
 		$revId = $this->createFlaggedRevisionId( [ self::VANDALISM_TAG ] );
 		$this->recordVerdict( $revId, self::VANDALISM_NO_FURTHER_ACTION_TAG, $reviewer );
