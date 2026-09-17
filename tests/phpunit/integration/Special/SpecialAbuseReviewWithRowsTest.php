@@ -53,6 +53,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		callable $expectedRevIdsCallback,
 		int $expectedFiltersAppliedCount
 	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+		] );
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
 		$data = [];
@@ -73,8 +77,19 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$this->getServiceContainer()->getTitleFactory()->newFromText( ... )
 		) );
 
+		// The flags being shown would be the one in 'tab', defaulting to personal info if the
+		// no tab is selected or the tab is not known
+		$validTabs = [ 'mw-private-personal-info', 'mw-private-vandalism' ];
+		$validatedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : null;
+		$expectedFlag = $validatedTab ?? 'mw-private-personal-info';
+
 		$context = RequestContext::getMain();
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		if ( ( $data['tab'] ?? '' ) === '' ) {
+			$expectedTabForInstrumentation = 'mw-private-personal-info';
+		} else {
+			$expectedTabForInstrumentation = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : '';
+		}
 		$client->expects( $this->once() )
 			->method( 'submitInteraction' )
 			->with(
@@ -89,6 +104,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'username' => [],
 						'revision' => $expectedRevisionIdFilter,
 						'page' => $expectedPageFilter,
+						'tab' => $expectedTabForInstrumentation,
 					]
 				]
 			);
@@ -105,6 +121,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'username' => [],
 			'page' => $expectedPageFilter,
 			'revision' => $expectedRevisionIdFilter,
+			'tab' => $validatedTab ?? '',
 		];
 		$this->assertArrayEquals(
 			$expectedActiveFiltersArray,
@@ -121,9 +138,20 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedCount );
 
-		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
-
 		$expectedRevIds = $expectedRevIdsCallback();
+		$tablePagerHtml = $this->commonVerifyTablePager( $html, count( $expectedRevIds ) !== 0 );
+
+		// The tabs should only be shown if the user has the ability to see at least two tabs
+		$shouldDisplayTabs = in_array( 'rollback', $authorityRights, true ) &&
+			array_intersect( [ 'viewsuppressed', 'suppressrevision' ], $authorityRights );
+
+		if ( ( $data['tab'] ?? '' ) === '' ) {
+			$expectedSelectedTab = 'mw-private-personal-info';
+		} else {
+			$expectedSelectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : null;
+		}
+		$this->assertTabElement( DOMUtils::parseHTML( $html ), $shouldDisplayTabs, $expectedSelectedTab );
+
 		$tableRows = DOMCompat::querySelectorAll(
 			DOMUtils::parseHTML( $tablePagerHtml ), self::ROW_SELECTOR
 		);
@@ -323,16 +351,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				true
 			);
 			$this->assertStringContainsString(
-				'(tag-mw-private-personal-info)',
+				"(tag-$expectedFlag)",
 				$tagsCellHtml
 			);
 			$this->assertStringNotContainsString(
-				'(tag-mw-private-personal-info-false-positive)',
+				"(tag-$expectedFlag-false-positive)",
 				$tagsCellHtml,
 				'the flag description is not replaced by the verdict'
 			);
 			$this->assertStringNotContainsString(
-				'(tag-mw-private-personal-info-no-further-action)',
+				"(tag-$expectedFlag-no-further-action)",
 				$tagsCellHtml,
 				'The "no further action" tag description should never be present in the page'
 			);
@@ -350,9 +378,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 			$verdicts = $this->getVerdictsPayload( $tableRow );
 			$this->assertSame(
-				'mw-private-personal-info',
+				$expectedFlag,
 				$verdicts['tag'],
-				'the tag the mark and unmark actions operate on'
+				'The tag the mark and unmark actions operate on should be as expected'
 			);
 
 			// A suppressed revision has been handled, which is what stops it being marked.
@@ -491,7 +519,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 	public static function provideViewWhenRevisionsPresent(): array {
 		$allRights = [
-			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext', 'rollback',
 		];
 		return [
 			'False positives and handled revisions excluded' => [
@@ -733,6 +761,37 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'expectedRevIdsCallback' => static fn () => [ static::$deletedNoFurtherActionRevId ],
 				'expectedFiltersAppliedCount' => 2,
 			],
+			'Vandalism tab is selected' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-vandalism' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$revertableTaggedContentRevId ],
+				'expectedFiltersAppliedCount' => 0,
+			],
+			'Personal info tab is selected' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-personal-info' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedFiltersAppliedCount' => 0,
+			],
+			'Selected tab is unknown' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-unknown' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [],
+				'expectedFiltersAppliedCount' => 0,
+			],
 		];
 	}
 
@@ -857,9 +916,85 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
+	/** @dataProvider provideDoesNotShowTabsWhenOnlyOneTagEnabled */
+	public function testDoesNotShowTabsWhenOnlyOneTagEnabled(
+		bool $personalInfoTagEnabled,
+		bool $vandalismTagEnabled
+	): void {
+		$this->setGroupPermissions( 'suppress', 'rollback', true );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
+			'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+		] );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$this->assertTabElement( DOMUtils::parseHTML( $html ), false, null );
+	}
+
+	public static function provideDoesNotShowTabsWhenOnlyOneTagEnabled(): array {
+		return [
+			'Only personal info tag enabled' => [
+				'personalInfoEnabled' => true,
+				'vandalismEnabled' => false,
+			],
+			'Only vandalism tag enabled' => [
+				'personalInfoEnabled' => false,
+				'vandalismEnabled' => true,
+			],
+		];
+	}
+
 	private static function getExpectedVerdictLabel( string $verdict, bool $held ): string {
 		return '(wikimediaantiabuse-special-abuse-review-action-'
 			. ( $held ? 'unmark-' : 'mark-' ) . $verdict . ')';
+	}
+
+	/**
+	 * Validates the tab element in the given HTML node.
+	 */
+	private function assertTabElement(
+		Element|Document $htmlAsNode,
+		bool $shouldDisplayTabs,
+		?string $expectedSelectedTab
+	): void {
+		if ( $shouldDisplayTabs ) {
+			$tabsElement = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs'
+			);
+
+			if ( $expectedSelectedTab !== null ) {
+				$selectedTab = $this->assertSelectorMatchesOneElementInNode(
+					$tabsElement,
+					'.cdx-tabs__list__item.mw-wikimediaantiabuse-abuse-review-tab-' . $expectedSelectedTab
+				);
+				$this->assertSame(
+					'true',
+					$selectedTab->getAttribute( 'aria-selected' ),
+					'The selected tab should have been selected'
+				);
+			} else {
+				$this->assertNull(
+					DOMCompat::querySelector(
+						$tabsElement,
+						'.cdx-tabs__list__item[aria-selected="true"]'
+					),
+					'No tab should be selected when an unknown tab is selected'
+				);
+			}
+		} else {
+			$this->assertNull(
+				DOMCompat::querySelector(
+					$htmlAsNode,
+					'.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs'
+				),
+				'Tabs should not be displayed when only one flag is enabled'
+			);
+		}
 	}
 
 	/**
@@ -1022,7 +1157,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			static::$deletedNoFurtherActionRevId
 		);
 		$changeTagsStore->addTags(
-			[ 'mw-private-personal-info' ],
+			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$revertableTaggedContentRevId
 		);

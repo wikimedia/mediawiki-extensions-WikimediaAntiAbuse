@@ -272,7 +272,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildFlags( stdClass $row ): string {
-		$tag = $this->getFirstReviewableTag( $row->ts_tags );
+		$tag = $this->getReviewableTag( $row->ts_tags );
 		if ( $tag === null ) {
 			return '';
 		}
@@ -1088,7 +1088,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$revisionIdsByTag = [];
 		foreach ( $this->mResult as $row ) {
 			$lb->addUser( new UserIdentityValue( (int)$row->user, $row->user_text ) );
-			$tag = $this->getFirstReviewableTag( $row->ts_tags );
+			$tag = $this->getReviewableTag( $row->ts_tags );
 			if ( $tag !== null ) {
 				$revisionIdsByTag[$tag][] = (int)$row->rev_id;
 			}
@@ -1130,30 +1130,42 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * The first reviewable tag on a row, normalised to its non-false-positive (base) form.
+	 * The flag the row is shown for, which is the flag of the tab it appears in.
 	 *
-	 * A row is only ever displayed for one reviewable tag: if it somehow carries more than
-	 * one, the first is the one shown and acted on.
-	 *
-	 * @param string|null $tsTags
-	 * @return string|null Null if the row carries no reviewable tag
+	 * @param string|null $tsTags The value of the row's ts_tags field, or null if the row has no tags
+	 * @return string|null Null if the row carries no flag specified in the tag filter
 	 */
-	private function getFirstReviewableTag( ?string $tsTags ): ?string {
-		$falsePositiveToTag = [];
-		foreach ( ChangeTagsHandler::REVIEWABLE_TAGS as $baseTag => $verdictTags ) {
-			$falsePositiveToTag[$verdictTags['falsePositive']] = $baseTag;
-		}
+	private function getReviewableTag( ?string $tsTags ): ?string {
+		$rowTags = $this->splitTags( $tsTags );
 
-		foreach ( $this->splitTags( $tsTags ) as $tag ) {
-			if ( isset( ChangeTagsHandler::REVIEWABLE_TAGS[$tag] ) ) {
-				return $tag;
-			}
-			if ( isset( $falsePositiveToTag[$tag] ) ) {
-				return $falsePositiveToTag[$tag];
+		foreach ( $this->getFlagsInFilter( $this->tagsFilter ) as $reviewTag => $filterTags ) {
+			if ( array_intersect( $rowTags, $filterTags ) ) {
+				return $reviewTag;
 			}
 		}
 
 		return null;
+	}
+
+	/**
+	 * The flags the tag filter covers, mapped to the tag filter values associated with that flag.
+	 *
+	 * @param string[] $tagsFilter
+	 * @return array<string,string[]>
+	 */
+	private function getFlagsInFilter( array $tagsFilter ): array {
+		$flags = [];
+		foreach ( ChangeTagsHandler::REVIEWABLE_TAGS as $flag => $verdictTags ) {
+			$filterTags = array_values( array_intersect(
+				[ $flag, $verdictTags['falsePositive'] ],
+				$tagsFilter
+			) );
+			if ( $filterTags !== [] ) {
+				$flags[$flag] = $filterTags;
+			}
+		}
+
+		return $flags;
 	}
 
 	/**

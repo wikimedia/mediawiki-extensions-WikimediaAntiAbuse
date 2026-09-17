@@ -199,6 +199,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 						'username' => [ $firstTestUser->getName() ],
 						'revision' => [],
 						'page' => [],
+						'tab' => 'mw-private-personal-info',
 					],
 				]
 			);
@@ -219,6 +220,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'username' => [ $firstTestUser->getName() ],
 				'page' => [],
 				'revision' => [],
+				'tab' => '',
 			],
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters'],
 			false,
@@ -254,6 +256,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 				'username' => [],
 				'revision' => [],
 				'page' => [],
+				'tab' => 'mw-private-personal-info',
 			]
 		];
 		if ( $expectedReferrer !== null ) {

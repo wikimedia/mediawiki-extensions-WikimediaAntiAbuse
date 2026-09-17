@@ -82,6 +82,7 @@ module.exports = exports = {
 		 *      been marked as no further action
 		 *  - username: Array of strings. A list of usernames to filter by
 		 *  - page: Array of strings. A list of page titles to filter by
+		 *  - tab: String. The name of the tab the user is on
 		 */
 		initialFilters: {
 			type: Object,
@@ -122,6 +123,10 @@ module.exports = exports = {
 
 			if ( showHandledRevisionsCheckboxValue.value ) {
 				filters.wpShowHandledRevisions = 1;
+			}
+
+			if ( props.initialFilters.tab ) {
+				filters.tab = props.initialFilters.tab;
 			}
 
 			utils.updateFiltersOnPage( filters, window );

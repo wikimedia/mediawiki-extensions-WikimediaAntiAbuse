@@ -408,3 +408,19 @@ html {
 		min-width: calc( 50% - @spacing-25 );
 	}
 }
+
+.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs {
+	margin: 0 0 @spacing-75 0;
+
+	.cdx-tabs__list__item {
+		color: @color-base;
+		text-decoration: none;
+
+		// The hover style from Codex uses the :enabled selector which only works on buttons and not links,
+		// so re-state the styles here.
+		&:hover {
+			color: @color-progressive--hover;
+			box-shadow: inset 0 -2px 0 0 @color-progressive--hover;
+		}
+	}
+}

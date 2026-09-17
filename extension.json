@@ -163,7 +163,8 @@
 				"CdxCheckbox",
 				"CdxInfoChip",
 				"CdxMultiselectLookup",
-				"CdxChipInput"
+				"CdxChipInput",
+				"CdxTabs"
 			],
 			"styles": [
 				"special.abuseReview.less"

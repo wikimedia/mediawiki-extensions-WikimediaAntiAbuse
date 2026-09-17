@@ -13,6 +13,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvid
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewTabsBuilder;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
@@ -45,6 +46,11 @@ class SpecialAbuseReview extends SpecialPage {
 	private array $revisionsFilter;
 	/** @var Title[] */
 	private array $pagesFilter;
+
+	/** @var string[] The flags the user may review, in tab order */
+	private array $reviewableFlags;
+	/** @var string The flag whose queue is shown */
+	private string $selectedTab;
 
 	/**
 	 * @var int The number of filters applied (counting all filters present in the filters dialog)
@@ -81,6 +87,8 @@ class SpecialAbuseReview extends SpecialPage {
 		$this->getOutput()->addHtml( '<div id="mw-wikimediaantiabuse-abuse-review-filter-app"></div>' );
 
 		$appliedFilters = $this->parseFilters();
+
+		$this->getOutput()->addHTML( $this->buildTabs() );
 		$pager = $this->displayPager();
 
 		$pageLoadInstrumentationData = [
@@ -104,23 +112,36 @@ class SpecialAbuseReview extends SpecialPage {
 	 * instrumentation client. Also sets the class properties for the filters, which are used by the pager.
 	 */
 	private function parseFilters(): array {
-		$showFalsePositives = $this->getRequest()->getBool( 'wpShowFalsePositives' );
-		$showHandledRevisions = $this->getRequest()->getBool( 'wpShowHandledRevisions' );
-
-		$this->tagsFilter = $this->changeTagsStore->filterViewableTags(
-			array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
+		$this->reviewableFlags = $this->changeTagsStore->filterViewableTags(
+			$this->abuseReviewEnabledTagsProvider->getEnabledReviewableTags(),
 			$this->getAuthority()
 		);
+
+		$selectedTab = $this->getRequest()->getVal( 'tab', '' );
+		if ( $selectedTab === '' ) {
+			$selectedTabForFilters = '';
+			$this->selectedTab = $this->reviewableFlags[0] ?? '';
+		} else {
+			$this->selectedTab = in_array( $selectedTab, $this->reviewableFlags, true ) ? $selectedTab : '';
+			$selectedTabForFilters = $this->selectedTab;
+		}
+
+		$this->tagsFilter = $this->selectedTab === '' ? [] : [ $this->selectedTab ];
+
+		$showFalsePositives = $this->getRequest()->getBool( 'wpShowFalsePositives' );
 		if ( $showFalsePositives ) {
-			$this->tagsFilter = array_merge(
-				$this->tagsFilter,
-				$this->changeTagsStore->filterViewableTags(
-					array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'falsePositive' ),
-					$this->getAuthority()
-				)
+			$falsePositiveTags = $this->changeTagsStore->filterViewableTags(
+				array_map(
+					static fn ( string $flag ): string => ChangeTagsHandler::REVIEWABLE_TAGS[$flag]['falsePositive'],
+					$this->tagsFilter
+				),
+				$this->getAuthority()
 			);
+			$this->tagsFilter = array_merge( $this->tagsFilter, $falsePositiveTags );
 			$this->numberOfFiltersApplied++;
 		}
+
+		$showHandledRevisions = $this->getRequest()->getBool( 'wpShowHandledRevisions' );
 		$this->includeHandledRevisions = $showHandledRevisions;
 		if ( $this->includeHandledRevisions ) {
 			$this->numberOfFiltersApplied++;
@@ -159,6 +180,7 @@ class SpecialAbuseReview extends SpecialPage {
 				'username' => $this->usernamesFilter,
 				'page' => $pagersFilterAsStringArray,
 				'revision' => $this->revisionsFilter,
+				'tab' => $selectedTabForFilters,
 			]
 		);
 
@@ -168,6 +190,7 @@ class SpecialAbuseReview extends SpecialPage {
 			'username' => $this->usernamesFilter,
 			'revision' => $this->revisionsFilter,
 			'page' => $pagersFilterAsStringArray,
+			'tab' => $this->selectedTab,
 		];
 	}
 
@@ -290,6 +313,14 @@ class SpecialAbuseReview extends SpecialPage {
 			$pagesFilter,
 			$numberOfFiltersApplied
 		);
+	}
+
+	/**
+	 * Builds the HTML for the tabs which allow the user to switch between the different abuse review queues.
+	 */
+	private function buildTabs(): string {
+		$tabsBuilder = new AbuseReviewTabsBuilder( $this->getContext(), $this->reviewableFlags, $this->selectedTab );
+		return $tabsBuilder->getHtml();
 	}
 
 	/** @inheritDoc */

@@ -64,7 +64,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: false,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'False positives shown': {
@@ -73,7 +74,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: false,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'Handled revisions shown': {
@@ -82,7 +84,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: true,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'Handled revisions and false positives shown': {
@@ -91,7 +94,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: true,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'Username filter set': {
@@ -100,7 +104,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: false,
 			username: [ 'Test', 'Test2' ],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'Page filter set': {
@@ -109,7 +114,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: false,
 			username: [],
 			page: [ 'Page1', 'Page2' ],
-			revision: []
+			revision: [],
+			tab: ''
 		}
 	},
 	'Revision filter set': {
@@ -118,7 +124,8 @@ QUnit.test.each( 'Renders correctly when opened', {
 			showHandledRevisions: false,
 			username: [],
 			page: [],
-			revision: [ 123, 321 ]
+			revision: [ 123, 321 ],
+			tab: ''
 		}
 	}
 }, async function ( assert, options ) {
@@ -238,7 +245,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: false,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		},
 		expectedFiltersForUrl: { username: [], page: [], revision: [] }
 	},
@@ -248,7 +256,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: false,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		},
 		expectedFiltersForUrl: { wpShowFalsePositives: 1, username: [], page: [], revision: [] }
 	},
@@ -258,7 +267,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: true,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		},
 		expectedFiltersForUrl: { wpShowHandledRevisions: 1, username: [], page: [], revision: [] }
 	},
@@ -268,14 +278,16 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: true,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: 'mw-private-test'
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
 			wpShowHandledRevisions: 1,
 			username: [],
 			page: [],
-			revision: []
+			revision: [],
+			tab: 'mw-private-test'
 		}
 	},
 	'Usernames filter is set': {
@@ -284,7 +296,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: true,
 			username: [ 'Test', 'Testing' ],
 			page: [],
-			revision: []
+			revision: [],
+			tab: ''
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
@@ -300,7 +313,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: true,
 			username: [],
 			page: [ 'Test', 'Testing' ],
-			revision: []
+			revision: [],
+			tab: ''
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
@@ -316,7 +330,8 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			showHandledRevisions: true,
 			username: [],
 			page: [],
-			revision: [ 123, 12123213 ]
+			revision: [ 123, 12123213 ],
+			tab: ''
 		},
 		expectedFiltersForUrl: {
 			wpShowFalsePositives: 1,
@@ -329,7 +344,7 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 }, async function ( assert, options ) {
 	const updateFiltersStub = this.sandbox.stub( utils, 'updateFiltersOnPage' );
 
-	const wrapper = mountDialog();
+	const wrapper = mountDialog( { tab: options.filterState.tab } );
 
 	wrapper.find( 'input[name="filter-show-false-positives"]' ).setValue(
 		options.filterState.showFalsePositives
