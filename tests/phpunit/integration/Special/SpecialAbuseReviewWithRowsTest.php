@@ -906,7 +906,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 		$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
 			SpecialPage::getTitleValueFor( 'AbuseReview' ),
-			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)'
+			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)',
+			[],
+			[ 'tab' => 'mw-private-personal-info' ]
 		);
 		// Parameter 2 is 2 because of the deleted tagged content revision and the revertable tagged content revision
 		$this->assertSame(

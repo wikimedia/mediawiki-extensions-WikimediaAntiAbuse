@@ -219,13 +219,21 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->getRequest()->getVal( 'referrer' ) === 'echo_notification' &&
 			$this->revisionsFilter
 		) {
-			$otherRevisionsToReviewCount = $this->getDefaultViewRowCount( $this->revisionsFilter );
+			// Notifications only exist for revisions with the mw-private-personal-info tag,
+			// so we can filter by that to get the count of other revisions to review
+			$pager = $this->getPager( $this->changeTagsStore->filterViewableTags(
+				[ 'mw-private-personal-info' ],
+				$this->getAuthority()
+			) );
+			$otherRevisionsToReviewCount = $this->getRowCount( $pager, $this->revisionsFilter );
 			if ( $otherRevisionsToReviewCount ) {
 				$bannerContentHtml = $this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner' )
 					->numParams( count( $this->revisionsFilter ), $otherRevisionsToReviewCount )
 					->rawParams( $this->getLinkRenderer()->makeKnownLink(
 						$this->getPageTitle(),
-						$this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner-link' )->text()
+						$this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner-link' )->text(),
+						[],
+						[ 'tab' => 'mw-private-personal-info' ]
 					) )
 					->parse();
 
@@ -252,22 +260,6 @@ class SpecialAbuseReview extends SpecialPage {
 			ParserOptions::newFromContext( $this->getContext() )
 		);
 		return $pager;
-	}
-
-	/**
-	 * Fetches the number of rows over all pages in the default view of Special:AbuseReview
-	 *
-	 * @param int[] $excludeRevisions The list of revision IDs to exclude from the count.
-	 *   Must not be an empty array.
-	 */
-	private function getDefaultViewRowCount( array $excludeRevisions ): int {
-		// Re-use the query construction logic in the pager class to avoid code duplication
-		$pager = $this->getPager( $this->changeTagsStore->filterViewableTags(
-			array_keys( ChangeTagsHandler::REVIEWABLE_TAGS ),
-			$this->getAuthority()
-		) );
-
-		return $this->getRowCount( $pager, $excludeRevisions );
 	}
 
 	/**
