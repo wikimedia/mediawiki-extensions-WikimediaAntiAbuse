@@ -23,6 +23,28 @@ function isHandled( row, suppressedRows ) {
 }
 
 /**
+ * @param {HTMLElement} row
+ * @return {HTMLElement|null}
+ */
+function ensureActionsGroup( row ) {
+	const existing = row.querySelector( '.mw-wikimediaantiabuse-abuse-review-actions' );
+	if ( existing ) {
+		return existing;
+	}
+
+	const content = row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__content' );
+	if ( !content ) {
+		return null;
+	}
+
+	const actions = document.createElement( 'div' );
+	actions.className = 'mw-wikimediaantiabuse-abuse-review-actions';
+	content.appendChild( actions );
+
+	return actions;
+}
+
+/**
  * Close the row a verdict was just given to and open the next closed row, so the
  * reviewer is handed the next edit. Clearing a verdict puts its row back in the
  * queue, so it advances nothing.
@@ -91,6 +113,7 @@ function mountRowVerdicts() {
 		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
 			detailsElement: details,
+			actionsElement: ensureActionsGroup( row ),
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
 				advanceQueue( row, verdict, suppressedRows );

@@ -936,6 +936,44 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
+	public function testNoActionGroupRenderedForRowWithoutActionLinks(): void {
+		$this->setGroupPermissions( [ 'archived-rows-test' => [
+			'viewsuppressed' => true,
+			'deletedhistory' => true,
+		] ] );
+		[ $html ] = $this->executeSpecialPage(
+			'', null, null, $this->getTestUser( [ 'archived-rows-test' ] )->getUser()
+		);
+		$document = DOMUtils::parseHTML( $html );
+
+		$archivedRow = $this->getRowForRevision( $document, static::$deletedTaggedContentRevId );
+		$this->assertSame(
+			'mw-private-personal-info',
+			$this->getVerdictsPayload( $archivedRow )['tag'],
+			'the archived row still renders the verdict app'
+		);
+		$this->assertSame( [], $this->getActionLinks( $archivedRow ), 'the archived row is offered no action' );
+		$this->assertNull(
+			DOMCompat::querySelector( $archivedRow, '.mw-wikimediaantiabuse-abuse-review-actions' ),
+			'a row offered no action renders no action group'
+		);
+
+		$revertableRow = $this->getRowForRevision( $document, static::$revertableTaggedContentRevId );
+		$this->assertSame(
+			[ self::REVERT_LABEL ],
+			array_keys( $this->getActionLinks( $revertableRow ) ),
+			'the revertable row is offered the undo'
+		);
+		$this->assertSame(
+			'(wikimediaantiabuse-special-abuse-review-revision-actions-heading)',
+			DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
+				$revertableRow,
+				'.mw-wikimediaantiabuse-abuse-review-actions-heading'
+			) ),
+			'a group holding a link is announced by the heading'
+		);
+	}
+
 	/** @dataProvider provideDoesNotShowTabsWhenOnlyOneTagEnabled */
 	public function testDoesNotShowTabsWhenOnlyOneTagEnabled(
 		bool $personalInfoTagEnabled,

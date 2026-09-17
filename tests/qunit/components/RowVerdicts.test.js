@@ -80,6 +80,12 @@ const buttonWithLabel = ( wrapper, label ) => wrapper.findAll( 'button' )
 const sendBackButton = ( wrapper ) => wrapper.findAll( 'button' )
 	.find( ( button ) => button.text() === SEND_BACK );
 
+// wrapper.findAll() does not reach teleported DOM, so the fixture is searched instead.
+const teleportedSendBackButton = () => Array.prototype.find.call(
+	document.getElementById( 'qunit-fixture' ).querySelectorAll( 'button' ),
+	( button ) => button.textContent.trim() === SEND_BACK
+);
+
 // mw.Rest#post rejects jQuery-style with ( code, details ), which a native promise cannot
 // express, so stand in a thenable carrying the same contract rest.js is written against.
 const restResolving = ( value ) => ( { then: ( onSuccess ) => onSuccess( value ) } );
@@ -413,6 +419,26 @@ QUnit.test( 'a closed row cannot be judged, and says so', ( assert ) => {
 			'"' + label + '" points at the note saying so'
 		);
 	} );
+} );
+
+QUnit.test( 'the send-back control is rendered among the row\'s other actions', ( assert ) => {
+	const actions = document.createElement( 'div' );
+	document.getElementById( 'qunit-fixture' ).appendChild( actions );
+
+	const wrapper = mountRow( { isNoFurtherAction: true, actionsElement: actions } );
+
+	assert.strictEqual(
+		sendBackButton( wrapper ),
+		undefined,
+		'the send-back control is not rendered beside the chip'
+	);
+	const teleported = teleportedSendBackButton();
+	assert.true( !!teleported, 'the send-back control is rendered' );
+	assert.strictEqual(
+		teleported.parentNode,
+		actions,
+		'the send-back control sits in the row\'s action group'
+	);
 } );
 
 QUnit.test( 'opening the row brings its buttons into reach', async ( assert ) => {

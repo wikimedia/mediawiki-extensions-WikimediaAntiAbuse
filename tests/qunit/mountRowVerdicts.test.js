@@ -4,6 +4,7 @@ const { flushPromises } = require( 'vue-test-utils' );
 const { mountRowVerdicts } = require( 'ext.wikimediaAntiAbuse/mountRowVerdicts.js' );
 
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
+const ACTIONS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-actions';
 const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
 const SEND_BACK_BUTTON_LABEL =
@@ -57,6 +58,14 @@ function makeRow( revId, payload, open ) {
 	}
 	summary.appendChild( mountPoint );
 	details.appendChild( summary );
+
+	const content = document.createElement( 'div' );
+	content.className = 'mw-wikimediaantiabuse-abuse-review-row__content';
+	const actions = document.createElement( 'div' );
+	actions.className = 'mw-wikimediaantiabuse-abuse-review-actions';
+	content.appendChild( actions );
+	details.appendChild( content );
+
 	cell.appendChild( details );
 	row.appendChild( cell );
 
@@ -220,6 +229,22 @@ QUnit.test( 'a verdict on the last row opens nothing', async function ( assert )
 	await flushPromises();
 
 	assert.false( isOpen( only ), 'the row is closed, there being nothing after it' );
+} );
+
+QUnit.test( 'a row offered no action is given a group for the send-back control', async ( assert ) => {
+	const row = makeRow( 1, payloadFor( { isNoFurtherAction: true } ), true );
+	row.querySelector( ACTIONS_SELECTOR ).remove();
+
+	mountRowVerdicts();
+	await flushPromises();
+
+	const actions = row.querySelector( ACTIONS_SELECTOR );
+	assert.true( !!actions, 'a row rendered without an action group is given one' );
+	assert.strictEqual(
+		actions.querySelectorAll( 'button' ).length,
+		1,
+		'the send-back control is the only thing in the group made for it'
+	);
 } );
 
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {

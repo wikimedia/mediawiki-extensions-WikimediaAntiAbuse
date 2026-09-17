@@ -10,14 +10,16 @@
 				{{ chip.label }}
 			</cdx-info-chip>
 
-			<cdx-button
-				v-if="isOpen"
-				:disabled="busy"
-				:title="sendBackTooltip"
-				@click="setVerdict( null )"
-			>
-				{{ sendBackLabel }}
-			</cdx-button>
+			<teleport :to="actionsElement" :disabled="!actionsElement">
+				<cdx-button
+					v-if="isOpen"
+					:disabled="busy"
+					:title="sendBackTooltip"
+					@click="setVerdict( null )"
+				>
+					{{ sendBackLabel }}
+				</cdx-button>
+			</teleport>
 		</template>
 
 		<template v-else>
@@ -98,6 +100,7 @@ module.exports = exports = defineComponent( {
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
 		isSuppressed: { type: Boolean, default: false },
+		actionsElement: { type: Object, default: null },
 		detailsElement: { type: Object, default: null },
 		referrer: { type: String, default: '' }
 	},
