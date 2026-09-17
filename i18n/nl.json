@@ -25,7 +25,6 @@
 	"wikimediaantiabuse-special-abuse-review-filter-revision-placeholder": "Type versie-ID...",
 	"wikimediaantiabuse-special-abuse-review-filter-revision-not-integer-error": "Versie-ID moet een geheel getal zijn",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Versie",
-	"wikimediaantiabuse-special-abuse-review-heading-flags": "Markeringen",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Tijdstip",
 	"wikimediaantiabuse-special-abuse-review-empty-title": "Geen gemarkeerde bewerkingen",
 	"wikimediaantiabuse-special-abuse-review-empty-description": "Er wachten momenteel geen bewerkingen op beoordeling op basis van het inhoudsbeleid.",
@@ -66,5 +65,5 @@
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Meer informatie over deze melding]]",
 	"notification-header-personal-info-flagged": "Een bewerking van <strong>$1</strong> kan persoonlijke gegevens bevatten.",
 	"notification-bundle-header-personal-info-flagged": "{{PLURAL:$1|Één bewerking kan|$1 bewerkingen kunnen}} persoonlijke gegevens bevatten.",
-	"notification-link-text-personal-info-flagged": "Gemarkeerde bewerkingen bewerken"
+	"notification-link-text-personal-info-flagged": "Gemarkeerde {{PLURAL:$1|bewerking|bewerkingen}} bekijken"
 }

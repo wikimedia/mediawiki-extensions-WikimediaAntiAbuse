@@ -1,8 +1,10 @@
 {
 	"@metadata": {
 		"authors": [
-			"HyoerFlint"
+			"HyoerFlint",
+			"Yurina Tatiana"
 		]
 	},
-	"wikimediaantiabuse-desc": "Средства против злоупотребления для статей Викимедия"
+	"wikimediaantiabuse-desc": "Средства против злоупотребления для статей Викимедия",
+	"wikimediaantiabuse-special-abuse-review-filter-page-header": "Страница"
 }

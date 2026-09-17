@@ -26,7 +26,6 @@
 	"wikimediaantiabuse-special-abuse-review-filter-revision-placeholder": "Escribe o ID da revisión...",
 	"wikimediaantiabuse-special-abuse-review-filter-revision-not-integer-error": "O ID da revisión debe ser un número enteiro",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Revisión",
-	"wikimediaantiabuse-special-abuse-review-heading-flags": "Marcas",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Data e hora",
 	"wikimediaantiabuse-special-abuse-review-empty-title": "Non hai edicións marcadas",
 	"wikimediaantiabuse-special-abuse-review-empty-description": "Nestes intres non hai edicións que estean á espera de revisión segundo as normas de contido.",
