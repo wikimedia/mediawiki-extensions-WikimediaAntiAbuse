@@ -9,10 +9,7 @@ use LogicException;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
-use MediaWiki\Title\Title;
 use MediaWikiIntegrationTestCase;
-use Wikimedia\Parsoid\Core\DOMCompat;
-use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
@@ -21,7 +18,7 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
 class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	use HtmlAssertionHelperTrait;
 
-	private function getObjectUnderTest( array $tagsFilter ): AbuseReviewPager {
+	private function getObjectUnderTest( string $abuseReviewTag ): AbuseReviewPager {
 		return new AbuseReviewPager(
 			RequestContext::getMain(),
 			$this->getServiceContainer()->getLinkRenderer(),
@@ -33,7 +30,8 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getRowCommentFormatter(),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' ),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter' ),
-			$tagsFilter,
+			$abuseReviewTag,
+			false,
 			false,
 			[],
 			[],
@@ -43,7 +41,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testFormatValueWhenNameUnknown(): void {
-		$objectUnderTest = $this->getObjectUnderTest( [ 'mw-private-test' ] );
+		$objectUnderTest = $this->getObjectUnderTest( 'mw-private-test' );
 		$this->expectException( InvalidArgumentException::class );
 		$objectUnderTest->formatValue( 'unknown', 'some value' );
 	}
@@ -51,7 +49,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	/** @dataProvider provideGetQueryInfoWhenInvalidTableProvided */
 	public function testGetQueryInfoWhenInvalidTableProvided( ?string $table ): void {
 		$this->expectException( LogicException::class );
-		$this->getObjectUnderTest( [] )->getQueryInfo( $table );
+		$this->getObjectUnderTest( '' )->getQueryInfo( $table );
 	}
 
 	public static function provideGetQueryInfoWhenInvalidTableProvided(): array {
@@ -63,7 +61,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 
 	/** @dataProvider provideTablesForEmptyTagsFilter */
 	public function testGetQueryInfoWhenTagsFilterEmpty( string $table ): void {
-		$objectUnderTest = $this->getObjectUnderTest( [] );
+		$objectUnderTest = $this->getObjectUnderTest( '' );
 		$actualQueryInfo = $objectUnderTest->getQueryInfo( $table );
 		$this->assertContains( '1=0', $actualQueryInfo['conds'] );
 	}
@@ -73,49 +71,5 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'revision table' => [ 'revision' ],
 			'archive table' => [ 'archive' ],
 		];
-	}
-
-	public function testFormatValueWhenRevisionHasNoReviewTags(): void {
-		RequestContext::getMain()->setTitle( Title::makeTitle( NS_SPECIAL, 'Special:AbuseReview' ) );
-
-		$editStatus = $this->editPage( $this->getNonexistingTestPage(), 'Test' );
-		$this->assertStatusGood( $editStatus );
-		$this->getServiceContainer()->getChangeTagsStore()->addTags(
-			[ 'mw-reverted' ], null, $editStatus->getNewRevision()->getId()
-		);
-
-		$objectUnderTest = $this->getObjectUnderTest( [ 'mw-reverted' ] );
-		$actualPagerHtml = $objectUnderTest->getBody();
-
-		$tableRows = DOMCompat::querySelectorAll(
-			DOMUtils::parseHTML( $actualPagerHtml ), 'tbody tr.mw-wikimediaantiabuse-abuse-review-row'
-		);
-		$this->assertCount( 1, $tableRows );
-		$tableRow = $tableRows[0];
-
-		$flagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
-			$tableRow,
-			'.cdx-table-pager__col--flags',
-			true
-		);
-		$this->assertStringNotContainsString(
-			'mw-reverted',
-			$flagsCellHtml,
-			'Only abuse review tags should be displayed'
-		);
-
-		$this->assertSame(
-			'',
-			trim( DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
-				$tableRow,
-				'.cdx-table-pager__col--flags'
-			) ) ),
-			'A revision with no abuse review tag has no flag to show and nothing to judge'
-		);
-		$this->assertCount(
-			0,
-			DOMCompat::querySelectorAll( $tableRow, '.mw-wikimediaantiabuse-abuse-review-verdicts button' ),
-			'A revision with no abuse review tag has no verdict buttons'
-		);
 	}
 }

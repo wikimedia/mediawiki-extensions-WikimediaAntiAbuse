@@ -62,7 +62,7 @@ class AbuseReviewPager extends CodexTablePager {
 	/** @var string[] Formatted edit summaries, keyed by revision ID */
 	private array $formattedComments = [];
 
-	/** @var array<string,array<int,UserIdentity>> */
+	/** @var array<int,UserIdentity> The performer for each revision ID */
 	private array $verdictPerformers = [];
 
 	public function __construct(
@@ -76,7 +76,8 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
 		private readonly AbuseReviewVerdictAttributionFormatter $verdictAttributionFormatter,
-		private readonly array $tagsFilter,
+		private readonly string $abuseReviewTag,
+		private readonly bool $includeFalsePositives,
 		private readonly bool $includeHandledRevisions,
 		private readonly array $usernamesFilter,
 		private readonly array $revisionsFilter,
@@ -272,13 +273,8 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildFlags( stdClass $row ): string {
-		$tag = $this->getReviewableTag( $row->ts_tags );
-		if ( $tag === null ) {
-			return '';
-		}
-
-		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' );
-		$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' );
+		$isFalsePositive = $this->rowHasVerdictTag( $row->ts_tags, $this->abuseReviewTag, 'falsePositive' );
+		$isNoFurtherAction = $this->rowHasVerdictTag( $row->ts_tags, $this->abuseReviewTag, 'noFurtherAction' );
 
 		$heldVerdict = null;
 		if ( $isFalsePositive ) {
@@ -290,7 +286,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$isSuppressed = $this->isSuppressedRow( $row );
 		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
 			$this->getContext(),
-			$this->verdictPerformers[$tag] ?? [],
+			$this->verdictPerformers,
 			(int)$row->rev_id,
 			$heldVerdict !== null
 		);
@@ -299,7 +295,7 @@ class AbuseReviewPager extends CodexTablePager {
 			[
 				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
 				'data-verdicts' => json_encode( [
-					'tag' => $tag,
+					'tag' => $this->abuseReviewTag,
 					'isFalsePositive' => $isFalsePositive,
 					'isNoFurtherAction' => $isNoFurtherAction,
 					'isSuppressed' => $isSuppressed,
@@ -318,7 +314,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
-			$this->getTagDescription( $tag )
+			$this->getTagDescription( $this->abuseReviewTag )
 		) . $mountPoint . $this->buildByline( $attributionHtml );
 	}
 
@@ -1014,13 +1010,18 @@ class AbuseReviewPager extends CodexTablePager {
 				] );
 		}
 
-		if ( $this->tagsFilter ) {
-			$this->changeTagsStore->addTagsToDisplayQuery(
-				$queryBuilder, $table, $this->getAuthority(), $this->tagsFilter
-			);
-		} else {
+		// If no abuse review tag is defined or if it's not a valid reviewable tag, then show no rows as the
+		// false positive and handled revisions filters won't work
+		if ( !array_key_exists( $this->abuseReviewTag, ChangeTagsHandler::REVIEWABLE_TAGS ) ) {
 			$queryBuilder->where( '1=0' );
+			return $queryBuilder->getQueryInfo();
 		}
+
+		$tagsFilter = [ $this->abuseReviewTag ];
+		if ( $this->includeFalsePositives ) {
+			$tagsFilter[] = ChangeTagsHandler::REVIEWABLE_TAGS[$this->abuseReviewTag]['falsePositive'];
+		}
+		$this->changeTagsStore->addTagsToDisplayQuery( $queryBuilder, $table, $this->getAuthority(), $tagsFilter );
 
 		if ( !$this->includeHandledRevisions ) {
 			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
@@ -1036,9 +1037,9 @@ class AbuseReviewPager extends CodexTablePager {
 			] ) );
 
 			// A verdict tag has no ID until it is first applied, so there may be none to exclude.
-			$noFurtherActionTagIds = array_values( $this->changeTagsStore->getTagIdsFromNames(
-				array_column( ChangeTagsHandler::REVIEWABLE_TAGS, 'noFurtherAction' )
-			) );
+			$noFurtherActionTagIds = array_values( $this->changeTagsStore->getTagIdsFromNames( [
+				ChangeTagsHandler::REVIEWABLE_TAGS[$this->abuseReviewTag]['noFurtherAction']
+			] ) );
 			if ( $noFurtherActionTagIds !== [] ) {
 				$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
 				$queryBuilder->leftJoin(
@@ -1085,25 +1086,20 @@ class AbuseReviewPager extends CodexTablePager {
 		parent::doBatchLookups();
 
 		$lb = $this->linkBatchFactory->newLinkBatch()->setCaller( __METHOD__ );
-		$revisionIdsByTag = [];
+		$revisionIds = [];
 		foreach ( $this->mResult as $row ) {
 			$lb->addUser( new UserIdentityValue( (int)$row->user, $row->user_text ) );
-			$tag = $this->getReviewableTag( $row->ts_tags );
-			if ( $tag !== null ) {
-				$revisionIdsByTag[$tag][] = (int)$row->rev_id;
-			}
+			$revisionIds[] = (int)$row->rev_id;
 		}
 
-		foreach ( $revisionIdsByTag as $tag => $taggedRevisionIds ) {
-			$performers = $this->verdictPerformerLookup->lookUpPerformers(
-				$taggedRevisionIds,
-				$tag,
-				$this->getAuthority()
-			);
-			$this->verdictPerformers[$tag] = $performers;
-			foreach ( $performers as $performer ) {
-				$lb->addUser( $performer );
-			}
+		$performers = $this->verdictPerformerLookup->lookUpPerformers(
+			$revisionIds,
+			$this->abuseReviewTag,
+			$this->getAuthority()
+		);
+		$this->verdictPerformers = $performers;
+		foreach ( $performers as $performer ) {
+			$lb->addUser( $performer );
 		}
 
 		$lb->execute();
@@ -1127,45 +1123,6 @@ class AbuseReviewPager extends CodexTablePager {
 			$tableClasses[] = 'mw-wikimediaantiabuse-abuse-review-table-with-navigation-bar';
 		}
 		return parent::getTableClass() . ' ' . implode( ' ', $tableClasses );
-	}
-
-	/**
-	 * The flag the row is shown for, which is the flag of the tab it appears in.
-	 *
-	 * @param string|null $tsTags The value of the row's ts_tags field, or null if the row has no tags
-	 * @return string|null Null if the row carries no flag specified in the tag filter
-	 */
-	private function getReviewableTag( ?string $tsTags ): ?string {
-		$rowTags = $this->splitTags( $tsTags );
-
-		foreach ( $this->getFlagsInFilter( $this->tagsFilter ) as $reviewTag => $filterTags ) {
-			if ( array_intersect( $rowTags, $filterTags ) ) {
-				return $reviewTag;
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * The flags the tag filter covers, mapped to the tag filter values associated with that flag.
-	 *
-	 * @param string[] $tagsFilter
-	 * @return array<string,string[]>
-	 */
-	private function getFlagsInFilter( array $tagsFilter ): array {
-		$flags = [];
-		foreach ( ChangeTagsHandler::REVIEWABLE_TAGS as $flag => $verdictTags ) {
-			$filterTags = array_values( array_intersect(
-				[ $flag, $verdictTags['falsePositive'] ],
-				$tagsFilter
-			) );
-			if ( $filterTags !== [] ) {
-				$flags[$flag] = $filterTags;
-			}
-		}
-
-		return $flags;
 	}
 
 	/**

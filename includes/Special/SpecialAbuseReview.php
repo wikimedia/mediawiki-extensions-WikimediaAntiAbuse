@@ -8,7 +8,6 @@ use MediaWiki\ChangeTags\ChangeTagsFormatter;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
-use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
@@ -43,7 +42,8 @@ class SpecialAbuseReview extends SpecialPage {
 	/** @var int The limit of rows to count when building the tabs or Echo banner */
 	private const int ROW_COUNT_CAP = 100;
 
-	private array $tagsFilter;
+	private string $abuseReviewTag;
+	private bool $includeFalsePositives;
 	private bool $includeHandledRevisions;
 	private array $usernamesFilter;
 	private array $revisionsFilter;
@@ -129,18 +129,11 @@ class SpecialAbuseReview extends SpecialPage {
 			$selectedTabForFilters = $this->selectedTab;
 		}
 
-		$this->tagsFilter = $this->selectedTab === '' ? [] : [ $this->selectedTab ];
+		$this->abuseReviewTag = $this->selectedTab === '' ? '' : $this->selectedTab;
 
 		$showFalsePositives = $this->getRequest()->getBool( 'wpShowFalsePositives' );
+		$this->includeFalsePositives = $showFalsePositives;
 		if ( $showFalsePositives ) {
-			$falsePositiveTags = $this->changeTagsStore->filterViewableTags(
-				array_map(
-					static fn ( string $flag ): string => ChangeTagsHandler::REVIEWABLE_TAGS[$flag]['falsePositive'],
-					$this->tagsFilter
-				),
-				$this->getAuthority()
-			);
-			$this->tagsFilter = array_merge( $this->tagsFilter, $falsePositiveTags );
 			$this->numberOfFiltersApplied++;
 		}
 
@@ -224,7 +217,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$pager = $this->getPager( $this->changeTagsStore->filterViewableTags(
 				[ 'mw-private-personal-info' ],
 				$this->getAuthority()
-			) );
+			)[0] ?? '' );
 			$otherRevisionsToReviewCount = $this->getRowCount( $pager, $this->revisionsFilter );
 			if ( $otherRevisionsToReviewCount ) {
 				$bannerContentHtml = $this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner' )
@@ -248,7 +241,8 @@ class SpecialAbuseReview extends SpecialPage {
 		}
 
 		$pager = $this->getPager(
-			$this->tagsFilter,
+			$this->abuseReviewTag,
+			$this->includeFalsePositives,
 			$this->includeHandledRevisions,
 			$this->usernamesFilter,
 			$this->revisionsFilter,
@@ -292,7 +286,8 @@ class SpecialAbuseReview extends SpecialPage {
 	 * or the defaults for each filter if not provided.
 	 */
 	private function getPager(
-		array $tagsFilter,
+		string $abuseReviewTag,
+		bool $includeFalsePositives = false,
 		bool $includeHandledRevisions = false,
 		array $usernamesFilter = [],
 		array $revisionsFilter = [],
@@ -310,7 +305,8 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->rowCommentFormatter,
 			$this->verdictPerformerLookup,
 			$this->verdictAttributionFormatter,
-			$tagsFilter,
+			$abuseReviewTag,
+			$includeFalsePositives,
 			$includeHandledRevisions,
 			$usernamesFilter,
 			$revisionsFilter,
@@ -345,7 +341,7 @@ class SpecialAbuseReview extends SpecialPage {
 
 		$counts = [];
 		foreach ( $this->reviewableFlags as $flag ) {
-			$counts[$flag] = $this->getRowCount( $this->getPager( [ $flag ] ), [] );
+			$counts[$flag] = $this->getRowCount( $this->getPager( $flag ), [] );
 		}
 
 		return $counts;
