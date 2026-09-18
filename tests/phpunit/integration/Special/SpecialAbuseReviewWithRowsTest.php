@@ -296,12 +296,14 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
 					$detailsCellHtml
 				);
-				$fullDiffHref = DOMCompat::getAttribute(
-					$this->assertSelectorMatchesOneElementInNode(
-						$tableRow,
-						'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
-					),
-					'href'
+				$fullDiffLink = $this->assertSelectorMatchesOneElementInNode(
+					$tableRow,
+					'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
+				);
+				$fullDiffHref = DOMCompat::getAttribute( $fullDiffLink, 'href' );
+				$this->assertNull(
+					DOMCompat::getAttribute( $fullDiffLink, 'target' ),
+					'no target=_blank on the link'
 				);
 				if ( $isArchivedRevision ) {
 					// An archived revision has left the revision table, so an oldid= link to it

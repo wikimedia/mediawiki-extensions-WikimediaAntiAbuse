@@ -237,16 +237,7 @@ html {
 	}
 
 	&__full-diff {
-		display: flex;
-		align-items: center;
-		gap: @spacing-25;
 		font-weight: bold;
-
-		&::after {
-			// .cdx-mixin-css-icon() sets everything but content, which this needs to render.
-			content: '';
-			.cdx-mixin-css-icon( @cdx-icon-link-external, @color-progressive, @size-icon-small );
-		}
 	}
 
 	&__diff {

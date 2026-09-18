@@ -710,7 +710,6 @@ class AbuseReviewPager extends CodexTablePager {
 			[
 				'class' => 'mw-wikimediaantiabuse-abuse-review-row__full-diff',
 				'href' => $this->buildFullDiffUrl( $title, $row ),
-				'target' => '_blank',
 			],
 			$this->msg( 'wikimediaantiabuse-special-abuse-review-open-full-diff' )->text()
 		);
