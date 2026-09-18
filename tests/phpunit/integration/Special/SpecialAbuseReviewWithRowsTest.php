@@ -93,9 +93,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$context = RequestContext::getMain();
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
 		if ( ( $data['tab'] ?? '' ) === '' ) {
-			$expectedTabForInstrumentation = 'mw-private-personal-info';
+			$expectedTab = 'mw-private-personal-info';
 		} else {
-			$expectedTabForInstrumentation = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : '';
+			$expectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : '';
 		}
 		$client->expects( $this->once() )
 			->method( 'submitInteraction' )
@@ -111,7 +111,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'username' => [],
 						'revision' => $expectedRevisionIdFilter,
 						'page' => $expectedPageFilter,
-						'tab' => $expectedTabForInstrumentation,
+						'tab' => $expectedTab,
 					]
 				]
 			);
@@ -149,16 +149,38 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseViewerBylines']
 		);
 
-		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElementInNode(
+			$htmlAsNode,
+			'.mw-specialpage-summary',
+			true
+		);
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-summary)',
 			$specialPageSummaryHtml
 		);
 
-		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedCount );
+		if ( $expectedTab ) {
+			$tabSummaryHtml = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-summary',
+				true
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-tab-summary-' . $expectedTab . ')',
+				$tabSummaryHtml
+			);
+		} else {
+			$this->assertNull( DOMCompat::querySelector(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-summary'
+			) );
+		}
+
+		$this->verifyFilterButtonPresent( $htmlAsNode, $expectedFiltersAppliedCount );
 
 		$expectedRevIds = $expectedRevIdsCallback();
-		$tablePagerHtml = $this->commonVerifyTablePager( $html, count( $expectedRevIds ) !== 0 );
+		$tablePagerHtml = $this->commonVerifyTablePager( $htmlAsNode, count( $expectedRevIds ) !== 0 );
 
 		// The tabs should only be shown if the user has the ability to see at least two tabs
 		$shouldDisplayTabs = in_array( 'rollback', $authorityRights, true ) &&
@@ -169,7 +191,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		} else {
 			$expectedSelectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : null;
 		}
-		$this->assertTabElement( DOMUtils::parseHTML( $html ), $shouldDisplayTabs, $expectedSelectedTab );
+		$this->assertTabElement( $htmlAsNode, $shouldDisplayTabs, $expectedSelectedTab );
 
 		$tableRows = DOMCompat::querySelectorAll(
 			DOMUtils::parseHTML( $tablePagerHtml ), self::ROW_SELECTOR

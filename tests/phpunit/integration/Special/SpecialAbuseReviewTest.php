@@ -94,15 +94,20 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		$testUser = $this->getTestUser( [ 'suppress' ] )->getUser();
 		[ $html ] = $this->executeSpecialPage( '', null, null, $testUser );
 
-		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElementInNode(
+			$htmlAsNode,
+			'.mw-specialpage-summary',
+			true
+		);
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-summary)',
 			$specialPageSummaryHtml
 		);
 
-		$this->verifyFilterButtonPresent( $html, 0 );
+		$this->verifyFilterButtonPresent( $htmlAsNode, 0 );
 
-		$tablePagerHtml = $this->commonVerifyTablePager( $html, false );
+		$tablePagerHtml = $this->commonVerifyTablePager( $htmlAsNode, false );
 		$tablePagerEmptyContentHtml = $this->assertSelectorMatchesOneElement(
 			$tablePagerHtml,
 			'.cdx-table__table__empty-state-content'
@@ -120,7 +125,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 
 		$this->assertCount(
 			0,
-			DOMCompat::querySelectorAll( DOMUtils::parseHTML( $html ), '.cdx-table-pager' ),
+			DOMCompat::querySelectorAll( $htmlAsNode, '.cdx-table-pager' ),
 			'an empty queue has nothing to page through'
 		);
 	}
@@ -227,9 +232,9 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			true
 		);
 
-		$this->verifyFilterButtonPresent( $html, 1 );
-
 		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$this->verifyFilterButtonPresent( $htmlAsNode, 1 );
+
 		$reviewRows = DOMCompat::querySelectorAll( $htmlAsNode, self::ROW_SELECTOR );
 		$this->assertCount(
 			1,

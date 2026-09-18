@@ -9,7 +9,6 @@ use MediaWiki\Tests\Specials\SpecialPageTestBase;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\DOM\Document;
 use Wikimedia\Parsoid\DOM\Element;
-use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
  * Base class for tests that test {@link SpecialAbuseReview}
@@ -30,9 +29,9 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	/**
 	 * Verifies that the filter button is present in the form
 	 */
-	protected function verifyFilterButtonPresent( string $html, int $numberOfFiltersApplied ): void {
+	protected function verifyFilterButtonPresent( Document|Element $htmlAsNode, int $numberOfFiltersApplied ): void {
 		$filterButtons = DOMCompat::querySelectorAll(
-			DOMUtils::parseHTML( $html ),
+			$htmlAsNode,
 			'.mw-wikimediaantiabuse-abuse-review-filter-button'
 		);
 		$this->assertGreaterThan(
@@ -77,8 +76,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	/**
 	 * Verifies the structure of the table pager for assertions that are common to all tests
 	 */
-	protected function commonVerifyTablePager( string $html, bool $shouldHaveRows ): string {
-		$htmlAsNode = DOMUtils::parseHTML( $html );
+	protected function commonVerifyTablePager( Document|Element $htmlAsNode, bool $shouldHaveRows ): string {
 		$tablePager = $this->assertSelectorMatchesOneElementInNode(
 			$htmlAsNode,
 			'.cdx-table__table.mw-wikimediaantiabuse-abuse-review-table'

@@ -13,6 +13,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerL
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewTabsBuilder;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
+use MediaWiki\Html\Html;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Parser\ParserOptions;
@@ -337,7 +338,21 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->selectedTab,
 			self::ROW_COUNT_CAP
 		);
-		return $tabsBuilder->getHtml();
+
+		$selectedTabSummary = '';
+		if ( $this->selectedTab ) {
+			// Uses:
+			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info
+			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
+			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
+			$selectedTabSummary = Html::rawElement(
+				'div',
+				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-tab-summary' ],
+				$this->msg( $selectedTabMsgKey )->parseAsBlock()
+			);
+		}
+
+		return $tabsBuilder->getHtml() . $selectedTabSummary;
 	}
 
 	/**
