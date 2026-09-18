@@ -200,6 +200,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$actualRevision = $isArchivedRevision ?
 				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
 				$revisionStore->getRevisionById( $actualRevId );
+			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
 
 			$timestampCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -214,21 +215,45 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 			// Link to diff should only exist if the user can see the revision text
 			$timestampLink = DOMCompat::querySelector( $timestampCellNode, 'a' );
-			$href = DOMCompat::getAttribute( $timestampLink, 'href' );
-			$expectedQueryParamsForTimestampLink = array_merge( $data, [
-				'title' => 'Special:AbuseReview',
-				'revision' => $actualRevId,
-				'ar_revid' => $actualRevId,
-				'ar_subtype' => 'timestamp',
-			] );
-			unset( $expectedQueryParamsForTimestampLink['referrer'] );
-			$this->assertArrayEquals(
-				$expectedQueryParamsForTimestampLink,
-				wfCgiToArray( parse_url( $href )['query'] ),
-				false,
-				true,
-				'The timestamp link query parameters were not as expected'
-			);
+			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
+				$timestampLinkQuery = [
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'timestamp',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+				];
+				if ( $isArchivedRevision ) {
+					$expectedTimestampHref = SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( [
+						'target' => $pageTitle->getPrefixedText(),
+						'timestamp' => $actualRevision->getTimestamp(),
+						'diff' => 'prev',
+					] + $timestampLinkQuery );
+				} else {
+					$expectedTimestampHref = $pageTitle->getLocalURL( [
+						'diff' => 'prev',
+						'oldid' => $actualRevId,
+					] + $timestampLinkQuery );
+				}
+				$this->assertSame(
+					$expectedTimestampHref,
+					DOMCompat::getAttribute( $timestampLink, 'href' ),
+					'the timestamp links to the diff of this revision'
+				);
+			} else {
+				$this->assertNull(
+					$timestampLink,
+					'the timestamp is left unlinked when the viewer may not see the revision text'
+				);
+			}
+
+			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
+				$this->assertStringContainsString( 'history-deleted', $timestampCellHtml );
+				$this->assertSame(
+					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
+					str_contains( $timestampCellHtml, 'mw-history-suppressed' ),
+					'suppressed revisions are doubly struck through'
+				);
+			} else {
+				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
+			}
 
 			$detailsCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -249,7 +274,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'.mw-wikimediaantiabuse-abuse-review-row__page'
 			);
 			$pageCellHtml = DOMCompat::getOuterHTML( $pageCellNode );
-			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
 			$this->assertStringContainsString( $pageTitle->getPrefixedText(), $pageCellHtml );
 			$this->assertStringContainsString(
 				'(wikimediaantiabuse-special-abuse-review-show-details)',
@@ -300,8 +324,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'no target=_blank on the link'
 				);
 				if ( $isArchivedRevision ) {
-					// An archived revision has left the revision table, so an oldid= link to it
-					// would be dead.
 					$undeleteQuery = 'target=' . urlencode( $pageTitle->getPrefixedText() ) .
 						'&timestamp=' . $actualRevision->getTimestamp();
 					$this->assertStringContainsString( 'Special:Undelete', $fullDiffHref );
@@ -324,7 +346,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				);
 			}
 
-			// The row title carries the visibility state the timestamp used to.
 			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
 				$this->assertStringContainsString( 'history-deleted', $pageCellHtml );
 				$this->assertSame(

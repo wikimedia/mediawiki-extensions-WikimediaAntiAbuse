@@ -205,7 +205,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return match ( $name ) {
 			self::TARGET_FIELD => $this->buildTarget( $title, $row ),
 			self::FLAGS_FIELD => $this->buildFlags( $row ),
-			self::TIMESTAMP_FIELD => $this->buildTimestamp( $row ),
+			self::TIMESTAMP_FIELD => $this->buildTimestamp( $title, $row ),
 		};
 	}
 
@@ -221,27 +221,35 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * Displays a link to Special:AbuseReview that just shows this revision with the text as the timestamp of
-	 * the revision was made.
+	 * HTML containing a link to the diff for a revision.
+	 * If the viewer does not have access to view the revision, no link is returned.
+	 * Otherwise, the visibility classes for deleted/suppressed are added.
 	 */
-	private function buildTimestamp( stdClass $row ): string {
-		$queryParams = array_merge(
-			$this->getContext()->getRequest()->getQueryValues(),
-			$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP, $row ),
-			[ 'revision' => $row->rev_id ]
-		);
+	private function buildTimestamp( Title $title, stdClass $row ): string {
+		$timestamp = $this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() );
 
-		// title is set via ::makeKnownLink and referrer should change once user changes the filters
-		// (which this link does)
-		unset( $queryParams['title'] );
-		unset( $queryParams['referrer'] );
+		if ( !RevisionRecord::userCanBitfield(
+			(int)$row->deleted,
+			RevisionRecord::DELETED_TEXT,
+			$this->getAuthority(),
+			$title
+		) ) {
+			$dateLink = htmlspecialchars( $timestamp );
+		} else {
+			[ $target, $query ] = $this->diffLinkTarget(
+				$title,
+				$row,
+				AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP
+			);
+			$dateLink = $this->getLinkRenderer()->makeKnownLink( $target, $timestamp, [], $query );
+		}
 
-		return $this->getLinkRenderer()->makeKnownLink(
-			SpecialPage::getSafeTitleFor( 'AbuseReview' ),
-			$this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() ),
-			[],
-			$queryParams
-		);
+		$visibilityClasses = $this->visibilityClasses( (int)$row->deleted, RevisionRecord::DELETED_TEXT );
+		if ( !$visibilityClasses ) {
+			return $dateLink;
+		}
+
+		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $dateLink );
 	}
 
 	/**
@@ -487,6 +495,24 @@ class AbuseReviewPager extends CodexTablePager {
 		return [ 'target' => $title->getPrefixedText(), 'timestamp' => $row->timestamp, 'diff' => 'prev' ];
 	}
 
+	/**
+	 * Page and query for the diff of a given revision. If the page has been deleted, it goes
+	 * to Special:Undelete, otherwise it links to the page
+	 *
+	 * @return array{0:Title,1:array<string,string|int>}
+	 */
+	private function diffLinkTarget( Title $title, stdClass $row, string $subtype ): array {
+		$query = $this->linkClickQuery( $subtype, $row );
+		if ( !$this->isArchivedRow( $row ) ) {
+			return [ $title, array_merge( [ 'diff' => 'prev', 'oldid' => $row->rev_id ], $query ) ];
+		}
+
+		return [
+			SpecialPage::getTitleFor( 'Undelete' ),
+			array_merge( $this->buildUndeleteQuery( $title, $row ), $query ),
+		];
+	}
+
 	private function buildAuthor( Title $title, stdClass $row ): string {
 		$visibilityClasses = $this->visibilityClasses( (int)$row->deleted, RevisionRecord::DELETED_USER );
 
@@ -657,21 +683,14 @@ class AbuseReviewPager extends CodexTablePager {
 			->getHtml();
 	}
 
-	/**
-	 * Where a row's full diff lives: on the page itself, or on Special:Undelete once the page
-	 * has been deleted and its revisions have left the revision table.
-	 */
 	private function buildFullDiffUrl( Title $title, stdClass $row ): string {
-		$query = $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF, $row );
-		if ( !$this->isArchivedRow( $row ) ) {
-			return $title->getLocalURL(
-				array_merge( [ 'diff' => 'prev', 'oldid' => $row->rev_id ], $query )
-			);
-		}
-
-		return SpecialPage::getTitleFor( 'Undelete' )->getLocalURL(
-			array_merge( $this->buildUndeleteQuery( $title, $row ), $query )
+		[ $target, $query ] = $this->diffLinkTarget(
+			$title,
+			$row,
+			AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF
 		);
+
+		return $target->getLocalURL( $query );
 	}
 
 	/**
