@@ -408,6 +408,9 @@ html {
 	.cdx-tabs__list__item {
 		color: @color-base;
 		text-decoration: none;
+		// Ensure the corners aren't rounded
+		border-bottom-left-radius: 0;
+		border-bottom-right-radius: 0;
 
 		// The hover style from Codex uses the :enabled selector which only works on buttons and not links,
 		// so re-state the styles here.
