@@ -26,12 +26,7 @@ function isHandled( row, suppressedRows ) {
  * @param {HTMLElement} row
  * @return {HTMLElement|null}
  */
-function ensureActionsGroup( row ) {
-	const existing = row.querySelector( '.mw-wikimediaantiabuse-abuse-review-actions' );
-	if ( existing ) {
-		return existing;
-	}
-
+function makeActionsGroup( row ) {
 	const content = row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__content' );
 	if ( !content ) {
 		return null;
@@ -113,7 +108,7 @@ function mountRowVerdicts() {
 		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
 			detailsElement: details,
-			actionsElement: ensureActionsGroup( row ),
+			actionsElement: makeActionsGroup( row ),
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
 				advanceQueue( row, verdict, suppressedRows );

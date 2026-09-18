@@ -217,7 +217,6 @@ class AbuseReviewPager extends CodexTablePager {
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__content' ],
 			$this->buildEditSummary( $title, $row )
 				. $this->buildChanges( $title, $row )
-				. $this->buildRevisionActions( $title, $row )
 		);
 	}
 
@@ -511,102 +510,6 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $userLink );
-	}
-
-	private function buildRevisionActions( Title $title, stdClass $row ): string {
-		// Special:RevisionDelete addresses an archived revision as type=archive keyed on
-		// ar_timestamp, so a type=revision link built from ar_rev_id resolves to nothing.
-		$revisionDeleteUrl = null;
-		if ( !$this->isArchivedRow( $row ) && $this->getAuthority()->isAllowed( 'deleterevision' ) ) {
-			$revisionDeleteUrl = SpecialPage::getTitleFor( 'Revisiondelete' )->getLocalURL( array_merge( [
-				'type' => 'revision',
-				'target' => $title->getPrefixedText(),
-				'ids' => $row->rev_id,
-			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_REVISION_DELETE, $row ) ) );
-		}
-		// Suppression has no URL of its own: it is the wpHideRestricted checkbox inside
-		// Special:RevisionDelete. The history is sent instead, for its checkbox interface,
-		// which is where a reviewer picks the revisions to hide. Core builds those checkboxes
-		// for deleterevision, so without it the history has nothing to offer.
-		$suppressUrl = null;
-		if ( !$this->isArchivedRow( $row )
-			&& $this->getAuthority()->isAllowedAll( 'deleterevision', 'suppressrevision' )
-		) {
-			$suppressUrl = $title->getLocalURL( array_merge( [
-				'action' => 'history',
-			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_SUPPRESS, $row ) ) );
-		}
-		// Undo resolves its revision against the live revision table, so an archived one is
-		// never found. The first revision of a page has nothing to restore, and core refuses
-		// to undo when either revision's text is deleted.
-		$revertUrl = null;
-		if ( !$this->isArchivedRow( $row )
-			&& $row->parent_id
-			&& ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) === 0
-			&& !$this->parentTextIsDeleted( (int)$row->parent_id )
-			&& $this->getAuthority()->probablyCan( 'edit', $title )
-		) {
-			$revertUrl = $title->getLocalURL( array_merge( [
-				'action' => 'edit',
-				'undoafter' => $row->parent_id,
-				'undo' => $row->rev_id,
-			], $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_REVERT, $row ) ) );
-		}
-
-		// A URL is either null or a real one, so the default filter drops exactly the
-		// actions this viewer is not offered.
-		$actionUrls = array_filter( [
-			'wikimediaantiabuse-special-abuse-review-action-suppress' => $suppressUrl,
-			'wikimediaantiabuse-special-abuse-review-action-revision-delete' => $revisionDeleteUrl,
-			'wikimediaantiabuse-special-abuse-review-action-revert' => $revertUrl,
-		] );
-		if ( !$actionUrls ) {
-			return '';
-		}
-
-		$links = '';
-		foreach ( $actionUrls as $messageKey => $url ) {
-			$links .= $this->buildActionLink( $url, $messageKey );
-		}
-
-		$heading = Html::element(
-			'h4',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions-heading' ],
-			$this->msg( 'wikimediaantiabuse-special-abuse-review-revision-actions-heading' )->text()
-		);
-		$container = Html::rawElement(
-			'div',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-actions' ],
-			$links
-		);
-
-		return $heading . $container;
-	}
-
-	private function buildActionLink( string $url, string $messageKey ): string {
-		return Html::element(
-			'a',
-			[
-				'class' => [
-					'cdx-button',
-					'cdx-button--fake-button',
-					'cdx-button--fake-button--enabled',
-				],
-				'href' => $url,
-				'target' => '_blank',
-			],
-			$this->msg( $messageKey )->text()
-		);
-	}
-
-	/**
-	 * A parent revision that is missing counts as deleted: the undo resolves it against the
-	 * live revision table, so one it cannot find there is one it will refuse.
-	 */
-	private function parentTextIsDeleted( int $parentId ): bool {
-		$parent = $this->revisionStore->getRevisionById( $parentId );
-
-		return $parent === null || $parent->isDeleted( RevisionRecord::DELETED_TEXT );
 	}
 
 	private function buildEditSummary( Title $title, stdClass $row ): string {
@@ -980,7 +883,6 @@ class AbuseReviewPager extends CodexTablePager {
 					'user_text' => 'actor_name',
 					'deleted' => 'rev_deleted',
 					'rev_id' => 'rev_id',
-					'parent_id' => 'rev_parent_id',
 					'timestamp' => 'rev_timestamp',
 					'comment_text' => 'comment_rev_comment.comment_text',
 					'comment_data' => 'comment_rev_comment.comment_data',
@@ -998,7 +900,6 @@ class AbuseReviewPager extends CodexTablePager {
 					'user_text' => 'actor_name',
 					'deleted' => 'ar_deleted',
 					'rev_id' => 'ar_rev_id',
-					'parent_id' => 'ar_parent_id',
 					'timestamp' => 'ar_timestamp',
 					'comment_text' => 'comment_ar_comment.comment_text',
 					'comment_data' => 'comment_ar_comment.comment_data',

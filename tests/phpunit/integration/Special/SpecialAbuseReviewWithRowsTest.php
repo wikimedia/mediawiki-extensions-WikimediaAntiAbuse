@@ -25,11 +25,6 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
  */
 class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
-	private const string SUPPRESS_LABEL = '(wikimediaantiabuse-special-abuse-review-action-suppress)';
-	private const string REVISION_DELETE_LABEL =
-		'(wikimediaantiabuse-special-abuse-review-action-revision-delete)';
-	private const string REVERT_LABEL = '(wikimediaantiabuse-special-abuse-review-action-revert)';
-
 	private const array VERDICT_CHIPS = [
 		'falsePositive' => [
 			'class' => 'cdx-info-chip--warning',
@@ -50,7 +45,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $noFurtherActionRevId;
 	private static int $deletedNoFurtherActionRevId;
 	private static int $revertableTaggedContentRevId;
-	private static int $revertableTaggedContentParentRevId;
 
 	private static string $firstPageName;
 	private static string $deletedNoFurtherActionPageName;
@@ -466,80 +460,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				);
 			}
 
-			$actionLinks = $this->getActionLinks( $tableRow );
-
-			// Special:RevisionDelete resolves a type=revision id against the live revision
-			// table, so an archived row is not offered the link at all.
-			$expectsRevisionDelete = !$isArchivedRevision
-				&& in_array( 'deleterevision', $authorityRights, true );
-			$this->assertSame(
-				$expectsRevisionDelete,
-				isset( $actionLinks[self::REVISION_DELETE_LABEL] ),
-				'revision deletion offered only on a live revision to a user who may delete revisions'
-			);
-			if ( $expectsRevisionDelete ) {
-				$this->assertStringContainsString(
-					'ids=' . $actualRevId,
-					$actionLinks[self::REVISION_DELETE_LABEL]
-				);
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_REVISION_DELETE,
-					$actionLinks[self::REVISION_DELETE_LABEL],
-					'the revision deletion link names the click it stands for'
-				);
-			}
-
-			// Reverting is offered only where core would accept the undo: a live revision on a
-			// live page, with a parent whose text it will still show. Of the fixtures only the
-			// revertable one qualifies; the rest are archived, parentless or text-deleted.
-			$isRevertableRow = $actualRevId === static::$revertableTaggedContentRevId;
-			$this->assertSame(
-				$isRevertableRow,
-				isset( $actionLinks[self::REVERT_LABEL] ),
-				'revert is offered only where the undo can succeed'
-			);
-			if ( $isRevertableRow ) {
-				$this->assertStringContainsString(
-					'action=edit&undoafter=' . static::$revertableTaggedContentParentRevId .
-						'&undo=' . static::$revertableTaggedContentRevId,
-					$actionLinks[self::REVERT_LABEL]
-				);
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_REVERT,
-					$actionLinks[self::REVERT_LABEL],
-					'the revert link names the click it stands for'
-				);
-			}
-
-			// The history offers its visibility checkboxes to a holder of deleterevision, so
-			// suppressrevision alone would reach a page with nothing to tick.
-			$expectsSuppress = !$isArchivedRevision
-				&& in_array( 'deleterevision', $authorityRights, true )
-				&& in_array( 'suppressrevision', $authorityRights, true );
-			$this->assertSame(
-				$expectsSuppress,
-				isset( $actionLinks[self::SUPPRESS_LABEL] ),
-				'suppression offered only where the history will let the reviewer act'
-			);
-			if ( $expectsSuppress ) {
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_SUPPRESS,
-					$actionLinks[self::SUPPRESS_LABEL],
-					'the suppression link names the click it stands for'
-				);
-			}
-
-			$this->assertSame(
-				array_values( array_filter( [
-					$expectsSuppress ? self::SUPPRESS_LABEL : null,
-					$expectsRevisionDelete ? self::REVISION_DELETE_LABEL : null,
-					$isRevertableRow ? self::REVERT_LABEL : null,
-				] ) ),
-				array_keys( $actionLinks ),
-				'every action the viewer is offered is a link, in that order, and nothing else is'
+			$this->assertNull(
+				DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-actions' ),
+				'the server renders no actions for the revision itself'
 			);
 		}
 
@@ -954,44 +877,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
-	public function testNoActionGroupRenderedForRowWithoutActionLinks(): void {
-		$this->setGroupPermissions( [ 'archived-rows-test' => [
-			'viewsuppressed' => true,
-			'deletedhistory' => true,
-		] ] );
-		[ $html ] = $this->executeSpecialPage(
-			'', null, null, $this->getTestUser( [ 'archived-rows-test' ] )->getUser()
-		);
-		$document = DOMUtils::parseHTML( $html );
-
-		$archivedRow = $this->getRowForRevision( $document, static::$deletedTaggedContentRevId );
-		$this->assertSame(
-			'mw-private-personal-info',
-			$this->getVerdictsPayload( $archivedRow )['tag'],
-			'the archived row still renders the verdict app'
-		);
-		$this->assertSame( [], $this->getActionLinks( $archivedRow ), 'the archived row is offered no action' );
-		$this->assertNull(
-			DOMCompat::querySelector( $archivedRow, '.mw-wikimediaantiabuse-abuse-review-actions' ),
-			'a row offered no action renders no action group'
-		);
-
-		$revertableRow = $this->getRowForRevision( $document, static::$revertableTaggedContentRevId );
-		$this->assertSame(
-			[ self::REVERT_LABEL ],
-			array_keys( $this->getActionLinks( $revertableRow ) ),
-			'the revertable row is offered the undo'
-		);
-		$this->assertSame(
-			'(wikimediaantiabuse-special-abuse-review-revision-actions-heading)',
-			DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
-				$revertableRow,
-				'.mw-wikimediaantiabuse-abuse-review-actions-heading'
-			) ),
-			'a group holding a link is announced by the heading'
-		);
-	}
-
 	/** @dataProvider provideDoesNotShowTabsWhenOnlyOneTagEnabled */
 	public function testDoesNotShowTabsWhenOnlyOneTagEnabled(
 		bool $personalInfoTagEnabled,
@@ -1174,20 +1059,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		}
 	}
 
-	/** @return array<string,string> The href of each rendered revision action, by its label */
-	private function getActionLinks( Document|Element $node ): array {
-		$links = DOMCompat::querySelectorAll(
-			$node,
-			'.mw-wikimediaantiabuse-abuse-review-actions a'
-		);
-
-		$hrefs = [];
-		foreach ( $links as $link ) {
-			$hrefs[DOMCompat::getInnerHTML( $link )] = DOMCompat::getAttribute( $link, 'href' );
-		}
-		return $hrefs;
-	}
-
 	public function addDBDataOnce(): void {
 		// Get enough revisions to test each state of the filters, and one that should never show up in the results.
 		// The two no-further-action revisions get the oldest timestamps, so they sort last.
@@ -1250,12 +1121,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertStatusGood( $deletedTaggedContentEditStatus );
 		static::$deletedTaggedContentRevId = $deletedTaggedContentEditStatus->getNewRevision()->getId();
 
-		// A tagged revision whose page and parent both stay live, so the undo can succeed.
+		// A tagged revision whose page and parent both stay live.
 		ConvertibleTimestamp::setFakeTime( '20260101010107' );
 		$fifthPage = $this->getNonexistingTestPage();
 		$revertableParentEditStatus = $this->editPage( $fifthPage, 'Content to revert to' );
 		$this->assertStatusGood( $revertableParentEditStatus );
-		static::$revertableTaggedContentParentRevId = $revertableParentEditStatus->getNewRevision()->getId();
 		$revertableEditStatus = $this->editPage( $fifthPage, 'Revertable tagged content' );
 		$this->assertStatusGood( $revertableEditStatus );
 		static::$revertableTaggedContentRevId = $revertableEditStatus->getNewRevision()->getId();

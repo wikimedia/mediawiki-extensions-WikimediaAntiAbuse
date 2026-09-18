@@ -312,30 +312,9 @@ html {
 	padding: 0 0 @spacing-100;
 }
 
-.mw-wikimediaantiabuse-abuse-review-actions-heading {
-	margin-top: @spacing-100;
-	margin-bottom: @spacing-50;
-}
-
 .mw-wikimediaantiabuse-abuse-review-actions {
 	display: flex;
-	flex-wrap: wrap;
-	gap: @spacing-50;
 	margin-top: @spacing-100;
-
-	> .cdx-button {
-		flex: 1 1 auto;
-		min-width: 10em;
-
-		@media screen and ( min-width: @min-width-breakpoint-tablet ) {
-			flex: 0 1 calc( ( 100% - @spacing-50 * 2 ) / 3 );
-			min-width: max-content;
-		}
-	}
-}
-
-.mw-wikimediaantiabuse-abuse-review-actions-heading + .mw-wikimediaantiabuse-abuse-review-actions {
-	margin-top: 0;
 }
 
 .mw-wikimediaantiabuse-abuse-review-disabled-note {
@@ -395,10 +374,6 @@ html {
 
 	.mw-wikimediaantiabuse-abuse-review-row__diff {
 		border-top: 0;
-	}
-
-	.mw-wikimediaantiabuse-abuse-review-actions > .cdx-button {
-		min-width: calc( 50% - @spacing-25 );
 	}
 }
 

@@ -130,7 +130,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			],
 			'was posted' => [
 				'query' => [
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_REVERT,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 				],
 				'wasPosted' => true,

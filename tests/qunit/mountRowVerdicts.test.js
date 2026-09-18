@@ -61,9 +61,6 @@ function makeRow( revId, payload, open ) {
 
 	const content = document.createElement( 'div' );
 	content.className = 'mw-wikimediaantiabuse-abuse-review-row__content';
-	const actions = document.createElement( 'div' );
-	actions.className = 'mw-wikimediaantiabuse-abuse-review-actions';
-	content.appendChild( actions );
 	details.appendChild( content );
 
 	cell.appendChild( details );
@@ -231,15 +228,14 @@ QUnit.test( 'a verdict on the last row opens nothing', async function ( assert )
 	assert.false( isOpen( only ), 'the row is closed, there being nothing after it' );
 } );
 
-QUnit.test( 'a row offered no action is given a group for the send-back control', async ( assert ) => {
+QUnit.test( 'the send-back control is given a group of its own', async ( assert ) => {
 	const row = makeRow( 1, payloadFor( { isNoFurtherAction: true } ), true );
-	row.querySelector( ACTIONS_SELECTOR ).remove();
 
 	mountRowVerdicts();
 	await flushPromises();
 
 	const actions = row.querySelector( ACTIONS_SELECTOR );
-	assert.true( !!actions, 'a row rendered without an action group is given one' );
+	assert.true( !!actions, 'the row is given an action group' );
 	assert.strictEqual(
 		actions.querySelectorAll( 'button' ).length,
 		1,
