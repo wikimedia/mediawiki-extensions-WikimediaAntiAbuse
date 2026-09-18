@@ -110,7 +110,7 @@ module.exports = exports = defineComponent( {
 		tag: { type: String, required: true },
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
-		isSuppressed: { type: Boolean, default: false },
+		isHandledOutsideAbuseReview: { type: Boolean, default: false },
 		attributionHtml: { type: String, default: null },
 		actionsElement: { type: Object, default: null },
 		detailsElement: { type: Object, default: null },
@@ -138,13 +138,16 @@ module.exports = exports = defineComponent( {
 			onUnmounted( () => props.detailsElement.removeEventListener( 'toggle', followRow ) );
 		}
 
-		const suppressedBlocksMark = computed(
-			() => props.isSuppressed && verdict.value === null
+		const handledOutsideAbuseReviewBlocksMark = computed(
+			() => props.isHandledOutsideAbuseReview && verdict.value === null
 		);
 
 		const disabledNote = computed( () => {
-			if ( suppressedBlocksMark.value ) {
-				return mw.msg( 'wikimediaantiabuse-special-abuse-review-already-suppressed-note' );
+			if ( handledOutsideAbuseReviewBlocksMark.value ) {
+				// Uses:
+				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info
+				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism
+				return mw.msg( 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' + props.tag );
 			}
 			return isOpen.value ?
 				null :
@@ -153,7 +156,7 @@ module.exports = exports = defineComponent( {
 
 		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
 		const rowRefuses = computed(
-			() => suppressedBlocksMark.value || !isOpen.value
+			() => handledOutsideAbuseReviewBlocksMark.value || !isOpen.value
 		);
 
 		/**

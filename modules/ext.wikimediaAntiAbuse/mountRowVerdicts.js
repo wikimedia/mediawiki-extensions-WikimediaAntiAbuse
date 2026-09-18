@@ -15,11 +15,11 @@ const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
  * row that holds a verdict or whose text is suppressed, and neither waits for review.
  *
  * @param {HTMLElement} row
- * @param {Set} suppressedRows The rows the pager marked as suppressed
+ * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  * @return {boolean}
  */
-function isHandled( row, suppressedRows ) {
-	return !!row.querySelector( HELD_VERDICT_SELECTOR ) || suppressedRows.has( row );
+function isHandled( row, handledOutsideAbuseReviewRows ) {
+	return !!row.querySelector( HELD_VERDICT_SELECTOR ) || handledOutsideAbuseReviewRows.has( row );
 }
 
 /**
@@ -46,9 +46,9 @@ function makeActionsGroup( row ) {
  *
  * @param {HTMLElement} row The row the verdict was given to
  * @param {string|null} verdict The verdict now held, or null if it was cleared
- * @param {Set} suppressedRows The rows the pager marked as suppressed
+ * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  */
-function advanceQueue( row, verdict, suppressedRows ) {
+function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
 	if ( verdict === null ) {
 		return;
 	}
@@ -63,7 +63,7 @@ function advanceQueue( row, verdict, suppressedRows ) {
 			continue;
 		}
 		const nextDetails = next.querySelector( DETAILS_SELECTOR );
-		if ( nextDetails && !nextDetails.open && !isHandled( next, suppressedRows ) ) {
+		if ( nextDetails && !nextDetails.open && !isHandled( next, handledOutsideAbuseReviewRows ) ) {
 			nextDetails.open = true;
 			return;
 		}
@@ -77,7 +77,7 @@ function advanceQueue( row, verdict, suppressedRows ) {
 function mountRowVerdicts() {
 	const referrer = mw.util.getParamValue( 'referrer' ) || '';
 
-	const suppressedRows = new Set();
+	const handledOutsideAbuseReviewRows = new Set();
 	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
 		let props;
@@ -100,8 +100,8 @@ function mountRowVerdicts() {
 			return;
 		}
 
-		if ( props.isSuppressed ) {
-			suppressedRows.add( row );
+		if ( props.isHandledOutsideAbuseReview ) {
+			handledOutsideAbuseReviewRows.add( row );
 		}
 
 		const details = row.querySelector( DETAILS_SELECTOR );
@@ -111,7 +111,7 @@ function mountRowVerdicts() {
 			actionsElement: makeActionsGroup( row ),
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
-				advanceQueue( row, verdict, suppressedRows );
+				advanceQueue( row, verdict, handledOutsideAbuseReviewRows );
 			}
 		} ) );
 		// Without a per-app id prefix, every row's Codex components generate the same ids.

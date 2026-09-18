@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager;
 
 use InvalidArgumentException;
 use LogicException;
+use MediaWiki\ChangeTags\ChangeTags;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Context\DerivativeContext;
@@ -276,7 +277,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private function buildFlags( stdClass $row ): string {
 		$heldVerdict = $this->heldVerdict( $row, $this->abuseReviewTag );
-		$isSuppressed = $this->isSuppressedRow( $row );
+		$isHandledOutsideAbuseReview = $this->isHandledOutsideAbuseReview( $row );
 		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
 			$this->getContext(),
 			$this->verdictPerformers,
@@ -294,13 +295,18 @@ class AbuseReviewPager extends CodexTablePager {
 					'tag' => $this->abuseReviewTag,
 					'isFalsePositive' => $heldVerdict === 'falsePositive',
 					'isNoFurtherAction' => $heldVerdict === 'noFurtherAction',
-					'isSuppressed' => $isSuppressed,
+					'isHandledOutsideAbuseReview' => $isHandledOutsideAbuseReview,
 					'attributionHtml' => $attributionHtml,
 				], JSON_THROW_ON_ERROR ),
 			],
 			$heldVerdict === null
-				? $this->buildVerdictButtons( (int)$row->rev_id, $isSuppressed, $isOpen, $bylineHtml )
-				: $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
+				? $this->buildVerdictButtons(
+					(int)$row->rev_id,
+					$this->abuseReviewTag,
+					$isHandledOutsideAbuseReview,
+					$isOpen,
+					$bylineHtml
+				) : $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
 		);
 
 		return Html::rawElement(
@@ -310,13 +316,19 @@ class AbuseReviewPager extends CodexTablePager {
 		) . $mountPoint;
 	}
 
-	private function buildVerdictButtons( int $revId, bool $isSuppressed, bool $isOpen, string $bylineHtml ): string {
+	private function buildVerdictButtons(
+		int $revId,
+		string $tag,
+		bool $isHandledOutsideAbuseReview,
+		bool $isOpen,
+		string $bylineHtml
+	): string {
 		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
-		$rowRefuses = $isSuppressed || !$isOpen;
+		$rowRefuses = $isHandledOutsideAbuseReview || !$isOpen;
 
 		$noteMessage = null;
-		if ( $isSuppressed ) {
-			$noteMessage = 'wikimediaantiabuse-special-abuse-review-already-suppressed-note';
+		if ( $isHandledOutsideAbuseReview ) {
+			$noteMessage = 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' . $tag;
 		} elseif ( !$isOpen ) {
 			$noteMessage = 'wikimediaantiabuse-special-abuse-review-closed-row-note';
 		}
@@ -940,25 +952,48 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 		$this->changeTagsStore->addTagsToDisplayQuery( $queryBuilder, $table, $this->getAuthority(), $tagsFilter );
 
+		$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
+
 		if ( !$this->includeHandledRevisions ) {
-			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
-			$queryBuilder->where( $this->getDatabase()->orExpr( [
-				new RawSQLExpression( $this->getDatabase()->bitAnd(
-					$deletedField,
-					RevisionRecord::DELETED_RESTRICTED
-				) . ' = 0' ),
-				new RawSQLExpression( $this->getDatabase()->bitAnd(
-					$deletedField,
-					RevisionRecord::DELETED_TEXT
-				) . ' = 0' ),
-			] ) );
+
+			if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
+				$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
+				$queryBuilder->where( $this->getDatabase()->orExpr( [
+					new RawSQLExpression( $this->getDatabase()->bitAnd(
+							$deletedField,
+							RevisionRecord::DELETED_RESTRICTED
+						) . ' = 0' ),
+					new RawSQLExpression( $this->getDatabase()->bitAnd(
+							$deletedField,
+							RevisionRecord::DELETED_TEXT
+						) . ' = 0' ),
+				] ) );
+			}
+			if ( $this->abuseReviewTag === ChangeTagsHandler::VANDALISM_TAG ) {
+				// mw-reverted may not exist on the wiki, so only apply the exclusion
+				// if the ID exists
+				$revertedTagIds = $this->changeTagsStore->getTagIdsFromNames( [
+					ChangeTags::TAG_REVERTED
+				] );
+				$revertedTagId = array_pop( $revertedTagIds );
+				if ( $revertedTagId ) {
+					$queryBuilder->leftJoin(
+						'change_tag',
+						'changetagalreadyreverted',
+						[
+							'changetagalreadyreverted.ct_rev_id=' . $revIdField,
+							'changetagalreadyreverted.ct_tag_id=' . $revertedTagId,
+						]
+					);
+					$queryBuilder->andWhere( [ 'changetagalreadyreverted.ct_tag_id' => null ] );
+				}
+			}
 
 			// A verdict tag has no ID until it is first applied, so there may be none to exclude.
 			$noFurtherActionTagIds = array_values( $this->changeTagsStore->getTagIdsFromNames( [
 				ChangeTagsHandler::REVIEWABLE_TAGS[$this->abuseReviewTag]['noFurtherAction']
 			] ) );
 			if ( $noFurtherActionTagIds !== [] ) {
-				$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
 				$queryBuilder->leftJoin(
 					'change_tag',
 					'changetagnofurtheraction',
@@ -976,11 +1011,7 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		if ( $this->revisionsFilter ) {
-			if ( $table === 'revision' ) {
-				$queryBuilder->where( $this->getDatabase()->expr( 'rev_id', '=', $this->revisionsFilter ) );
-			} else {
-				$queryBuilder->where( $this->getDatabase()->expr( 'ar_rev_id', '=', $this->revisionsFilter ) );
-			}
+			$queryBuilder->where( $this->getDatabase()->expr( $revIdField, '=', $this->revisionsFilter ) );
 		}
 
 		if ( $this->pagesFilter ) {
@@ -1084,18 +1115,24 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * Whether the revision on this row has been handled by suppressing its text.
+	 * Whether the revision on this row has been handled outside AbuseReview.
+	 * For the personal info tag this is if the content is suppressed, and for the vandalism tag this edit has been
+	 * reverted.
 	 *
-	 * This matches the suppression check in {@link self::getQueryInfo}, which by default
-	 * also hides revisions marked as needing no further action.
+	 * This should match the checks in {@link self::getQueryInfo} that exclude handled rows based on
+	 * these checks. If updating this method, make sure to update there too.
 	 *
 	 * @param stdClass $row
 	 * @return bool
 	 */
-	private function isSuppressedRow( stdClass $row ): bool {
-		$deleted = (int)$row->deleted;
-		return ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
-			&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
+	private function isHandledOutsideAbuseReview( stdClass $row ): bool {
+		if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
+			$deleted = (int)$row->deleted;
+			return ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
+				&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
+		} else {
+			return in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true );
+		}
 	}
 
 	/**

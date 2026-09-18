@@ -16,7 +16,6 @@ const CHIP_NO_FURTHER_ACTION =
 const SEND_BACK = '(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
 const SEND_BACK_TOOLTIP =
 	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip)';
-const SUPPRESSED_NOTE = '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)';
 const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 const PRIOR_ATTRIBUTION =
 	'Recorded by <a href="/wiki/User:PriorReviewer">PriorReviewer</a>';
@@ -62,7 +61,7 @@ const mountRow = ( given, options ) => {
 		tag: 'mw-private-personal-info',
 		isFalsePositive: false,
 		isNoFurtherAction: false,
-		isSuppressed: false,
+		isHandledOutsideAbuseReview: false,
 		referrer: ''
 	}, given );
 	if ( !props.detailsElement ) {
@@ -150,8 +149,17 @@ QUnit.test( 'a request in flight is reported beside the buttons', async function
 	} );
 } );
 
-QUnit.test( 'a suppressed revision cannot be marked, and says why', ( assert ) => {
-	const wrapper = mountRow( { isSuppressed: true } );
+QUnit.test.each( 'a revision handled outside AbuseReview cannot be marked, and says why', {
+	'Row is for a personal info flagged revision': {
+		tag: 'mw-private-personal-info',
+		expectedNote: '(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info)'
+	},
+	'Row is for a vandalism flagged revision': {
+		tag: 'mw-private-vandalism',
+		expectedNote: '(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism)'
+	}
+}, ( assert, options ) => {
+	const wrapper = mountRow( { isHandledOutsideAbuseReview: true, tag: options.tag } );
 
 	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
 		const mark = buttonWithLabel( wrapper, label );
@@ -167,7 +175,7 @@ QUnit.test( 'a suppressed revision cannot be marked, and says why', ( assert ) =
 	} );
 	assert.strictEqual(
 		wrapper.find( '.mw-wikimediaantiabuse-abuse-review-disabled-note' ).text(),
-		SUPPRESSED_NOTE,
+		options.expectedNote,
 		'the note is shown'
 	);
 } );
@@ -217,15 +225,18 @@ QUnit.test( 'only a row holding a verdict offers to send it back', ( assert ) =>
 	);
 } );
 
-QUnit.test( 'suppression blocks recording a verdict, not clearing the one held', ( assert ) => {
-	const sendBack = sendBackButton( mountRow( { isFalsePositive: true, isSuppressed: true } ) );
+QUnit.test( 'Handled outside AbuseReview blocks recording a verdict, not clearing the one held', ( assert ) => {
+	const sendBack = sendBackButton( mountRow( { isFalsePositive: true, isHandledOutsideAbuseReview: true } ) );
 
 	assert.notStrictEqual(
 		sendBack,
 		undefined,
-		'a suppressed row holding a verdict still offers to send it back'
+		'a row handled outside abuse review with a verdict still offers to send it back'
 	);
-	assert.false( sendBack.element.disabled, 'the send-back control is usable on a suppressed row' );
+	assert.false(
+		sendBack.element.disabled,
+		'the send-back control is not usable on a row handled outside abuse review'
+	);
 } );
 
 QUnit.test( 'marking a false positive replaces the buttons with its chip', async function ( assert ) {

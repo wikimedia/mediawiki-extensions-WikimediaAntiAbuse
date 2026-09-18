@@ -45,6 +45,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $noFurtherActionRevId;
 	private static int $deletedNoFurtherActionRevId;
 	private static int $revertableTaggedContentRevId;
+	private static int $revertedVandalismRevId;
 
 	private static string $firstPageName;
 	private static string $deletedNoFurtherActionPageName;
@@ -427,15 +428,20 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'The tag the mark and unmark actions operate on should be as expected'
 			);
 
-			// A suppressed revision has been handled, which is what stops it being marked.
-			$isSuppressedRow = in_array(
+			// Depending on the tag, the row may be handled by an action outside AbuseReview (for
+			// personal info the content being suppressed and vandalism the edit being reverted).
+			$isRowHandledOutsideAbuseReview = in_array(
 				$actualRevId,
-				[ static::$suppressedContentRevId, static::$suppressedFalsePositiveRevId ],
+				[
+					static::$suppressedContentRevId,
+					static::$suppressedFalsePositiveRevId,
+					static::$revertedVandalismRevId,
+				],
 				true
 			);
 			$this->assertSame(
-				$isSuppressedRow,
-				$verdicts['isSuppressed'],
+				$isRowHandledOutsideAbuseReview,
+				$verdicts['isHandledOutsideAbuseReview'],
 				'a suppressed revision is reported as already handled'
 			);
 			$this->assertSame(
@@ -458,9 +464,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			if ( $heldVerdict !== null ) {
 				$this->assertVerdictChip( $tableRow, $heldVerdict );
 			} else {
-				$rowRefuses = $isSuppressedRow || !$isOpenRow;
-				$note = $isSuppressedRow
-					? '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)'
+				$rowRefuses = $isRowHandledOutsideAbuseReview || !$isOpenRow;
+				$note = $isRowHandledOutsideAbuseReview
+					? "(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-$expectedSelectedTab)"
 					: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 				$this->assertVerdictButtons(
 					$tableRow,
@@ -749,6 +755,18 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'authorityRights' => $allRights,
 				'expectedRevIdsCallback' => static fn () => [ static::$revertableTaggedContentRevId ],
 				'expectedFiltersAppliedCount' => 0,
+			],
+			'Vandalism tab is selected showing handled revisions' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-vandalism' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertedVandalismRevId,
+					static::$revertableTaggedContentRevId,
+				],
+				'expectedFiltersAppliedCount' => 1,
 			],
 			'Personal info tab is selected' => [
 				'includeFalsePositiveRevisions' => false,
@@ -1151,6 +1169,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertStatusGood( $revertableEditStatus );
 		static::$revertableTaggedContentRevId = $revertableEditStatus->getNewRevision()->getId();
 
+		ConvertibleTimestamp::setFakeTime( '20260101010108' );
+		$revertedEditStatus = $this->editPage( $firstPage, 'Reverted content' );
+		$this->assertStatusGood( $revertedEditStatus );
+		static::$revertedVandalismRevId = $revertedEditStatus->getNewRevision()->getId();
+
 		ConvertibleTimestamp::setFakeTime( false );
 
 		$changeTagsStore = $this->getServiceContainer()->getChangeTagsStore();
@@ -1193,6 +1216,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$revertableTaggedContentRevId
+		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-vandalism', 'mw-reverted' ],
+			null,
+			static::$revertedVandalismRevId
 		);
 
 		$this->revisionDelete(

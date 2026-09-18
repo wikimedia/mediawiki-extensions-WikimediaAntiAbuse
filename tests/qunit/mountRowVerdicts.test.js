@@ -81,7 +81,7 @@ const payloadFor = ( overrides ) => Object.assign( {
 	tag: 'mw-private-personal-info',
 	isFalsePositive: false,
 	isNoFurtherAction: false,
-	isSuppressed: false
+	isHandledOutsideAbuseReview: false
 }, overrides );
 
 const isOpen = ( row ) => row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__details' ).open;
@@ -183,7 +183,11 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 
 	const first = makeRow( 1, payloadFor(), true );
 	const judged = makeRow( 2, payloadFor( { isNoFurtherAction: true } ), false );
-	const suppressed = makeRow( 3, payloadFor( { isSuppressed: true } ), false );
+	const handledOutsideAbuseReview = makeRow(
+		3,
+		payloadFor( { isHandledOutsideAbuseReview: true } ),
+		false
+	);
 	const waiting = makeRow( 4, payloadFor(), false );
 	mountRowVerdicts();
 	await flushPromises();
@@ -192,7 +196,10 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	await flushPromises();
 
 	assert.false( isOpen( judged ), 'the row holding a verdict is stepped over' );
-	assert.false( isOpen( suppressed ), 'the suppressed row is stepped over as well' );
+	assert.false(
+		isOpen( handledOutsideAbuseReview ),
+		'the handled outside abuse review row is stepped over as well'
+	);
 	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
