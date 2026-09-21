@@ -222,6 +222,8 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			[
 				'showFalsePositives' => false,
 				'showHandledRevisions' => false,
+				'showRecentEdits' => false,
+				'recentEditsDelayMinutes' => 0,
 				'username' => [ $firstTestUser->getName() ],
 				'page' => [],
 				'revision' => [],

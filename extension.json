@@ -50,6 +50,13 @@
 		"WikimediaAntiAbuseEnableModelChecks": {
 			"value": false,
 			"description": "Enables the revision model-check pipeline."
+		},
+		"WikimediaAntiAbuseAbuseReviewDelayMinutes": {
+			"value": {
+				"mw-private-personal-info": 0,
+				"mw-private-vandalism": 10
+			},
+			"description": "The number of minutes for which Special:AbuseReview hides a new revision, keyed by reviewable tag. A reviewer can show the hidden revisions with the \"include recent edits\" filter. Use 0 to show every revision as soon as it is tagged."
 		}
 	},
 	"HookHandlers": {
@@ -210,7 +217,8 @@
 			],
 			"dependencies": [
 				"mediawiki.api",
-				"mediawiki.diff"
+				"mediawiki.diff",
+				"mediawiki.jqueryMsg"
 			],
 			"messages": [
 				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",
@@ -228,6 +236,9 @@
 				"wikimediaantiabuse-special-abuse-review-show-false-positives",
 				"wikimediaantiabuse-special-abuse-review-show-handled-revisions",
 				"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help",
+				"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header",
+				"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help",
+				"wikimediaantiabuse-special-abuse-review-show-recent-edits",
 				"wikimediaantiabuse-special-abuse-review-filter-submit",
 				"wikimediaantiabuse-special-abuse-review-filter-open-button",
 				"wikimediaantiabuse-special-abuse-review-filter-username-header",

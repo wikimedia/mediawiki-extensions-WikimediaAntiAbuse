@@ -39,6 +39,7 @@ use Wikimedia\Codex\Utility\Codex;
 use Wikimedia\Rdbms\FakeResultWrapper;
 use Wikimedia\Rdbms\IResultWrapper;
 use Wikimedia\Rdbms\RawSQLExpression;
+use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 class AbuseReviewPager extends CodexTablePager {
 
@@ -78,6 +79,7 @@ class AbuseReviewPager extends CodexTablePager {
 		private readonly array $usernamesFilter,
 		private readonly array $revisionsFilter,
 		private readonly array $pagesFilter,
+		private readonly int $delayMinutes,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
@@ -1011,6 +1013,14 @@ class AbuseReviewPager extends CodexTablePager {
 				] ),
 				$this->pagesFilter
 			) ) );
+		}
+
+		if ( $this->delayMinutes > 0 && !$this->revisionsFilter ) {
+			$timestampField = $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp';
+			$cutoff = $this->getDatabase()->timestamp(
+				ConvertibleTimestamp::time() - $this->delayMinutes * 60
+			);
+			$queryBuilder->where( $this->getDatabase()->expr( $timestampField, '<', $cutoff ) );
 		}
 
 		return $queryBuilder->getQueryInfo();
