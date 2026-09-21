@@ -145,6 +145,9 @@
 			]
 		}
 	},
+	"AvailableRights": [
+		"abusereview-vandalism-alpha-tester"
+	],
 	"ResourceModules": {
 		"ext.wikimediaAntiAbuse.styles": {
 			"class": "MediaWiki\\ResourceLoader\\CodexModule",

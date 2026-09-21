@@ -60,19 +60,19 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			'holds a right over the enabled vandalism tag' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => true,
-				'rights' => [ 'rollback' ],
+				'rights' => [ 'abusereview-vandalism-alpha-tester' ],
 				'expected' => true,
 			],
 			'holds a right over the disabled tag only' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
-				'rights' => [ 'rollback' ],
+				'rights' => [ 'abusereview-vandalism-alpha-tester' ],
 				'expected' => false,
 			],
 			'holds every right while no tag is enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
-				'rights' => [ 'viewsuppressed', 'suppressrevision', 'rollback' ],
+				'rights' => [ 'viewsuppressed', 'suppressrevision', 'abusereview-vandalism-alpha-tester' ],
 				'expected' => false,
 			],
 			'holds none of the rights' => [

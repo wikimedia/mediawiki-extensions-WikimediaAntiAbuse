@@ -130,7 +130,7 @@ class AbuseReviewVerdictPerformerLookupTest extends MediaWikiIntegrationTestCase
 			$this->getObjectUnderTest()->lookUpPerformers(
 				[ $revId ],
 				self::PERSONAL_INFO_TAG,
-				$this->mockRegisteredAuthorityWithPermissions( [ 'rollback' ] )
+				$this->mockRegisteredAuthorityWithPermissions( [ 'abusereview-vandalism-alpha-tester' ] )
 			),
 			'A verdict tag restricted to a right the viewer lacks names nobody'
 		);
@@ -194,7 +194,10 @@ class AbuseReviewVerdictPerformerLookupTest extends MediaWikiIntegrationTestCase
 		$this->recordVerdict( $revId, self::FALSE_POSITIVE_TAG, $personalInfoReviewer );
 		$this->recordVerdict( $revId, self::VANDALISM_NO_FURTHER_ACTION_TAG, $vandalismReviewer );
 
-		$authority = $this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed', 'rollback' ] );
+		$authority = $this->mockRegisteredAuthorityWithPermissions( [
+			'viewsuppressed',
+			'abusereview-vandalism-alpha-tester',
+		] );
 
 		$this->assertEquals(
 			[ $revId => $this->getExpectedPerformer( $personalInfoReviewer ) ],
@@ -219,7 +222,10 @@ class AbuseReviewVerdictPerformerLookupTest extends MediaWikiIntegrationTestCase
 			$this->getObjectUnderTest()->lookUpPerformers(
 				[ $revId ],
 				self::VANDALISM_TAG,
-				$this->mockRegisteredAuthorityWithPermissions( [ 'viewsuppressed', 'rollback' ] )
+				$this->mockRegisteredAuthorityWithPermissions( [
+					'viewsuppressed',
+					'abusereview-vandalism-alpha-tester',
+				] )
 			),
 			'A verdict on a content policy the wiki has switched off stays hidden from a viewer '
 				. 'holding every right its tag would be restricted to'

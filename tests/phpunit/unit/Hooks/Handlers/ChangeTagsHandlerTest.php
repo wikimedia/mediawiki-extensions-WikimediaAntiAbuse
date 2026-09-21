@@ -84,9 +84,9 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-personal-info' => [ 'viewsuppressed', 'suppressrevision' ],
 					'mw-private-personal-info-false-positive' => [ 'viewsuppressed', 'suppressrevision' ],
 					'mw-private-personal-info-no-further-action' => [ 'viewsuppressed', 'suppressrevision' ],
-					'mw-private-vandalism' => [ 'rollback' ],
-					'mw-private-vandalism-false-positive' => [ 'rollback' ],
-					'mw-private-vandalism-no-further-action' => [ 'rollback' ],
+					'mw-private-vandalism' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-vandalism-false-positive' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
 				],
 			],
 		];

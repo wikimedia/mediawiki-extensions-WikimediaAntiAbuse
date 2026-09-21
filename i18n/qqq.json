@@ -82,5 +82,7 @@
 	"echo-pref-tooltip-personal-info-learn-more": "Help-page link shown in the notification preferences tooltip, below {{msg-mw|Echo-pref-tooltip-personal-info}}, so someone who discovers the category can learn what it is. Translate the link label; keep the link target.",
 	"notification-header-personal-info-flagged": "Notification header shown when a single edit is flagged as likely containing personal information.\n\nParameters:\n* $1 - the title of the page that was edited",
 	"notification-bundle-header-personal-info-flagged": "Notification header shown when several personal-information flags are bundled together.\n\nParameters:\n* $1 - the number of flagged edits",
-	"notification-link-text-personal-info-flagged": "Label for the notification's primary link, which points to the list of flagged edits on [[Special:RecentChanges]].\n\nParameters:\n* $1 - the number of flagged edits (used for PLURAL only, not shown in the parsed message)"
+	"notification-link-text-personal-info-flagged": "Label for the notification's primary link, which points to the list of flagged edits on [[Special:RecentChanges]].\n\nParameters:\n* $1 - the number of flagged edits (used for PLURAL only, not shown in the parsed message)",
+	"right-abusereview-vandalism-alpha-tester": "{{doc-right|abusereview-vandalism-alpha-tester}}\n\nTemporary user right used to give access to the alpha test of the AbuseReview vandalism detector.",
+	"action-abusereview-vandalism-alpha-tester": "{{doc-action|abusereview-vandalism-alpha-tester}}"
 }

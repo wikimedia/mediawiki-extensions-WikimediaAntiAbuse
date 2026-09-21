@@ -40,9 +40,9 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 		self::PERSONAL_INFO_TAG => [ 'viewsuppressed', 'suppressrevision' ],
 		self::PERSONAL_INFO_FALSE_POSITIVE_TAG => [ 'viewsuppressed', 'suppressrevision' ],
 		self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG => [ 'viewsuppressed', 'suppressrevision' ],
-		self::VANDALISM_TAG => [ 'rollback' ],
-		self::VANDALISM_FALSE_POSITIVE_TAG => [ 'rollback' ],
-		self::VANDALISM_NO_FURTHER_ACTION_TAG => [ 'rollback' ],
+		self::VANDALISM_TAG => [ 'abusereview-vandalism-alpha-tester' ],
+		self::VANDALISM_FALSE_POSITIVE_TAG => [ 'abusereview-vandalism-alpha-tester' ],
+		self::VANDALISM_NO_FURTHER_ACTION_TAG => [ 'abusereview-vandalism-alpha-tester' ],
 	];
 
 	public function __construct( private readonly Config $config ) {

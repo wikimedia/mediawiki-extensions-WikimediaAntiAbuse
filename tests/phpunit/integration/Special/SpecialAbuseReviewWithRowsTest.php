@@ -183,7 +183,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$tablePagerHtml = $this->commonVerifyTablePager( $htmlAsNode, count( $expectedRevIds ) !== 0 );
 
 		// The tabs should only be shown if the user has the ability to see at least two tabs
-		$shouldDisplayTabs = in_array( 'rollback', $authorityRights, true ) &&
+		$shouldDisplayTabs = in_array( 'abusereview-vandalism-alpha-tester', $authorityRights, true ) &&
 			array_intersect( [ 'viewsuppressed', 'suppressrevision' ], $authorityRights );
 
 		if ( ( $data['tab'] ?? '' ) === '' ) {
@@ -527,7 +527,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 	public static function provideViewWhenRevisionsPresent(): array {
 		$allRights = [
-			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext', 'rollback',
+			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+			'abusereview-vandalism-alpha-tester',
 		];
 		return [
 			'False positives and handled revisions excluded' => [
@@ -943,7 +944,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled
 	): void {
-		$this->setGroupPermissions( 'suppress', 'rollback', true );
+		$this->setGroupPermissions( 'suppress', 'abusereview-vandalism-alpha-tester', true );
 		$this->overrideConfigValues( [
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
 			'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,

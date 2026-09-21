@@ -11,7 +11,7 @@
 	"wikimediaantiabuse-special-abuse-review-tab-count-capped": "$1+",
 	"wikimediaantiabuse-special-abuse-review-summary": "This page contains edits automatically tagged for review. Flags explain why an edit was added to an inbox.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "Edits in this inbox likely contain personal information and should be reviewed.\n\nUsers with the right to see suppressed content can view personal information flags.",
-	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Edits in this inbox likely contain vandalism and should be reviewed.\n\nUsers with the right to use rollback can view vandalism flags.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Edits in this inbox likely contain vandalism and should be reviewed.\n\nUsers included in the alpha test of this inbox can view vandalism flags.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Showing $1 flagged {{PLURAL:$1|revision|revisions}} from a notification. There {{PLURAL:$2|is|are}} $2 other likely personal information {{PLURAL:$2|edit|edits}} waiting for review. $3.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Show all likely personal information edits",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Include false positives",
@@ -80,5 +80,7 @@
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Learn more about this notification]]",
 	"notification-header-personal-info-flagged": "An edit to <strong>$1</strong> may contain personal information.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edit|edits}} may contain personal information.",
-	"notification-link-text-personal-info-flagged": "View flagged {{PLURAL:$1|edit|edits}}"
+	"notification-link-text-personal-info-flagged": "View flagged {{PLURAL:$1|edit|edits}}",
+	"right-abusereview-vandalism-alpha-tester": "Access the AbuseReview vandalism detector alpha test",
+	"action-abusereview-vandalism-alpha-tester": "access the AbuseReview vandalism detector alpha test"
 }
