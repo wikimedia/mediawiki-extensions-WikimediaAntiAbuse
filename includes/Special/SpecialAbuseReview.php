@@ -224,33 +224,21 @@ class SpecialAbuseReview extends SpecialPage {
 		// If user is viewing revisions from a notification, then show a banner linking them back to the main view
 		if (
 			$this->getRequest()->getVal( 'referrer' ) === 'echo_notification' &&
-			$this->revisionsFilter
+			$this->revisionsFilter &&
+			$this->selectedTab === 'mw-private-personal-info'
 		) {
 			// Notifications only exist for revisions with the mw-private-personal-info tag,
 			// so we can filter by that to get the count of other revisions to review
-			$pager = $this->getPager( $this->changeTagsStore->filterViewableTags(
+			$tagFilter = $this->changeTagsStore->filterViewableTags(
 				[ 'mw-private-personal-info' ],
 				$this->getAuthority()
-			)[0] ?? '' );
-			$otherRevisionsToReviewCount = $this->getRowCount( $pager, $this->revisionsFilter );
-			if ( $otherRevisionsToReviewCount ) {
-				$bannerContentHtml = $this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner' )
-					->numParams( count( $this->revisionsFilter ), $otherRevisionsToReviewCount )
-					->rawParams( $this->getLinkRenderer()->makeKnownLink(
-						$this->getPageTitle(),
-						$this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner-link' )->text(),
-						[],
-						[ 'tab' => 'mw-private-personal-info' ]
-					) )
-					->parse();
-
-				$bannerHtml = ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
-					->message()
-					->setType( 'notice' )
-					->setContent( new HtmlSnippet( $bannerContentHtml ) )
-					->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-echo-notification-banner' ] )
-					->getHtml();
-				$this->getOutput()->addHTML( $bannerHtml );
+			)[0] ?? '';
+			if ( $tagFilter ) {
+				$pager = $this->getPager( $tagFilter );
+				$otherRevisionsToReviewCount = $this->getRowCount( $pager, $this->revisionsFilter );
+				if ( $otherRevisionsToReviewCount ) {
+					$this->displayEchoNotificationBanner( $otherRevisionsToReviewCount );
+				}
 			}
 		}
 
@@ -268,6 +256,26 @@ class SpecialAbuseReview extends SpecialPage {
 			ParserOptions::newFromContext( $this->getContext() )
 		);
 		return $pager;
+	}
+
+	private function displayEchoNotificationBanner( int $otherRevisionsToReviewCount ): void {
+		$bannerContentHtml = $this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner' )
+			->numParams( count( $this->revisionsFilter ), $otherRevisionsToReviewCount )
+			->rawParams( $this->getLinkRenderer()->makeKnownLink(
+				$this->getPageTitle(),
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-echo-notification-banner-link' )->text(),
+				[],
+				[ 'tab' => 'mw-private-personal-info' ]
+			) )
+			->parse();
+
+		$bannerHtml = ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
+			->message()
+			->setType( 'notice' )
+			->setContent( new HtmlSnippet( $bannerContentHtml ) )
+			->setAttributes( [ 'class' => 'mw-wikimediaantiabuse-abuse-review-echo-notification-banner' ] )
+			->getHtml();
+		$this->getOutput()->addHTML( $bannerHtml );
 	}
 
 	/**
