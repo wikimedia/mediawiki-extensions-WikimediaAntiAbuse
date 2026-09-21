@@ -43,12 +43,14 @@ const mountDialog = ( initialFilters ) => {
 					emits: [ 'update:selected-revision-ids' ]
 				}
 			},
-			mocks: { $i18n: ( key ) => ( { text: () => mw.msg( key ) } ) }
+			mocks: { $i18n: ( key, ...params ) => ( { text: () => mw.msg( key, ...params ) } ) }
 		},
 		props: {
 			initialFilters: Object.assign( {
 				showFalsePositives: false,
 				showHandledRevisions: false,
+				showRecentEdits: false,
+				recentEditsDelayMinutes: 0,
 				username: []
 			}, initialFilters )
 		}
@@ -127,6 +129,18 @@ QUnit.test.each( 'Renders correctly when opened', {
 			revision: [ 123, 321 ],
 			tab: ''
 		}
+	},
+	'Include recent edits filter set': {
+		initialFilters: {
+			showFalsePositives: false,
+			showHandledRevisions: false,
+			showRecentEdits: true,
+			recentEditsDelayMinutes: 10,
+			username: [],
+			page: [],
+			revision: [],
+			tab: ''
+		}
 	}
 }, async function ( assert, options ) {
 	const updateFiltersStub = this.sandbox.stub( utils, 'updateFiltersOnPage' );
@@ -177,6 +191,34 @@ QUnit.test.each( 'Renders correctly when opened', {
 		'(wikimediaantiabuse-special-abuse-review-show-handled-revisions)',
 		'Handled revisions checkbox has correct label'
 	);
+
+	const recentEditsField = wrapper.find(
+		'.mw-wikimediaantiabuse-abuse-review-filter-dialog-recent-edits'
+	);
+	const delayMinutes = options.initialFilters.recentEditsDelayMinutes;
+	if ( delayMinutes ) {
+		const recentEditsCheckbox = recentEditsField.find( 'input[name="filter-show-recent-edits"]' );
+		assert.strictEqual(
+			recentEditsCheckbox.element.checked,
+			options.initialFilters.showRecentEdits,
+			'Recent edits checkbox has correct state'
+		);
+		assert.strictEqual(
+			recentEditsCheckbox.element.labels[ 0 ].textContent,
+			`(wikimediaantiabuse-special-abuse-review-show-recent-edits: ${ delayMinutes })`,
+			'Recent edits checkbox label names the delay'
+		);
+		assert.strictEqual(
+			recentEditsField.find( '.cdx-field__help-text' ).text(),
+			`(wikimediaantiabuse-special-abuse-review-filter-recent-edits-help: ${ delayMinutes })`,
+			'Recent edits field has the expected help text'
+		);
+	} else {
+		assert.false(
+			recentEditsField.exists(),
+			'Recent edits filter is left out when the queue hides nothing'
+		);
+	}
 
 	const usernameFilter = wrapper.findComponent( FilterDialogUsernameFilter );
 	assert.true(
@@ -340,11 +382,44 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 			page: [],
 			revision: [ 123, 12123213 ]
 		}
+	},
+	'Recent edits checkbox is checked': {
+		filterState: {
+			showFalsePositives: false,
+			showHandledRevisions: false,
+			showRecentEdits: true,
+			recentEditsDelayMinutes: 10,
+			username: [],
+			page: [],
+			revision: [],
+			tab: ''
+		},
+		expectedFiltersForUrl: {
+			showRecentEdits: 1,
+			username: [],
+			page: [],
+			revision: []
+		}
+	},
+	'Recent edits filter is not offered when the queue has no delay': {
+		filterState: {
+			showFalsePositives: false,
+			showHandledRevisions: false,
+			recentEditsDelayMinutes: 0,
+			username: [],
+			page: [],
+			revision: [],
+			tab: ''
+		},
+		expectedFiltersForUrl: { username: [], page: [], revision: [] }
 	}
 }, async function ( assert, options ) {
 	const updateFiltersStub = this.sandbox.stub( utils, 'updateFiltersOnPage' );
 
-	const wrapper = mountDialog( { tab: options.filterState.tab } );
+	const wrapper = mountDialog( {
+		tab: options.filterState.tab,
+		recentEditsDelayMinutes: options.filterState.recentEditsDelayMinutes
+	} );
 
 	wrapper.find( 'input[name="filter-show-false-positives"]' ).setValue(
 		options.filterState.showFalsePositives
@@ -352,6 +427,11 @@ QUnit.test.each( 'Pressing primary action updates filters', {
 	wrapper.find( 'input[name="filter-show-handled-revisions"]' ).setValue(
 		options.filterState.showHandledRevisions
 	);
+	if ( options.filterState.recentEditsDelayMinutes ) {
+		wrapper.find( 'input[name="filter-show-recent-edits"]' ).setValue(
+			options.filterState.showRecentEdits
+		);
+	}
 
 	const usernameFilter = wrapper.findComponent( FilterDialogUsernameFilter );
 	usernameFilter.vm.$emit( 'update:selected-usernames', options.filterState.username );

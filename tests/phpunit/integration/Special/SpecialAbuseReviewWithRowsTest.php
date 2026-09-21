@@ -36,6 +36,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		],
 	];
 
+	/** With a delay of 10 minutes the cutoff is 20260101010104, in the middle of the rows of ::addDBDataOnce. */
+	private const string RECENT_EDITS_NOW = '20260101011104';
+
 	private static int $suppressedContentRevId;
 	private static int $notTaggedContentRevId;
 	private static int $taggedContentRevId;
@@ -63,6 +66,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->overrideConfigValues( [
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
 			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
 		] );
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
@@ -125,6 +129,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$expectedActiveFiltersArray = [
 			'showFalsePositives' => $includeFalsePositiveRevisions,
 			'showHandledRevisions' => $includeHandledRevisions,
+			'showRecentEdits' => false,
+			'recentEditsDelayMinutes' => $expectedTab === 'mw-private-vandalism' ? 10 : 0,
 			'username' => [],
 			'page' => $expectedPageFilter,
 			'revision' => $expectedRevisionIdFilter,
@@ -814,6 +820,164 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'expectedFiltersAppliedCount' => 0,
 			],
 		];
+	}
+
+	/** @dataProvider provideViewWithRecentEditsFilter */
+	public function testViewWithRecentEditsFilter(
+		array $delayMinutesByTag,
+		string $tab,
+		bool $showRecentEdits,
+		callable $expectedRevIdsCallback,
+		array $expectedTabCounts,
+		int $expectedFiltersApplied
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => $delayMinutesByTag,
+		] );
+		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( [
+			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+			'abusereview-vandalism-alpha-tester',
+		], true ) ] );
+
+		$data = [ 'tab' => $tab ];
+		if ( $showRecentEdits ) {
+			$data['showRecentEdits'] = '1';
+		}
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( $data ) );
+		$context->setUser( $this->getTestUser( [ 'suppress-test' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		ConvertibleTimestamp::setFakeTime( self::RECENT_EDITS_NOW );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$this->assertSame(
+			$delayMinutesByTag[$tab] ?? 0,
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters']['recentEditsDelayMinutes'],
+			'The filter dialog needs the delay of the selected queue for its label'
+		);
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$this->assertSame(
+			$expectedRevIdsCallback(),
+			array_map(
+				static fn ( Element $row ): int => (int)DOMCompat::getAttribute( $row, 'data-rev-id' ),
+				iterator_to_array( DOMCompat::querySelectorAll( $htmlAsNode, self::ROW_SELECTOR ) )
+			)
+		);
+
+		foreach ( $expectedTabCounts as $flag => $expectedCount ) {
+			$selectedTab = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-' . $flag
+			);
+			$tabCount = $this->assertSelectorMatchesOneElementInNode(
+				$selectedTab,
+				'.mw-wikimediaantiabuse-abuse-review-tabs__count .cdx-info-chip__text'
+			);
+			$this->assertSame(
+				$expectedCount,
+				DOMCompat::getInnerHTML( $tabCount ),
+				'A tab counts the default queue of its own flag, which keeps the delay of that flag'
+			);
+		}
+
+		$this->verifyFilterButtonPresent( $htmlAsNode, $expectedFiltersApplied );
+	}
+
+	public static function provideViewWithRecentEditsFilter(): array {
+		$bothQueuesDelayed = [
+			'mw-private-personal-info' => 10,
+			'mw-private-vandalism' => 10,
+		];
+		$delayedQueueTabCounts = [
+			'mw-private-personal-info' => '1',
+			'mw-private-vandalism' => '0',
+		];
+		return [
+			'Personal info queue hides the rows after the cutoff' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => false,
+				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 0,
+			],
+			'Personal info queue shows them again when the filter is set' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 1,
+			],
+			'Vandalism queue hides its only row' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-vandalism',
+				'showRecentEdits' => false,
+				'expectedRevIdsCallback' => static fn () => [],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 0,
+			],
+			'Vandalism queue shows it again when the filter is set' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-vandalism',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [ static::$revertableTaggedContentRevId ],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 1,
+			],
+			'Queue with no delay counts no filter for one it does not offer' => [
+				'delayMinutesByTag' => [ 'mw-private-vandalism' => 10 ],
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedTabCounts' => [
+					'mw-private-personal-info' => '3',
+					'mw-private-vandalism' => '0',
+				],
+				'expectedFiltersApplied' => 0,
+			],
+		];
+	}
+
+	public function testViewShowsARecentRevisionNamedInTheFilter(): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
+		] );
+		$this->setGroupPermissions(
+			[ 'vandalism-test' => [ 'abusereview-vandalism-alpha-tester' => true ] ]
+		);
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( [
+			'tab' => 'mw-private-vandalism',
+			'revision' => [ (string)static::$revertableTaggedContentRevId ],
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'vandalism-test' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		ConvertibleTimestamp::setFakeTime( self::RECENT_EDITS_NOW );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$row = $this->assertSelectorMatchesOneElementInNode(
+			DOMUtils::parseHTML( $html ),
+			self::ROW_SELECTOR
+		);
+		$this->assertSame(
+			static::$revertableTaggedContentRevId,
+			(int)DOMCompat::getAttribute( $row, 'data-rev-id' ),
+			'A revision named in the filter shows even when the queue hides recent edits'
+		);
 	}
 
 	/**

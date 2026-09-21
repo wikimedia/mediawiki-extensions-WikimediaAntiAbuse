@@ -35,6 +35,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			[],
 			[],
 			[],
+			0,
 			0
 		);
 	}

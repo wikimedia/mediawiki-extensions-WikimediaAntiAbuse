@@ -45,6 +45,32 @@
 				).text() }}
 			</template>
 		</cdx-field>
+		<cdx-field
+			v-if="recentEditsDelayMinutes > 0"
+			:is-fieldset="true"
+			class="mw-wikimediaantiabuse-abuse-review-filter-dialog-recent-edits"
+		>
+			<template #label>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-filter-recent-edits-header'
+				).text() }}
+			</template>
+			<cdx-checkbox
+				v-model="showRecentEditsCheckboxValue"
+				name="filter-show-recent-edits"
+			>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-show-recent-edits',
+					recentEditsDelayMinutes
+				).text() }}
+			</cdx-checkbox>
+			<template #help-text>
+				{{ $i18n(
+					'wikimediaantiabuse-special-abuse-review-filter-recent-edits-help',
+					recentEditsDelayMinutes
+				).text() }}
+			</template>
+		</cdx-field>
 		<filter-dialog-username-filter v-model:selected-usernames="selectedUsernames">
 		</filter-dialog-username-filter>
 		<filter-dialog-page-filter v-model:selected-pages="selectedPages">
@@ -80,6 +106,10 @@ module.exports = exports = {
 		 *      been marked as false positives
 		 *  - showHandledRevisions: Boolean. If true, show revisions that have
 		 *      been marked as no further action
+		 *  - showRecentEdits: Boolean. If true, show the revisions that the
+		 *      queue hides because they are recent
+		 *  - recentEditsDelayMinutes: Number. The number of minutes for which
+		 *      the queue hides a new revision. 0 hides the recent edits filter
 		 *  - username: Array of strings. A list of usernames to filter by
 		 *  - page: Array of strings. A list of page titles to filter by
 		 *  - tab: String. The name of the tab the user is on
@@ -98,6 +128,10 @@ module.exports = exports = {
 		const showHandledRevisionsCheckboxValue = ref(
 			props.initialFilters.showHandledRevisions
 		);
+		const showRecentEditsCheckboxValue = ref(
+			props.initialFilters.showRecentEdits
+		);
+		const recentEditsDelayMinutes = props.initialFilters.recentEditsDelayMinutes;
 		const selectedUsernames = ref( props.initialFilters.username );
 		const selectedPages = ref( props.initialFilters.page );
 		const selectedRevisionIds = ref( props.initialFilters.revision );
@@ -125,6 +159,10 @@ module.exports = exports = {
 				filters.wpShowHandledRevisions = 1;
 			}
 
+			if ( recentEditsDelayMinutes > 0 && showRecentEditsCheckboxValue.value ) {
+				filters.showRecentEdits = 1;
+			}
+
 			if ( props.initialFilters.tab ) {
 				filters.tab = props.initialFilters.tab;
 			}
@@ -147,6 +185,8 @@ module.exports = exports = {
 			defaultAction,
 			showFalsePositivesCheckboxValue,
 			showHandledRevisionsCheckboxValue,
+			showRecentEditsCheckboxValue,
+			recentEditsDelayMinutes,
 			selectedUsernames,
 			selectedPages,
 			selectedRevisionIds,
