@@ -5,6 +5,7 @@
 		]
 	},
 	"wikimediaantiabuse-desc": "Anti-Mëssbrauchsfunktioune fir Wikimedia-Wikien",
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism": "Vandalismus $1",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Falsch-positiv Resultater weisen",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filteren uwenden",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filteren",
@@ -19,8 +20,6 @@
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Zäitstempel",
 	"wikimediaantiabuse-special-abuse-review-show-details": "Detailer weisen",
 	"wikimediaantiabuse-special-abuse-review-hide-details": "Detailer verstoppen",
-	"wikimediaantiabuse-special-abuse-review-revision-actions-heading": "Versiounsaktiounen",
-	"wikimediaantiabuse-special-abuse-review-action-suppress": "Ënnerdrécken…",
 	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Dës Versioun gouf schonn ënnerdréckt.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "D'Versioun konnt net aktualiséiert ginn. Probéiert wgl. nach eng Kéier.",
 	"notification-header-personal-info-flagged": "Eng Ännerung op <strong>$1</strong> kéint perséinlech Informatiounen enthalen.",
