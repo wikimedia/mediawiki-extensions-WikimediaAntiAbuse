@@ -905,38 +905,67 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
-	public function testShowsEchoNotificationBannerWhenReferrerIsEchoNotification(): void {
+	/** @dataProvider provideEchoNotificationBannerWhenReferrerIsEchoNotification */
+	public function testEchoNotificationBannerWhenReferrerIsEchoNotification(
+		bool $userCanSeePersonalInfoTag
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+		] );
+		$this->setGroupPermissions( 'abusereview-vandalism-alpha-tester', 'abusereview-vandalism-alpha-tester', true );
 		$context = RequestContext::getMain();
 		$context->setRequest( new FauxRequest( [
 			'referrer' => 'echo_notification',
 			'revision' => [ static::$taggedContentRevId ],
 		] ) );
-		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
+		$context->setUser(
+			$userCanSeePersonalInfoTag ?
+				$this->getTestUser( [ 'suppress' ] )->getUser() :
+				$this->getTestUser( [ 'abusereview-vandalism-alpha-tester' ] )->getUser()
+		);
 		$context->setLanguage( 'qqx' );
 		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
 
-		$echoBanner = $this->assertSelectorMatchesOneElementInNode(
-			DOMUtils::parseHTML( $html ),
-			'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
-		);
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		if ( $userCanSeePersonalInfoTag ) {
+			$echoBanner = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+			);
 
-		$echoBannerContent = $this->assertSelectorMatchesOneElementInNode(
-			$echoBanner,
-			'.cdx-message__content'
-		);
+			$echoBannerContent = $this->assertSelectorMatchesOneElementInNode(
+				$echoBanner,
+				'.cdx-message__content'
+			);
 
-		$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
-			SpecialPage::getTitleValueFor( 'AbuseReview' ),
-			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)',
-			[],
-			[ 'tab' => 'mw-private-personal-info' ]
-		);
-		// Parameter 2 is 2 because of the deleted tagged content revision and the revertable tagged content revision
-		$this->assertSame(
-			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, ' . $expectedLinkParameter . ')',
-			trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
-			'The echo notification banner should have the expected label'
-		);
+			$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
+				SpecialPage::getTitleValueFor( 'AbuseReview' ),
+				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)',
+				[],
+				[ 'tab' => 'mw-private-personal-info' ]
+			);
+			// Parameter 2 is 2 because of the deleted tagged content revision and
+			// the revertable tagged content revision
+			$this->assertSame(
+				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, '
+					. $expectedLinkParameter . ')',
+				trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
+				'The echo notification banner should have the expected label'
+			);
+		} else {
+			$this->assertNull( DOMCompat::querySelector(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+			) );
+		}
+	}
+
+	public static function provideEchoNotificationBannerWhenReferrerIsEchoNotification(): array {
+		return [
+			'User can see personal info tag' => [ 'userCanSeePersonalInfoTag' => true ],
+			'User cannot see personal info tag' => [ 'userCanSeePersonalInfoTag' => false ],
+		];
 	}
 
 	/** @dataProvider provideDoesNotShowTabsWhenOnlyOneTagEnabled */
