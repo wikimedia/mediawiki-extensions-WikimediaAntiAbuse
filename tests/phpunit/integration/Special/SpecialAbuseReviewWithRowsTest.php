@@ -176,6 +176,22 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'(wikimediaantiabuse-special-abuse-review-tab-summary-' . $expectedTab . ')',
 				$tabSummaryHtml
 			);
+			if ( $expectedTab === 'mw-private-vandalism' ) {
+				$alphaTestWarning = $this->assertSelectorMatchesOneElementInNode(
+					$htmlAsNode,
+					'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning',
+					true
+				);
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism)',
+					$alphaTestWarning
+				);
+			} else {
+				$this->assertNull( DOMCompat::querySelector(
+					$htmlAsNode,
+					'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning'
+				) );
+			}
 		} else {
 			$this->assertNull( DOMCompat::querySelector(
 				$htmlAsNode,

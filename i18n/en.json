@@ -12,6 +12,7 @@
 	"wikimediaantiabuse-special-abuse-review-summary": "This page contains edits automatically tagged for review. Flags explain why an edit was added to an inbox.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "Edits in this inbox likely contain personal information and should be reviewed.\n\nUsers with the right to see suppressed content can view personal information flags.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Edits in this inbox likely contain vandalism and should be reviewed.\n\nUsers included in the alpha test of this inbox can view vandalism flags.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism": "This vandalism detection feature is currently part of an alpha test, and is still under active development. It is available to a limited set of users, to evaluate its performance and get user feedback before any potential wider release.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Showing $1 flagged {{PLURAL:$1|revision|revisions}} from a notification. There {{PLURAL:$2|is|are}} $2 other likely personal information {{PLURAL:$2|edit|edits}} waiting for review. $3.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Show all likely personal information edits",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Include false positives",
