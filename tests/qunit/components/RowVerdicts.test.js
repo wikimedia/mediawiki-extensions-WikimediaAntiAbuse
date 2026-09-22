@@ -16,7 +16,6 @@ const CHIP_NO_FURTHER_ACTION =
 const SEND_BACK = '(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
 const SEND_BACK_TOOLTIP =
 	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip)';
-const CLOSED_ROW_NOTE = '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
 const PRIOR_ATTRIBUTION =
 	'Recorded by <a href="/wiki/User:PriorReviewer">PriorReviewer</a>';
 const RECORDED_ATTRIBUTION =
@@ -42,7 +41,8 @@ QUnit.module( 'ext.wikimediaAntiAbuse.RowVerdicts', QUnit.newMwEnvironment( {
 } ) );
 
 /**
- * The details element the component follows. A test that toggles the row brings its own.
+ * The details element the component follows. Only the send-back control reads whether
+ * the row is open.
  *
  * @param {boolean} open
  * @return {HTMLElement}
@@ -64,10 +64,7 @@ const mountRow = ( given, options ) => {
 		isHandledOutsideAbuseReview: false,
 		referrer: ''
 	}, given );
-	if ( !props.detailsElement ) {
-		// Only an open row is judged, and most of these tests are about judging.
-		props.detailsElement = makeDetails( props.isOpen !== false );
-	}
+	props.detailsElement = makeDetails( props.isOpen !== false );
 	delete props.isOpen;
 
 	const wrapper = mount( RowVerdicts, Object.assign( {
@@ -106,8 +103,11 @@ const restRejecting = ( code, details ) => ( {
 	then: ( onSuccess, onError ) => onError( code, details )
 } );
 
-QUnit.test( 'both verdicts are offered, as push buttons', ( assert ) => {
-	const wrapper = mountRow();
+QUnit.test.each( 'both verdicts are offered, as push buttons', {
+	'on an open row': { isOpen: true },
+	'on a closed row': { isOpen: false }
+}, ( assert, props ) => {
+	const wrapper = mountRow( props );
 
 	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
 		const button = buttonWithLabel( wrapper, label );
@@ -434,25 +434,6 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 	);
 } );
 
-QUnit.test( 'a closed row cannot be judged, and says so', ( assert ) => {
-	const wrapper = mountRow( { isOpen: false } );
-
-	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
-		const button = buttonWithLabel( wrapper, label );
-		assert.true( button.element.disabled, '"' + label + '" is out of reach' );
-		assert.strictEqual(
-			button.attributes( 'title' ),
-			CLOSED_ROW_NOTE,
-			'"' + label + '" says why on hover, rather than what it would have done'
-		);
-		assert.strictEqual(
-			button.attributes( 'aria-describedby' ),
-			'mw-wikimediaantiabuse-abuse-review-disabled-note-991',
-			'"' + label + '" points at the note saying so'
-		);
-	} );
-} );
-
 QUnit.test( 'the send-back control is rendered among the row\'s other actions', ( assert ) => {
 	const actions = document.createElement( 'div' );
 	document.getElementById( 'qunit-fixture' ).appendChild( actions );
@@ -470,59 +451,6 @@ QUnit.test( 'the send-back control is rendered among the row\'s other actions', 
 		teleported.parentNode,
 		actions,
 		'the send-back control sits in the row\'s action group'
-	);
-} );
-
-QUnit.test( 'opening the row brings its buttons into reach', async ( assert ) => {
-	const details = document.createElement( 'details' );
-	document.getElementById( 'qunit-fixture' ).appendChild( details );
-	const wrapper = mountRow( { detailsElement: details } );
-
-	assert.true(
-		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
-		'The mark no further action needed button is out of reach while the row is closed'
-	);
-	assert.true(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'The mark false positive button is out of reach while the row is closed'
-	);
-
-	details.open = true;
-	details.dispatchEvent( new Event( 'toggle' ) );
-	await wrapper.vm.$nextTick();
-
-	const noFurtherActionButton = buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION );
-	assert.false(
-		noFurtherActionButton.element.disabled,
-		'The mark no further action needed button is usable once the row is opened'
-	);
-	assert.strictEqual(
-		noFurtherActionButton.attributes( 'title' ),
-		MARK_NO_FURTHER_ACTION,
-		'the tooltip says what pressing the mark as handled button does'
-	);
-	const falsePositiveButton = buttonWithLabel( wrapper, MARK_FALSE_POSITIVE );
-	assert.false(
-		falsePositiveButton.element.disabled,
-		'The mark false positive button is usable once the row is opened'
-	);
-	assert.strictEqual(
-		falsePositiveButton.attributes( 'title' ),
-		MARK_FALSE_POSITIVE,
-		'the tooltip says what pressing the false positive button does'
-	);
-
-	details.open = false;
-	details.dispatchEvent( new Event( 'toggle' ) );
-	await wrapper.vm.$nextTick();
-
-	assert.true(
-		buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled,
-		'The mark false positive button is out of reach again once the row is closed'
-	);
-	assert.true(
-		buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).element.disabled,
-		'The mark no further action needed button is out of reach again once the row is closed'
 	);
 } );
 

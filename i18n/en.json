@@ -46,7 +46,6 @@
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "No further action needed",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "Send back for review",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Remove the current verdict and send this flagged revision back for review.",
-	"wikimediaantiabuse-special-abuse-review-closed-row-note": "Show the details of this edit to judge it.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "This revision has already been suppressed.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "This revision has already been reverted.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Recorded {{GENDER:$1|by}} $2",
