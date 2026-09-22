@@ -149,15 +149,8 @@ module.exports = exports = defineComponent( {
 				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism
 				return mw.msg( 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' + props.tag );
 			}
-			return isOpen.value ?
-				null :
-				mw.msg( 'wikimediaantiabuse-special-abuse-review-closed-row-note' );
+			return null;
 		} );
-
-		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
-		const rowRefuses = computed(
-			() => handledOutsideAbuseReviewBlocksMark.value || !isOpen.value
-		);
 
 		/**
 		 * @param {string} own
@@ -170,7 +163,7 @@ module.exports = exports = defineComponent( {
 			return {
 				verdict: own,
 				icon,
-				disabled: rowRefuses.value,
+				disabled: handledOutsideAbuseReviewBlocksMark.value,
 				note: disabledNote.value,
 				label,
 				title: disabledNote.value || label

@@ -287,7 +287,6 @@ class AbuseReviewPager extends CodexTablePager {
 			$heldVerdict !== null
 		);
 		$bylineHtml = $this->buildByline( $attributionHtml );
-		$isOpen = !$this->rowRendered || $this->revisionsFilter;
 		// @phan-suppress-next-line SecurityCheck-DoubleEscaped
 		$mountPoint = Html::rawElement(
 			'span',
@@ -306,7 +305,6 @@ class AbuseReviewPager extends CodexTablePager {
 					(int)$row->rev_id,
 					$this->abuseReviewTag,
 					$isHandledOutsideAbuseReview,
-					$isOpen,
 					$bylineHtml
 				) : $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
 		);
@@ -322,18 +320,11 @@ class AbuseReviewPager extends CodexTablePager {
 		int $revId,
 		string $tag,
 		bool $isHandledOutsideAbuseReview,
-		bool $isOpen,
 		string $bylineHtml
 	): string {
-		// A reviewer judges an edit only after seeing it, so a closed row takes no verdict.
-		$rowRefuses = $isHandledOutsideAbuseReview || !$isOpen;
-
-		$noteMessage = null;
-		if ( $isHandledOutsideAbuseReview ) {
-			$noteMessage = 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' . $tag;
-		} elseif ( !$isOpen ) {
-			$noteMessage = 'wikimediaantiabuse-special-abuse-review-closed-row-note';
-		}
+		$noteMessage = $isHandledOutsideAbuseReview
+			? 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' . $tag
+			: null;
 
 		$note = '';
 		$noteId = null;
@@ -349,8 +340,8 @@ class AbuseReviewPager extends CodexTablePager {
 		$controls = Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdict-controls' ],
-			$this->buildVerdictButton( 'no-further-action', $rowRefuses, $noteId, $noteMessage )
-				. $this->buildVerdictButton( 'false-positive', $rowRefuses, $noteId, $noteMessage )
+			$this->buildVerdictButton( 'no-further-action', $noteId, $noteMessage )
+				. $this->buildVerdictButton( 'false-positive', $noteId, $noteMessage )
 		);
 
 		return Html::rawElement(
@@ -410,14 +401,12 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/**
 	 * @param string $verdict
-	 * @param bool $rowRefuses Whether the row itself refuses it, which the note explains
 	 * @param string|null $noteId
-	 * @param string|null $noteMessage
+	 * @param string|null $noteMessage Populated if the row doesn't allow a new verdict to be applied
 	 * @return string
 	 */
 	private function buildVerdictButton(
 		string $verdict,
-		bool $rowRefuses,
 		?string $noteId,
 		?string $noteMessage
 	): string {
@@ -426,7 +415,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$attribs = [
 			'type' => 'button',
 			'aria-label' => $label,
-			'title' => $rowRefuses && $noteMessage !== null
+			'title' => $noteMessage !== null
 				? $this->msg( $noteMessage )->text()
 				: $label,
 			'class' => [
@@ -438,10 +427,8 @@ class AbuseReviewPager extends CodexTablePager {
 				'cdx-button--icon-only',
 			],
 		];
-		if ( $rowRefuses ) {
+		if ( $noteMessage !== null ) {
 			$attribs['disabled'] = true;
-		}
-		if ( $rowRefuses && $noteId !== null ) {
 			$attribs['aria-describedby'] = $noteId;
 		}
 

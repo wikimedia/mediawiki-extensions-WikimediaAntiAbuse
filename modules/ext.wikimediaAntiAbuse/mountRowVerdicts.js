@@ -54,9 +54,11 @@ function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
 	}
 
 	const details = row.querySelector( DETAILS_SELECTOR );
-	if ( details ) {
-		details.open = false;
+	// If the current row is closed, don't advance the queue.
+	if ( !details || !details.open ) {
+		return;
 	}
+	details.open = false;
 
 	for ( let next = row.nextElementSibling; next; next = next.nextElementSibling ) {
 		if ( !next.matches( ROW_SELECTOR ) ) {

@@ -492,22 +492,19 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			if ( $heldVerdict !== null ) {
 				$this->assertVerdictChip( $tableRow, $heldVerdict );
 			} else {
-				$rowRefuses = $isRowHandledOutsideAbuseReview || !$isOpenRow;
-				$note = $isRowHandledOutsideAbuseReview
-					? "(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-$expectedSelectedTab)"
-					: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
+				$note = "(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-$expectedSelectedTab)";
 				$this->assertVerdictButtons(
 					$tableRow,
 					[
 						[
-							'disabled' => $rowRefuses,
-							'title' => $rowRefuses
+							'disabled' => $isRowHandledOutsideAbuseReview,
+							'title' => $isRowHandledOutsideAbuseReview
 								? $note
 								: '(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
 						],
 						[
-							'disabled' => $rowRefuses,
-							'title' => $rowRefuses
+							'disabled' => $isRowHandledOutsideAbuseReview,
+							'title' => $isRowHandledOutsideAbuseReview
 								? $note
 								: '(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
 						],
