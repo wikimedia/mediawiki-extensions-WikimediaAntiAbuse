@@ -1,9 +1,12 @@
 {
 	"@metadata": {
 		"authors": [
-			"Beta16"
+			"Beta16",
+			"Matroz"
 		]
 	},
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Informazioni personali $1",
+	"wikimediaantiabuse-special-abuse-review-tab-count-capped": "$1+",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Includi falsi positivi",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Applica filtri",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filtri",
@@ -14,7 +17,12 @@
 	"wikimediaantiabuse-special-abuse-review-filter-username-placeholder": "Inserisci il nome utente...",
 	"wikimediaantiabuse-special-abuse-review-show-details": "Mostra dettagli",
 	"wikimediaantiabuse-special-abuse-review-hide-details": "Nascondi dettagli",
+	"wikimediaantiabuse-special-abuse-review-open-full-diff": "Visualizza le differenze",
+	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Rimuovi il verdetto attuale e invia questa revisione segnalata per una nuova valutazione.",
+	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Probabili informazioni personali",
+	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism": "Probabile atto vandalico",
 	"wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive": "Contrassegnato come falso positivo",
+	"wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action": "Nessuna ulteriore azione necessaria",
 	"tag-mw-private-personal-info": "Probabilmente contiene informazioni personali",
 	"tag-mw-private-personal-info-description": "Modifiche segnalate automaticamente come potenzialmente contenenti informazioni personali",
 	"tag-mw-private-personal-info-false-positive": "Falso positivo (informazioni personali)"

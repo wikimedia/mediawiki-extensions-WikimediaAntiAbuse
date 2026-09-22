@@ -20,7 +20,7 @@
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Zäitstempel",
 	"wikimediaantiabuse-special-abuse-review-show-details": "Detailer weisen",
 	"wikimediaantiabuse-special-abuse-review-hide-details": "Detailer verstoppen",
-	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Dës Versioun gouf schonn ënnerdréckt.",
+	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Dës Versioun gouf schonn ënnerdréckt.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "D'Versioun konnt net aktualiséiert ginn. Probéiert wgl. nach eng Kéier.",
 	"notification-header-personal-info-flagged": "Eng Ännerung op <strong>$1</strong> kéint perséinlech Informatiounen enthalen.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Ännerung kéint|Ännerunge kéinte}} perséinlech Informatiounen enthalen."

@@ -10,7 +10,9 @@
 	"wikimediaantiabuse-special-abuse-review-tabs-label": "Markierungen",
 	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Persönliche Informationen $1",
 	"wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism": "Vandalismus $1",
-	"wikimediaantiabuse-special-abuse-review-summary": "Auf dieser Seite werden Versionen angezeigt, die automatisch zur Überprüfung markiert wurden. Jede Zeile enthält eine Markierung sowie daneben eine Schaltfläche für die jeweilige Entscheidung. Wenn die Version nicht der Markierung entspricht, kennzeichne sie als „falsch positiv“. Wenn die Markierung korrekt ist, aber keine weiteren Maßnahmen erforderlich sind, kennzeichne die Versione als „keine weiteren Maßnahmen erforderlich“. Beide Entscheidungen kennzeichnen die Version als bearbeitet; dasselbe gilt für das Ausblenden des Textes einer Version, die Maßnahmen erfordert.",
+	"wikimediaantiabuse-special-abuse-review-summary": "Diese Seite enthält Bearbeitungen, die automatisch zur Überprüfung markiert wurden. Die Markierungen erklären, warum eine Bearbeitung in den Posteingang aufgenommen wurde.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "Änderungen in diesem Posteingang enthalten wahrscheinlich personenbezogene Daten und sollten überprüft werden.\n\nBenutzer, die berechtigt sind, ausgeblendete Inhalte einzusehen, können Markierungen für personenbezogene Daten anzeigen.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Die Bearbeitungen in diesem Posteingang enthalten wahrscheinlich Vandalismus und sollten überprüft werden.\n\nBenutzer, die am Alpha-Test dieses Posteingangs teilnehmen, können Vandalismus-Markierungen einsehen.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Es {{PLURAL:$1|wird $1 markierte Version|werden $1 markierte Versionen}} aus einer Benachrichtigung angezeigt. Es gibt {{PLURAL:$2|$2 weitere wahrscheinliche Bearbeitung an persönlichen Informationen, die auf Überprüfung wartet|$2 weitere wahrscheinliche Bearbeitungen an persönlichen Informationen}, die auf Überprüfung warten}. $3.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Alle wahrscheinlichen Bearbeitungen an persönlichen Informationen anzeigen",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Falsch-positive Ergebnisse einschließen",
@@ -46,7 +48,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "Zur Überprüfung zurücksenden",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Die aktuelle Prüfung wird aufgehoben und die markierte Version zur erneuten Prüfung zurückgesendet.",
 	"wikimediaantiabuse-special-abuse-review-closed-row-note": "Zeige die Details dieser Bearbeitung, um sie beurteilen zu können.",
-	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Diese Version wurde bereits unterdrückt.",
+	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Diese Version wurde bereits unterdrückt.",
+	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Diese Änderung wurde bereits rückgängig gemacht.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Aufgenommen {{GENDER:$1|von}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Zurück zur Überprüfung {{GENDER:$1|von}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Vermutlich persönliche Informationen",
@@ -72,5 +75,7 @@
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|Weitere Informationen über diese Benachrichtigung]]",
 	"notification-header-personal-info-flagged": "Eine Änderung an <strong>$1</strong> kann personenbezogene Daten enthalten.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Bearbeitung kann|Bearbeitungen können}} personenbezogene Daten enthalten.",
-	"notification-link-text-personal-info-flagged": "Markierte {{PLURAL:$1|Bearbeitung|Bearbeitungen}} anzeigen"
+	"notification-link-text-personal-info-flagged": "Markierte {{PLURAL:$1|Bearbeitung|Bearbeitungen}} anzeigen",
+	"right-abusereview-vandalism-alpha-tester": "Zugriff auf den AbuseReview-Vandalismusdetektor-Alpha-Test",
+	"action-abusereview-vandalism-alpha-tester": "auf den AbuseReview-Vandalismusdetektor-Alpha-Test zuzugreifen"
 }
