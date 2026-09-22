@@ -365,11 +365,24 @@ class SpecialAbuseReview extends SpecialPage {
 
 		$selectedTabSummary = '';
 		if ( $this->selectedTab ) {
+			if ( $this->selectedTab === 'mw-private-vandalism' ) {
+				$selectedTabSummary .= ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
+					->message()
+					->setType( 'warning' )
+					->setAttributes( [
+						'class' => 'mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning',
+					] )
+					->setContent( $this->msg(
+						'wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism'
+					)->text() )
+					->getHtml();
+			}
+
 			// Uses:
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
 			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
-			$selectedTabSummary = Html::rawElement(
+			$selectedTabSummary .= Html::rawElement(
 				'div',
 				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-tab-summary' ],
 				$this->msg( $selectedTabMsgKey )->parseAsBlock()
