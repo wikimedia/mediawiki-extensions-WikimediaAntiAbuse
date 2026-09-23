@@ -35,6 +35,10 @@
 			"value": false,
 			"description": "Enables Echo notifications, sent to opted-in users with the viewsuppressed or suppressrevision right, when the mw-private-personal-info tag is applied to a revision. Requires the Echo extension."
 		},
+		"WikimediaAntiAbuseVandalismTagAlphaTesters": {
+			"value": [],
+			"description": "The list of usernames that are in the alpha test for the likely vandalism classifier."
+		},
 		"WikimediaAntiAbuseCoPEModelConfig": {
 			"value": {
 				"url": "",
@@ -108,6 +112,12 @@
 				"ConnectionProvider",
 				"ExtensionRegistry"
 			]
+		},
+		"VandalismAlphaTesterHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\VandalismAlphaTesterHandler",
+			"services": [
+				"MainConfig"
+			]
 		}
 	},
 	"Hooks": {
@@ -119,6 +129,7 @@
 		"GetPreferences": "NotificationPreferencesHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
+		"UserGetRights": "VandalismAlphaTesterHandler",
 		"UserGroupsChanged": "UserRightsNotificationHandler"
 	},
 	"DomainEventIngresses": [

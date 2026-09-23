@@ -68,6 +68,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'WikimediaAntiAbuseEnableVandalismTag' => true,
 			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
 		] );
+		// VandalismAlphaTesterHandler will add rights to the user, so skip it so the rights
+		// we specify in the test are the only ones granted
+		$this->clearHook( 'UserGetRights' );
+
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
 		$data = [];
