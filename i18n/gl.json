@@ -46,7 +46,6 @@
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Non se necesita ningunha acción adicional",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "Devolver á revisión",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Elimina o veredicto actual e envía de volta esta revisión marcada para a súa revisión.",
-	"wikimediaantiabuse-special-abuse-review-closed-row-note": "Mostrar os detalles desta edición para xulgala.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Esta revisión xa se suprimiu.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Rexistrado {{GENDER:$1|por}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Devolto á revisión {{GENDER:$1|por}} $2",
