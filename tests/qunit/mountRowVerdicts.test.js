@@ -4,12 +4,27 @@ const { flushPromises } = require( 'vue-test-utils' );
 const { mountRowVerdicts } = require( 'ext.wikimediaAntiAbuse/mountRowVerdicts.js' );
 
 const APP_CLASS = 'mw-wikimediaantiabuse-abuse-review-verdicts-app';
+const ACTIONS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-actions';
 const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
-const UNMARK_BUTTON_LABEL =
-	'(wikimediaantiabuse-special-abuse-review-action-unmark-false-positive)';
+const SEND_BACK_BUTTON_LABEL =
+	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
 
 QUnit.module( 'ext.wikimediaAntiAbuse.mountRowVerdicts', QUnit.newMwEnvironment() );
+
+/**
+ * The buttons the pager renders into the mount point, which the app replaces. What they
+ * hold does not matter here, only that a test can tell a replaced one from a fresh one.
+ *
+ * @return {HTMLElement}
+ */
+function makeServerVerdicts() {
+	const verdicts = document.createElement( 'span' );
+	verdicts.className = 'mw-wikimediaantiabuse-abuse-review-verdicts';
+	verdicts.appendChild( document.createElement( 'button' ) );
+	verdicts.appendChild( document.createElement( 'button' ) );
+	return verdicts;
+}
 
 /**
  * A review row shaped the way the pager renders one: a details element holding the flag
@@ -39,9 +54,15 @@ function makeRow( revId, payload, open ) {
 	mountPoint.className = APP_CLASS;
 	if ( payload !== null ) {
 		mountPoint.setAttribute( 'data-verdicts', JSON.stringify( payload ) );
+		mountPoint.appendChild( makeServerVerdicts() );
 	}
 	summary.appendChild( mountPoint );
 	details.appendChild( summary );
+
+	const content = document.createElement( 'div' );
+	content.className = 'mw-wikimediaantiabuse-abuse-review-row__content';
+	details.appendChild( content );
+
 	cell.appendChild( details );
 	row.appendChild( cell );
 
@@ -60,22 +81,21 @@ const payloadFor = ( overrides ) => Object.assign( {
 	tag: 'mw-private-personal-info',
 	isFalsePositive: false,
 	isNoFurtherAction: false,
-	isSuppressed: false
+	isHandledOutsideAbuseReview: false
 }, overrides );
 
 const isOpen = ( row ) => row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__details' ).open;
 
 /**
- * Click the row's control carrying the given name. The buttons carry an icon rather than
- * a label, so the accessible name is what tells them apart.
+ * Mark buttons carry an accessible name; the send-back control carries its label as text.
  *
  * @param {HTMLElement} row
  * @param {string} label
  */
 function clickButton( row, label ) {
 	const buttons = Array.prototype.filter.call(
-		row.querySelectorAll( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ),
-		( button ) => button.getAttribute( 'aria-label' ) === label
+		row.querySelectorAll( 'button' ),
+		( button ) => ( button.getAttribute( 'aria-label' ) || button.textContent.trim() ) === label
 	);
 	if ( buttons.length !== 1 ) {
 		throw new Error( 'Expected one "' + label + '" control, found ' + buttons.length );
@@ -83,26 +103,26 @@ function clickButton( row, label ) {
 	buttons[ 0 ].click();
 }
 
-QUnit.test( 'it mounts an app into every row', async ( assert ) => {
+QUnit.test( 'it mounts an app over the buttons the pager rendered', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
+	const serverRendered = first.querySelector( 'button' );
 
 	mountRowVerdicts();
 	await flushPromises();
 
-	assert.notStrictEqual(
-		first.querySelector( 'button' ),
-		null,
-		'the first row gained its controls'
+	assert.false(
+		first.contains( serverRendered ),
+		'the app takes the place of the buttons that came from the server'
 	);
-	assert.notStrictEqual(
-		second.querySelector( 'button' ),
-		null,
-		'the second row mounted too'
+	assert.strictEqual(
+		second.querySelectorAll( 'button' ).length,
+		2,
+		'and the second row still offers two buttons, not four'
 	);
 } );
 
-QUnit.test( 'only the open row can be judged', async ( assert ) => {
+QUnit.test( 'a closed row can be judged as well as an open one', async ( assert ) => {
 	const first = makeRow( 1, payloadFor(), true );
 	const second = makeRow( 2, payloadFor(), false );
 
@@ -113,9 +133,9 @@ QUnit.test( 'only the open row can be judged', async ( assert ) => {
 		first.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
 		'the open row can be judged'
 	);
-	assert.true(
+	assert.false(
 		second.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts button' ).disabled,
-		'a closed one cannot'
+		'the closed row can be judged without opening it first'
 	);
 } );
 
@@ -135,7 +155,30 @@ QUnit.test( 'a verdict closes its row and opens the next one waiting', async fun
 
 	assert.false( isOpen( first ), 'the row just judged is closed' );
 	assert.true( isOpen( second ), 'the next row is opened' );
-	assert.false( isOpen( third ), 'and only that one' );
+	assert.false( isOpen( third ), 'the row after the one opened stays closed' );
+} );
+
+QUnit.test( 'a verdict on a closed row leaves the queue where it stands', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const openRow = makeRow( 1, payloadFor(), true );
+	const closedRow = makeRow( 2, payloadFor(), false );
+	const waitingRow = makeRow( 3, payloadFor(), false );
+	mountRowVerdicts();
+	await flushPromises();
+
+	clickButton( closedRow, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.true(
+		!!closedRow.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdicts .cdx-info-chip' ),
+		'the closed row takes the verdict, the chip standing for it'
+	);
+	assert.false( isOpen( closedRow ), 'and stays closed' );
+	assert.true( isOpen( openRow ), 'the row the reviewer opened stays open' );
+	assert.false( isOpen( waitingRow ), 'no other row is opened' );
 } );
 
 QUnit.test( 'a verdict skips a row that is already open', async function ( assert ) {
@@ -153,7 +196,7 @@ QUnit.test( 'a verdict skips a row that is already open', async function ( asser
 	await flushPromises();
 
 	assert.true( isOpen( second ), 'the row already open is left open' );
-	assert.true( isOpen( third ), 'and the next closed one is the one opened' );
+	assert.true( isOpen( third ), 'the next closed row is the one opened' );
 } );
 
 QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( assert ) {
@@ -163,7 +206,11 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 
 	const first = makeRow( 1, payloadFor(), true );
 	const judged = makeRow( 2, payloadFor( { isNoFurtherAction: true } ), false );
-	const suppressed = makeRow( 3, payloadFor( { isSuppressed: true } ), false );
+	const handledOutsideAbuseReview = makeRow(
+		3,
+		payloadFor( { isHandledOutsideAbuseReview: true } ),
+		false
+	);
 	const waiting = makeRow( 4, payloadFor(), false );
 	mountRowVerdicts();
 	await flushPromises();
@@ -172,11 +219,14 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	await flushPromises();
 
 	assert.false( isOpen( judged ), 'the row holding a verdict is stepped over' );
-	assert.false( isOpen( suppressed ), 'so is the one already suppressed' );
-	assert.true( isOpen( waiting ), 'and the next row waiting for review is opened' );
+	assert.false(
+		isOpen( handledOutsideAbuseReview ),
+		'the handled outside abuse review row is stepped over as well'
+	);
+	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
-QUnit.test( 'clearing a verdict does not advance the queue', async function ( assert ) {
+QUnit.test( 'sending a row back does not advance the queue', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
 	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
@@ -186,11 +236,11 @@ QUnit.test( 'clearing a verdict does not advance the queue', async function ( as
 	mountRowVerdicts();
 	await flushPromises();
 
-	clickButton( first, UNMARK_BUTTON_LABEL );
+	clickButton( first, SEND_BACK_BUTTON_LABEL );
 	await flushPromises();
 
 	assert.true( isOpen( first ), 'the row put back in the queue stays open' );
-	assert.false( isOpen( second ), 'and nothing else is opened' );
+	assert.false( isOpen( second ), 'nothing else is opened' );
 } );
 
 QUnit.test( 'a verdict on the last row opens nothing', async function ( assert ) {
@@ -208,19 +258,37 @@ QUnit.test( 'a verdict on the last row opens nothing', async function ( assert )
 	assert.false( isOpen( only ), 'the row is closed, there being nothing after it' );
 } );
 
+QUnit.test( 'the send-back control is given a group of its own', async ( assert ) => {
+	const row = makeRow( 1, payloadFor( { isNoFurtherAction: true } ), true );
+
+	mountRowVerdicts();
+	await flushPromises();
+
+	const actions = row.querySelector( ACTIONS_SELECTOR );
+	assert.true( !!actions, 'the row is given an action group' );
+	assert.strictEqual(
+		actions.querySelectorAll( 'button' ).length,
+		1,
+		'the send-back control is the only thing in the group made for it'
+	);
+} );
+
 QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( assert ) => {
 	const broken = makeRow( 1, payloadFor(), false );
 	broken.querySelector( '.' + APP_CLASS ).setAttribute( 'data-verdicts', '{not json' );
 	const missing = makeRow( 2, null, false );
 	const anonymous = makeRow( null, payloadFor(), false );
 	const healthy = makeRow( 3, payloadFor(), false );
+	// A skipped row keeps the buttons the server sent, so identity is the signal here.
+	const brokenButton = broken.querySelector( 'button' );
+	const anonymousButton = anonymous.querySelector( 'button' );
+	const healthyButton = healthy.querySelector( 'button' );
 
 	mountRowVerdicts();
 	await flushPromises();
 
-	assert.strictEqual(
-		broken.querySelector( '.' + APP_CLASS ).children.length,
-		0,
+	assert.true(
+		broken.contains( brokenButton ),
 		'the malformed row gets no app mounted over it'
 	);
 	assert.strictEqual(
@@ -228,14 +296,12 @@ QUnit.test( 'a row with an unreadable payload is skipped, not fatal', async ( as
 		0,
 		'the row with no payload gets no app either, rather than one with no props'
 	);
-	assert.strictEqual(
-		anonymous.querySelector( '.' + APP_CLASS ).children.length,
-		0,
+	assert.true(
+		anonymous.contains( anonymousButton ),
 		'nor does a row that names no revision, the app having nothing to act on'
 	);
-	assert.notStrictEqual(
-		healthy.querySelector( 'button' ),
-		null,
+	assert.false(
+		healthy.contains( healthyButton ),
 		'the healthy row still mounts, which is the point of the guard'
 	);
 } );

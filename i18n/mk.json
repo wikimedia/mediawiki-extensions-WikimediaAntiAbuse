@@ -1,7 +1,8 @@
 {
 	"@metadata": {
 		"authors": [
-			"Bjankuloski06"
+			"Bjankuloski06",
+			"Vlad5250"
 		]
 	},
 	"wikimediaantiabuse-desc": "Функции против злоупотреба за Викимедиините викија",
@@ -11,10 +12,10 @@
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Прикажи погрешни погодоци",
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Прикажи обработени преработки",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Филтрирај",
-	"wikimediaantiabuse-special-abuse-review-filter-legend": "Филтрирање на преработки",
-	"wikimediaantiabuse-special-abuse-review-filter-close": "Затвори",
+	"wikimediaantiabuse-special-abuse-review-filter-legend": "Филтри",
+	"wikimediaantiabuse-special-abuse-review-filter-close": "Откажи",
+	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Корисник",
 	"wikimediaantiabuse-special-abuse-review-heading-revision": "Преработка",
-	"wikimediaantiabuse-special-abuse-review-heading-flags": "Ознаки",
 	"wikimediaantiabuse-special-abuse-review-heading-timestamp": "Време и датум",
 	"wikimediaantiabuse-special-abuse-review-empty-title": "Нема означени уредувања",
 	"wikimediaantiabuse-special-abuse-review-empty-description": "Нема уредувања кои што тековно чекаат на преглед за правилата на содржини.",
@@ -25,13 +26,8 @@
 	"wikimediaantiabuse-special-abuse-review-changes-made": "Направени промени:",
 	"wikimediaantiabuse-special-abuse-review-open-full-diff": "Отвори ја целосната разлика",
 	"wikimediaantiabuse-special-abuse-review-action-in-progress": "Работам…",
-	"wikimediaantiabuse-special-abuse-review-action-suppress": "Притај…",
-	"wikimediaantiabuse-special-abuse-review-action-revision-delete": "Бришење на преработката…",
-	"wikimediaantiabuse-special-abuse-review-action-revert": "Само враќање",
 	"wikimediaantiabuse-special-abuse-review-action-mark-false-positive": "Означи како погрешен погодок",
-	"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive": "Одозначи како погрешен погодок",
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Нема потреба од понатамошни дејства",
-	"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action": "Потребно е понатамошно дејство",
 	"wikimediaantiabuse-special-abuse-review-already-suppressed-note": "Оваа преработка е веќе притаена.",
 	"wikimediaantiabuse-special-abuse-review-action-error": "Не можев да ја подновам преработката. Обидете се пак.",
 	"wikimediaantiabuse-special-abuse-review-permission-error": "Немате ниедна од дозволите потребни за гледање на оваа страница.",

@@ -4,7 +4,8 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers;
 
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewPermissionManager;
+use MediaWiki\ChangeTags\ChangeTagsStore;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Hook\BeforeInitializeHook;
 use MediaWiki\Output\OutputPage;
@@ -26,22 +27,17 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 	public const string SUBTYPE_TIMESTAMP = 'timestamp';
 	public const string SUBTYPE_PAGE_TITLE = 'page_title';
 	public const string SUBTYPE_FULL_DIFF = 'full_diff';
-	public const string SUBTYPE_SUPPRESS = 'suppress';
-	public const string SUBTYPE_REVISION_DELETE = 'revision_delete';
-	public const string SUBTYPE_REVERT = 'revert';
 
 	private const array SUBTYPES = [
 		self::SUBTYPE_TIMESTAMP,
 		self::SUBTYPE_PAGE_TITLE,
 		self::SUBTYPE_FULL_DIFF,
-		self::SUBTYPE_SUPPRESS,
-		self::SUBTYPE_REVISION_DELETE,
-		self::SUBTYPE_REVERT,
 	];
 
 	public function __construct(
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
-		private readonly AbuseReviewPermissionManager $permissionManager,
+		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly AbuseReviewEnabledTagsProvider $abuseReviewEnabledTagsProvider,
 	) {
 	}
 
@@ -75,7 +71,11 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 		}
 		// Only a viewer of the queue can have followed one of its links. Anyone else is left
 		// alone entirely, so neither the stream nor the redirect answers to a crafted URL.
-		if ( !$this->permissionManager->canViewQueue( $output->getAuthority() ) ) {
+		$viewableTags = $this->changeTagsStore->filterViewableTags(
+			$this->abuseReviewEnabledTagsProvider->getAllEnabledTags(),
+			$output->getAuthority()
+		);
+		if ( !$viewableTags ) {
 			return;
 		}
 

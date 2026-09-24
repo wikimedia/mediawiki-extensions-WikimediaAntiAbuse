@@ -32,7 +32,7 @@ class AbuseReviewVerdictAttribution {
 	 * @param ?string $params A verdict's ct_params, which names no actor if the verdict predates attribution
 	 * @return ?int The actor ID a verdict's ct_params names, or null if it names none.
 	 */
-	public function decodeActorId( ?string $params ): ?int {
+	public function decodeActorId( ?string $params, int $revisionId, string $tag ): ?int {
 		if ( $params === null ) {
 			return null;
 		}
@@ -43,6 +43,8 @@ class AbuseReviewVerdictAttribution {
 			$this->logger->warning( 'Ignoring a review verdict whose ct_params is not valid JSON', [
 				'exception' => $e,
 				'params' => $params,
+				'revisionId' => $revisionId,
+				'tag' => $tag,
 			] );
 
 			return null;

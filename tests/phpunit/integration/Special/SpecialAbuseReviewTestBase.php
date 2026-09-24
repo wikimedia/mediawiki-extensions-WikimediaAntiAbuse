@@ -4,16 +4,18 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
+use MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\AbuseReviewRevisionTestTrait;
 use MediaWiki\Tests\Specials\SpecialPageTestBase;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\DOM\Document;
 use Wikimedia\Parsoid\DOM\Element;
-use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
  * Base class for tests that test {@link SpecialAbuseReview}
  */
 abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
+
+	use AbuseReviewRevisionTestTrait;
 
 	/** Each row holds core's diff table, which a plain `tbody tr` would also match. */
 	protected const string ROW_SELECTOR = 'tbody tr.mw-wikimediaantiabuse-abuse-review-row';
@@ -27,9 +29,9 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	/**
 	 * Verifies that the filter button is present in the form
 	 */
-	protected function verifyFilterButtonPresent( string $html, int $numberOfFiltersApplied ): void {
+	protected function verifyFilterButtonPresent( Document|Element $htmlAsNode, int $numberOfFiltersApplied ): void {
 		$filterButtons = DOMCompat::querySelectorAll(
-			DOMUtils::parseHTML( $html ),
+			$htmlAsNode,
 			'.mw-wikimediaantiabuse-abuse-review-filter-button'
 		);
 		$this->assertGreaterThan(
@@ -74,8 +76,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	/**
 	 * Verifies the structure of the table pager for assertions that are common to all tests
 	 */
-	protected function commonVerifyTablePager( string $html, bool $shouldHaveRows ): string {
-		$htmlAsNode = DOMUtils::parseHTML( $html );
+	protected function commonVerifyTablePager( Document|Element $htmlAsNode, bool $shouldHaveRows ): string {
 		$tablePager = $this->assertSelectorMatchesOneElementInNode(
 			$htmlAsNode,
 			'.cdx-table__table.mw-wikimediaantiabuse-abuse-review-table'
@@ -99,7 +100,7 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 		$this->assertCount( 4, $headings );
 		foreach ( [
 			'(wikimediaantiabuse-special-abuse-review-heading-revision)',
-			'(wikimediaantiabuse-special-abuse-review-heading-flags)',
+			'(wikimediaantiabuse-special-abuse-review-heading-flag)',
 			'(wikimediaantiabuse-special-abuse-review-heading-timestamp)',
 		] as $index => $expectedHeading ) {
 			$this->assertStringContainsString(
@@ -130,6 +131,17 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 			}
 		}
 		$this->fail( "No row was rendered for revision $revId" );
+	}
+
+	protected function getVerdictsPayload( Document|Element $node ): array {
+		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
+			$node,
+			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
+		);
+
+		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-verdicts' ), true );
+		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
+		return $payload;
 	}
 
 	/** @inheritDoc */

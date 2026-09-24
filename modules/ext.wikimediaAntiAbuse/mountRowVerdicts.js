@@ -7,7 +7,7 @@ const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
 const DETAILS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row__details';
 const HELD_VERDICT_SELECTOR =
-	'.mw-wikimediaantiabuse-abuse-review-verdicts button[aria-pressed="true"]';
+	'.mw-wikimediaantiabuse-abuse-review-verdicts[data-verdict-held]';
 const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**
@@ -15,11 +15,28 @@ const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
  * row that holds a verdict or whose text is suppressed, and neither waits for review.
  *
  * @param {HTMLElement} row
- * @param {Set} suppressedRows The rows the pager marked as suppressed
+ * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  * @return {boolean}
  */
-function isHandled( row, suppressedRows ) {
-	return !!row.querySelector( HELD_VERDICT_SELECTOR ) || suppressedRows.has( row );
+function isHandled( row, handledOutsideAbuseReviewRows ) {
+	return !!row.querySelector( HELD_VERDICT_SELECTOR ) || handledOutsideAbuseReviewRows.has( row );
+}
+
+/**
+ * @param {HTMLElement} row
+ * @return {HTMLElement|null}
+ */
+function makeActionsGroup( row ) {
+	const content = row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__content' );
+	if ( !content ) {
+		return null;
+	}
+
+	const actions = document.createElement( 'div' );
+	actions.className = 'mw-wikimediaantiabuse-abuse-review-actions';
+	content.appendChild( actions );
+
+	return actions;
 }
 
 /**
@@ -29,24 +46,26 @@ function isHandled( row, suppressedRows ) {
  *
  * @param {HTMLElement} row The row the verdict was given to
  * @param {string|null} verdict The verdict now held, or null if it was cleared
- * @param {Set} suppressedRows The rows the pager marked as suppressed
+ * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  */
-function advanceQueue( row, verdict, suppressedRows ) {
+function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
 	if ( verdict === null ) {
 		return;
 	}
 
 	const details = row.querySelector( DETAILS_SELECTOR );
-	if ( details ) {
-		details.open = false;
+	// If the current row is closed, don't advance the queue.
+	if ( !details || !details.open ) {
+		return;
 	}
+	details.open = false;
 
 	for ( let next = row.nextElementSibling; next; next = next.nextElementSibling ) {
 		if ( !next.matches( ROW_SELECTOR ) ) {
 			continue;
 		}
 		const nextDetails = next.querySelector( DETAILS_SELECTOR );
-		if ( nextDetails && !nextDetails.open && !isHandled( next, suppressedRows ) ) {
+		if ( nextDetails && !nextDetails.open && !isHandled( next, handledOutsideAbuseReviewRows ) ) {
 			nextDetails.open = true;
 			return;
 		}
@@ -60,7 +79,7 @@ function advanceQueue( row, verdict, suppressedRows ) {
 function mountRowVerdicts() {
 	const referrer = mw.util.getParamValue( 'referrer' ) || '';
 
-	const suppressedRows = new Set();
+	const handledOutsideAbuseReviewRows = new Set();
 	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
 		let props;
@@ -83,17 +102,18 @@ function mountRowVerdicts() {
 			return;
 		}
 
-		if ( props.isSuppressed ) {
-			suppressedRows.add( row );
+		if ( props.isHandledOutsideAbuseReview ) {
+			handledOutsideAbuseReviewRows.add( row );
 		}
 
 		const details = row.querySelector( DETAILS_SELECTOR );
 		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
 			detailsElement: details,
+			actionsElement: makeActionsGroup( row ),
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
-				advanceQueue( row, verdict, suppressedRows );
+				advanceQueue( row, verdict, handledOutsideAbuseReviewRows );
 			}
 		} ) );
 		// Without a per-app id prefix, every row's Codex components generate the same ids.

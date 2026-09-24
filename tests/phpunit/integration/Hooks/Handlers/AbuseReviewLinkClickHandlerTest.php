@@ -6,7 +6,6 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Hooks\Handler
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewPermissionManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Tests\Unit\Permissions\MockAuthorityTrait;
@@ -131,7 +130,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			],
 			'was posted' => [
 				'query' => [
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_REVERT,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 				],
 				'wasPosted' => true,
@@ -172,7 +171,8 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 	): void {
 		$handler = new AbuseReviewLinkClickHandler(
 			$client,
-			new AbuseReviewPermissionManager( $this->getServiceContainer()->getChangeTagsStore() )
+			$this->getServiceContainer()->getChangeTagsStore(),
+			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' )
 		);
 
 		$handler->onBeforeInitialize(

@@ -50,10 +50,8 @@ class EchoPersonalInfoFlagNotificationModerator implements IPersonalInfoFlagNoti
 		DeferredUpdates::addCallableUpdate(
 			static function () use ( $eventMapper, $pageId, $revisionIds, $hide ): void {
 				$eventIds = [];
-				foreach ( $eventMapper->fetchByPage( $pageId ) as $event ) {
-					if ( $event->getType() === PersonalInfoFlagNotifier::EVENT_TYPE
-						&& in_array( $event->getExtraParam( 'revisionId' ), $revisionIds, true )
-					) {
+				foreach ( $eventMapper->fetchByPage( $pageId, PersonalInfoFlagNotifier::EVENT_TYPE ) as $event ) {
+					if ( in_array( $event->getExtraParam( 'revisionId' ), $revisionIds, true ) ) {
 						$eventIds[] = $event->getId();
 					}
 				}

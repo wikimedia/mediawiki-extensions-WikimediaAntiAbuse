@@ -35,6 +35,10 @@
 			"value": false,
 			"description": "Enables Echo notifications, sent to opted-in users with the viewsuppressed or suppressrevision right, when the mw-private-personal-info tag is applied to a revision. Requires the Echo extension."
 		},
+		"WikimediaAntiAbuseVandalismTagAlphaTesters": {
+			"value": [],
+			"description": "The list of usernames that are in the alpha test for the likely vandalism classifier."
+		},
 		"WikimediaAntiAbuseCoPEModelConfig": {
 			"value": {
 				"url": "",
@@ -50,6 +54,13 @@
 		"WikimediaAntiAbuseEnableModelChecks": {
 			"value": false,
 			"description": "Enables the revision model-check pipeline."
+		},
+		"WikimediaAntiAbuseAbuseReviewDelayMinutes": {
+			"value": {
+				"mw-private-personal-info": 0,
+				"mw-private-vandalism": 10
+			},
+			"description": "The number of minutes for which Special:AbuseReview hides a new revision, keyed by reviewable tag. A reviewer can show the hidden revisions with the \"include recent edits\" filter. Use 0 to show every revision as soon as it is tagged."
 		}
 	},
 	"HookHandlers": {
@@ -57,7 +68,8 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewLinkClickHandler",
 			"services": [
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
-				"WikimediaAntiAbuseAbuseReviewPermissionManager"
+				"ChangeTagsStore",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider"
 			]
 		},
 		"ChangeTagsHandler": {
@@ -100,6 +112,12 @@
 				"ConnectionProvider",
 				"ExtensionRegistry"
 			]
+		},
+		"VandalismAlphaTesterHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\VandalismAlphaTesterHandler",
+			"services": [
+				"MainConfig"
+			]
 		}
 	},
 	"Hooks": {
@@ -111,6 +129,7 @@
 		"GetPreferences": "NotificationPreferencesHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
+		"UserGetRights": "VandalismAlphaTesterHandler",
 		"UserGroupsChanged": "UserRightsNotificationHandler"
 	},
 	"DomainEventIngresses": [
@@ -131,18 +150,22 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Special\\SpecialAbuseReview",
 			"services": [
 				"ChangeTagsStore",
-				"WikimediaAntiAbuseAbuseReviewPermissionManager",
-				"ChangeTagsFormatter",
 				"RevisionStore",
 				"ArchivedRevisionLookup",
 				"LinkBatchFactory",
 				"RowCommentFormatter",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
 				"TitleFactory",
-				"ConnectionProvider"
+				"ConnectionProvider",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
+				"WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup",
+				"WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter"
 			]
 		}
 	},
+	"AvailableRights": [
+		"abusereview-vandalism-alpha-tester"
+	],
 	"ResourceModules": {
 		"ext.wikimediaAntiAbuse.styles": {
 			"class": "MediaWiki\\ResourceLoader\\CodexModule",
@@ -154,13 +177,13 @@
 				"CdxIcon",
 				"CdxMessage",
 				"CdxProgressIndicator",
-				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
 				"CdxCheckbox",
 				"CdxInfoChip",
 				"CdxMultiselectLookup",
-				"CdxChipInput"
+				"CdxChipInput",
+				"CdxTabs"
 			],
 			"styles": [
 				"special.abuseReview.less"
@@ -171,9 +194,10 @@
 			"localBasePath": "modules/ext.wikimediaAntiAbuse",
 			"remoteExtPath": "WikimediaAntiAbuse/modules/ext.wikimediaAntiAbuse",
 			"codexComponents": [
+				"CdxButton",
 				"CdxIcon",
+				"CdxInfoChip",
 				"CdxProgressIndicator",
-				"CdxToggleButton",
 				"CdxDialog",
 				"CdxField",
 				"CdxCheckbox",
@@ -204,15 +228,18 @@
 			],
 			"dependencies": [
 				"mediawiki.api",
-				"mediawiki.diff"
+				"mediawiki.diff",
+				"mediawiki.jqueryMsg"
 			],
 			"messages": [
 				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",
-				"wikimediaantiabuse-special-abuse-review-action-unmark-false-positive",
 				"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action",
-				"wikimediaantiabuse-special-abuse-review-action-unmark-no-further-action",
-				"wikimediaantiabuse-special-abuse-review-closed-row-note",
-				"wikimediaantiabuse-special-abuse-review-already-suppressed-note",
+				"wikimediaantiabuse-special-abuse-review-action-send-back-for-review",
+				"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip",
+				"wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive",
+				"wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action",
+				"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info",
+				"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism",
 				"wikimediaantiabuse-special-abuse-review-action-in-progress",
 				"wikimediaantiabuse-special-abuse-review-action-error",
 				"wikimediaantiabuse-special-abuse-review-filter-close",
@@ -220,6 +247,9 @@
 				"wikimediaantiabuse-special-abuse-review-show-false-positives",
 				"wikimediaantiabuse-special-abuse-review-show-handled-revisions",
 				"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help",
+				"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header",
+				"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help",
+				"wikimediaantiabuse-special-abuse-review-show-recent-edits",
 				"wikimediaantiabuse-special-abuse-review-filter-submit",
 				"wikimediaantiabuse-special-abuse-review-filter-open-button",
 				"wikimediaantiabuse-special-abuse-review-filter-username-header",
@@ -312,6 +342,7 @@
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\": "tests/"
 	},
 	"TestAutoloadClasses": {
+		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\Integration\\AbuseReviewRevisionTestTrait": "tests/phpunit/integration/AbuseReviewRevisionTestTrait.php",
 		"MediaWiki\\Extension\\WikimediaAntiAbuse\\Tests\\Integration\\Special\\SpecialAbuseReviewTestBase": "tests/phpunit/integration/Special/SpecialAbuseReviewTestBase.php"
 	},
 	"ServiceWiringFiles": [

@@ -3,16 +3,17 @@
 declare( strict_types=1 );
 
 use MediaWiki\Config\ServiceOptions;
-use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewInstrumentationClient;
-use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewPermissionManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
@@ -31,6 +32,15 @@ use MediaWiki\Registration\ExtensionRegistry;
 
 /** @phpcs-require-sorted-array */
 return [
+	'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewEnabledTagsProvider(
+		new ServiceOptions(
+			AbuseReviewEnabledTagsProvider::CONSTRUCTOR_OPTIONS,
+			$services->getMainConfig()
+		)
+	),
+
 	'WikimediaAntiAbuseAbuseReviewInstrumentationClient' => static function (
 		MediaWikiServices $services
 	): IAbuseReviewInstrumentationClient {
@@ -42,21 +52,9 @@ return [
 		return new AbuseReviewInstrumentationClient( $services->getService( 'EventLogging.MetricsClientFactory' ) );
 	},
 
-	'WikimediaAntiAbuseAbuseReviewPermissionManager' => static function (
-		MediaWikiServices $services
-	): AbuseReviewPermissionManager {
-		return new AbuseReviewPermissionManager( $services->getChangeTagsStore() );
-	},
-
 	'WikimediaAntiAbuseAbuseReviewTagService' => static function ( MediaWikiServices $services ) {
-		$config = $services->getMainConfig();
-		$enabledReviewableTags = [];
-		if ( $config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' ) ) {
-			$enabledReviewableTags[] = ChangeTagsHandler::PERSONAL_INFO_TAG;
-		}
-
 		return new AbuseReviewTagService(
-			$enabledReviewableTags,
+			$services->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' ),
 			$services->getChangeTagsStore(),
 			$services->getActorNormalization(),
 			$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' ),
@@ -72,6 +70,23 @@ return [
 	'WikimediaAntiAbuseAbuseReviewVerdictAttribution' => static fn (
 		MediaWikiServices $services
 	) => new AbuseReviewVerdictAttribution( $services->get( 'WikimediaAntiAbuseLogger' ) ),
+
+	'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewVerdictAttributionFormatter(
+		$services->getLinkRenderer(),
+		$services->getTitleFactory()
+	),
+
+	'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewVerdictPerformerLookup(
+		$services->getChangeTagsStore(),
+		$services->getUserIdentityLookup(),
+		$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' ),
+		$services->getConnectionProvider(),
+		$services->get( 'WikimediaAntiAbuseAbuseReviewEnabledTagsProvider' )
+	),
 
 	'WikimediaAntiAbuseContentPolicyEvaluator' => static fn (
 		MediaWikiServices $services

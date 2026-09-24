@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
 use MediaWiki\Revision\RevisionRecord;
@@ -24,10 +25,19 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
  */
 class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
-	private const string SUPPRESS_LABEL = '(wikimediaantiabuse-special-abuse-review-action-suppress)';
-	private const string REVISION_DELETE_LABEL =
-		'(wikimediaantiabuse-special-abuse-review-action-revision-delete)';
-	private const string REVERT_LABEL = '(wikimediaantiabuse-special-abuse-review-action-revert)';
+	private const array VERDICT_CHIPS = [
+		'falsePositive' => [
+			'class' => 'cdx-info-chip--warning',
+			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)',
+		],
+		'noFurtherAction' => [
+			'class' => 'cdx-info-chip--success',
+			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action)',
+		],
+	];
+
+	/** With a delay of 10 minutes the cutoff is 20260101010104, in the middle of the rows of ::addDBDataOnce. */
+	private const string RECENT_EDITS_NOW = '20260101011104';
 
 	private static int $suppressedContentRevId;
 	private static int $notTaggedContentRevId;
@@ -38,7 +48,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	private static int $noFurtherActionRevId;
 	private static int $deletedNoFurtherActionRevId;
 	private static int $revertableTaggedContentRevId;
-	private static int $revertableTaggedContentParentRevId;
+	private static int $revertedVandalismRevId;
 
 	private static string $firstPageName;
 	private static string $deletedNoFurtherActionPageName;
@@ -53,6 +63,15 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		callable $expectedRevIdsCallback,
 		int $expectedFiltersAppliedCount
 	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
+		] );
+		// VandalismAlphaTesterHandler will add rights to the user, so skip it so the rights
+		// we specify in the test are the only ones granted
+		$this->clearHook( 'UserGetRights' );
+
 		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( $authorityRights, true ) ] );
 		$testUser = $this->getTestUser( [ 'suppress-test' ] )->getUser();
 		$data = [];
@@ -73,8 +92,19 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$this->getServiceContainer()->getTitleFactory()->newFromText( ... )
 		) );
 
+		// The flags being shown would be the one in 'tab', defaulting to personal info if the
+		// no tab is selected or the tab is not known
+		$validTabs = [ 'mw-private-personal-info', 'mw-private-vandalism' ];
+		$validatedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : null;
+		$expectedFlag = $validatedTab ?? 'mw-private-personal-info';
+
 		$context = RequestContext::getMain();
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		if ( ( $data['tab'] ?? '' ) === '' ) {
+			$expectedTab = 'mw-private-personal-info';
+		} else {
+			$expectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : '';
+		}
 		$client->expects( $this->once() )
 			->method( 'submitInteraction' )
 			->with(
@@ -89,6 +119,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 						'username' => [],
 						'revision' => $expectedRevisionIdFilter,
 						'page' => $expectedPageFilter,
+						'tab' => $expectedTab,
 					]
 				]
 			);
@@ -102,9 +133,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$expectedActiveFiltersArray = [
 			'showFalsePositives' => $includeFalsePositiveRevisions,
 			'showHandledRevisions' => $includeHandledRevisions,
+			'showRecentEdits' => false,
+			'recentEditsDelayMinutes' => $expectedTab === 'mw-private-vandalism' ? 10 : 0,
 			'username' => [],
 			'page' => $expectedPageFilter,
 			'revision' => $expectedRevisionIdFilter,
+			'tab' => $validatedTab ?? '',
 		];
 		$this->assertArrayEquals(
 			$expectedActiveFiltersArray,
@@ -113,17 +147,86 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			true
 		);
 
-		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElement( $html, '.mw-specialpage-summary' );
+		/** @var AbuseReviewVerdictAttributionFormatter $attributionFormatter */
+		$attributionFormatter = $this->getServiceContainer()->get(
+			'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter'
+		);
+		$this->assertSame(
+			[
+				'recorded' => $attributionFormatter->format( $context, $testUser, true ),
+				'returned' => $attributionFormatter->format( $context, $testUser, false ),
+			],
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseViewerBylines']
+		);
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElementInNode(
+			$htmlAsNode,
+			'.mw-specialpage-summary',
+			true
+		);
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-summary)',
 			$specialPageSummaryHtml
 		);
 
-		$this->verifyFilterButtonPresent( $html, $expectedFiltersAppliedCount );
+		if ( $expectedTab ) {
+			$tabSummaryHtml = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-summary',
+				true
+			);
+			$this->assertStringContainsString(
+				'(wikimediaantiabuse-special-abuse-review-tab-summary-' . $expectedTab . ')',
+				$tabSummaryHtml
+			);
+			if ( $expectedTab === 'mw-private-vandalism' ) {
+				$alphaTestWarning = $this->assertSelectorMatchesOneElementInNode(
+					$htmlAsNode,
+					'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning',
+					true
+				);
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism)',
+					$alphaTestWarning
+				);
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-recent-edits-hidden: 10)',
+					$tabSummaryHtml
+				);
+			} else {
+				$this->assertStringNotContainsString(
+					'wikimediaantiabuse-special-abuse-review-recent-edits-hidden',
+					$tabSummaryHtml
+				);
+				$this->assertNull( DOMCompat::querySelector(
+					$htmlAsNode,
+					'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning'
+				) );
+			}
+		} else {
+			$this->assertNull( DOMCompat::querySelector(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-summary'
+			) );
+		}
 
-		$tablePagerHtml = $this->commonVerifyTablePager( $html, true );
+		$this->verifyFilterButtonPresent( $htmlAsNode, $expectedFiltersAppliedCount );
 
 		$expectedRevIds = $expectedRevIdsCallback();
+		$tablePagerHtml = $this->commonVerifyTablePager( $htmlAsNode, count( $expectedRevIds ) !== 0 );
+
+		// The tabs should only be shown if the user has the ability to see at least two tabs
+		$shouldDisplayTabs = in_array( 'abusereview-vandalism-alpha-tester', $authorityRights, true ) &&
+			array_intersect( [ 'viewsuppressed', 'suppressrevision' ], $authorityRights );
+
+		if ( ( $data['tab'] ?? '' ) === '' ) {
+			$expectedSelectedTab = 'mw-private-personal-info';
+		} else {
+			$expectedSelectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : null;
+		}
+		$this->assertTabElement( $htmlAsNode, $shouldDisplayTabs, $expectedSelectedTab );
+
 		$tableRows = DOMCompat::querySelectorAll(
 			DOMUtils::parseHTML( $tablePagerHtml ), self::ROW_SELECTOR
 		);
@@ -154,6 +257,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$actualRevision = $isArchivedRevision ?
 				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
 				$revisionStore->getRevisionById( $actualRevId );
+			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
 
 			$timestampCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -162,26 +266,51 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			$timestampCellHtml = DOMCompat::getInnerHTML( $timestampCellNode );
 			$this->assertStringContainsString(
 				$qqxLanguage->userTimeAndDate( $actualRevision->getTimestamp(), $testUser ),
-				$timestampCellHtml
+				$timestampCellHtml,
+				'The timestamp cell carries the formatted time of the revision'
 			);
 
 			// Link to diff should only exist if the user can see the revision text
 			$timestampLink = DOMCompat::querySelector( $timestampCellNode, 'a' );
-			$href = DOMCompat::getAttribute( $timestampLink, 'href' );
-			$expectedQueryParamsForTimestampLink = array_merge( $data, [
-				'title' => 'Special:AbuseReview',
-				'revision' => $actualRevId,
-				'ar_revid' => $actualRevId,
-				'ar_subtype' => 'timestamp',
-			] );
-			unset( $expectedQueryParamsForTimestampLink['referrer'] );
-			$this->assertArrayEquals(
-				$expectedQueryParamsForTimestampLink,
-				wfCgiToArray( parse_url( $href )['query'] ),
-				false,
-				true,
-				'The timestamp link query parameters were not as expected'
-			);
+			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
+				$timestampLinkQuery = [
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'timestamp',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+				];
+				if ( $isArchivedRevision ) {
+					$expectedTimestampHref = SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( [
+						'target' => $pageTitle->getPrefixedText(),
+						'timestamp' => $actualRevision->getTimestamp(),
+						'diff' => 'prev',
+					] + $timestampLinkQuery );
+				} else {
+					$expectedTimestampHref = $pageTitle->getLocalURL( [
+						'diff' => 'prev',
+						'oldid' => $actualRevId,
+					] + $timestampLinkQuery );
+				}
+				$this->assertSame(
+					$expectedTimestampHref,
+					DOMCompat::getAttribute( $timestampLink, 'href' ),
+					'the timestamp links to the diff of this revision'
+				);
+			} else {
+				$this->assertNull(
+					$timestampLink,
+					'the timestamp is left unlinked when the viewer may not see the revision text'
+				);
+			}
+
+			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
+				$this->assertStringContainsString( 'history-deleted', $timestampCellHtml );
+				$this->assertSame(
+					$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED ),
+					str_contains( $timestampCellHtml, 'mw-history-suppressed' ),
+					'suppressed revisions are doubly struck through'
+				);
+			} else {
+				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
+			}
 
 			$detailsCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -202,7 +331,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'.mw-wikimediaantiabuse-abuse-review-row__page'
 			);
 			$pageCellHtml = DOMCompat::getOuterHTML( $pageCellNode );
-			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
 			$this->assertStringContainsString( $pageTitle->getPrefixedText(), $pageCellHtml );
 			$this->assertStringContainsString(
 				'(wikimediaantiabuse-special-abuse-review-show-details)',
@@ -243,16 +371,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
 					$detailsCellHtml
 				);
-				$fullDiffHref = DOMCompat::getAttribute(
-					$this->assertSelectorMatchesOneElementInNode(
-						$tableRow,
-						'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
-					),
-					'href'
+				$fullDiffLink = $this->assertSelectorMatchesOneElementInNode(
+					$tableRow,
+					'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
+				);
+				$fullDiffHref = DOMCompat::getAttribute( $fullDiffLink, 'href' );
+				$this->assertNull(
+					DOMCompat::getAttribute( $fullDiffLink, 'target' ),
+					'no target=_blank on the link'
 				);
 				if ( $isArchivedRevision ) {
-					// An archived revision has left the revision table, so an oldid= link to it
-					// would be dead.
 					$undeleteQuery = 'target=' . urlencode( $pageTitle->getPrefixedText() ) .
 						'&timestamp=' . $actualRevision->getTimestamp();
 					$this->assertStringContainsString( 'Special:Undelete', $fullDiffHref );
@@ -275,7 +403,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				);
 			}
 
-			// The row title carries the visibility state the timestamp used to.
 			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
 				$this->assertStringContainsString( 'history-deleted', $pageCellHtml );
 				$this->assertSame(
@@ -317,22 +444,24 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'history-deleted', $authorCellHtml );
 			}
 
-			$tagsCellHtml = $this->assertSelectorMatchesOneElementInNode(
+			$tagsCell = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.mw-wikimediaantiabuse-abuse-review-row__tags',
-				true
+				'.mw-wikimediaantiabuse-abuse-review-row__tags'
 			);
+			$tagsCellHtml = DOMCompat::getOuterHTML( $tagsCell );
 			$this->assertStringContainsString(
-				'(tag-mw-private-personal-info)',
-				$tagsCellHtml
+				"(wikimediaantiabuse-special-abuse-review-flag-chip-$expectedFlag)",
+				$tagsCellHtml,
+				'the flag is named by its own chip label, not the wiki-wide tag description'
 			);
+			$this->assertSelectorMatchesOneElementInNode( $tagsCell, '.cdx-info-chip' );
 			$this->assertStringNotContainsString(
-				'(tag-mw-private-personal-info-false-positive)',
+				"(tag-$expectedFlag-false-positive)",
 				$tagsCellHtml,
 				'the flag description is not replaced by the verdict'
 			);
 			$this->assertStringNotContainsString(
-				'(tag-mw-private-personal-info-no-further-action)',
+				"(tag-$expectedFlag-no-further-action)",
 				$tagsCellHtml,
 				'The "no further action" tag description should never be present in the page'
 			);
@@ -350,20 +479,25 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 			$verdicts = $this->getVerdictsPayload( $tableRow );
 			$this->assertSame(
-				'mw-private-personal-info',
+				$expectedFlag,
 				$verdicts['tag'],
-				'the tag the mark and unmark actions operate on'
+				'The tag the mark and unmark actions operate on should be as expected'
 			);
 
-			// A suppressed revision has been handled, which is what stops it being marked.
-			$isSuppressedRow = in_array(
+			// Depending on the tag, the row may be handled by an action outside AbuseReview (for
+			// personal info the content being suppressed and vandalism the edit being reverted).
+			$isRowHandledOutsideAbuseReview = in_array(
 				$actualRevId,
-				[ static::$suppressedContentRevId, static::$suppressedFalsePositiveRevId ],
+				[
+					static::$suppressedContentRevId,
+					static::$suppressedFalsePositiveRevId,
+					static::$revertedVandalismRevId,
+				],
 				true
 			);
 			$this->assertSame(
-				$isSuppressedRow,
-				$verdicts['isSuppressed'],
+				$isRowHandledOutsideAbuseReview,
+				$verdicts['isHandledOutsideAbuseReview'],
 				'a suppressed revision is reported as already handled'
 			);
 			$this->assertSame(
@@ -377,105 +511,38 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'the row reports whether it has already been marked as needing no further action'
 			);
 
-			$suppressedBlocksMark = $isSuppressedRow && !$isFalsePositiveRow && !$isNoFurtherActionRow;
-			$rowRefuses = $suppressedBlocksMark || !$isOpenRow;
-			$note = $suppressedBlocksMark
-				? '(wikimediaantiabuse-special-abuse-review-already-suppressed-note)'
-				: '(wikimediaantiabuse-special-abuse-review-closed-row-note)';
-			$this->assertVerdictButtons(
-				$tableRow,
-				[
+			$heldVerdict = null;
+			if ( $isFalsePositiveRow ) {
+				$heldVerdict = 'falsePositive';
+			} elseif ( $isNoFurtherActionRow ) {
+				$heldVerdict = 'noFurtherAction';
+			}
+			if ( $heldVerdict !== null ) {
+				$this->assertVerdictChip( $tableRow, $heldVerdict );
+			} else {
+				$note = "(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-$expectedSelectedTab)";
+				$this->assertVerdictButtons(
+					$tableRow,
 					[
-						'pressed' => $isNoFurtherActionRow,
-						'disabled' => $rowRefuses || $isFalsePositiveRow,
-						'title' => $rowRefuses
-							? $note
-							: self::getExpectedVerdictLabel( 'no-further-action', $isNoFurtherActionRow ),
-					],
-					[
-						'pressed' => $isFalsePositiveRow,
-						'disabled' => $rowRefuses || $isNoFurtherActionRow,
-						'title' => $rowRefuses
-							? $note
-							: self::getExpectedVerdictLabel( 'false-positive', $isFalsePositiveRow ),
-					],
-				]
-			);
-
-			$actionLinks = $this->getActionLinks( $tableRow );
-
-			// Special:RevisionDelete resolves a type=revision id against the live revision
-			// table, so an archived row is not offered the link at all.
-			$expectsRevisionDelete = !$isArchivedRevision
-				&& in_array( 'deleterevision', $authorityRights, true );
-			$this->assertSame(
-				$expectsRevisionDelete,
-				isset( $actionLinks[self::REVISION_DELETE_LABEL] ),
-				'revision deletion offered only on a live revision to a user who may delete revisions'
-			);
-			if ( $expectsRevisionDelete ) {
-				$this->assertStringContainsString(
-					'ids=' . $actualRevId,
-					$actionLinks[self::REVISION_DELETE_LABEL]
-				);
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_REVISION_DELETE,
-					$actionLinks[self::REVISION_DELETE_LABEL],
-					'the revision deletion link names the click it stands for'
+						[
+							'disabled' => $isRowHandledOutsideAbuseReview,
+							'title' => $isRowHandledOutsideAbuseReview
+								? $note
+								: '(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
+						],
+						[
+							'disabled' => $isRowHandledOutsideAbuseReview,
+							'title' => $isRowHandledOutsideAbuseReview
+								? $note
+								: '(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
+						],
+					]
 				);
 			}
 
-			// Reverting is offered only where core would accept the undo: a live revision on a
-			// live page, with a parent whose text it will still show. Of the fixtures only the
-			// revertable one qualifies; the rest are archived, parentless or text-deleted.
-			$isRevertableRow = $actualRevId === static::$revertableTaggedContentRevId;
-			$this->assertSame(
-				$isRevertableRow,
-				isset( $actionLinks[self::REVERT_LABEL] ),
-				'revert is offered only where the undo can succeed'
-			);
-			if ( $isRevertableRow ) {
-				$this->assertStringContainsString(
-					'action=edit&undoafter=' . static::$revertableTaggedContentParentRevId .
-						'&undo=' . static::$revertableTaggedContentRevId,
-					$actionLinks[self::REVERT_LABEL]
-				);
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_REVERT,
-					$actionLinks[self::REVERT_LABEL],
-					'the revert link names the click it stands for'
-				);
-			}
-
-			// The history offers its visibility checkboxes to a holder of deleterevision, so
-			// suppressrevision alone would reach a page with nothing to tick.
-			$expectsSuppress = !$isArchivedRevision
-				&& in_array( 'deleterevision', $authorityRights, true )
-				&& in_array( 'suppressrevision', $authorityRights, true );
-			$this->assertSame(
-				$expectsSuppress,
-				isset( $actionLinks[self::SUPPRESS_LABEL] ),
-				'suppression offered only where the history will let the reviewer act'
-			);
-			if ( $expectsSuppress ) {
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=' .
-						AbuseReviewLinkClickHandler::SUBTYPE_SUPPRESS,
-					$actionLinks[self::SUPPRESS_LABEL],
-					'the suppression link names the click it stands for'
-				);
-			}
-
-			$this->assertSame(
-				array_values( array_filter( [
-					$expectsSuppress ? self::SUPPRESS_LABEL : null,
-					$expectsRevisionDelete ? self::REVISION_DELETE_LABEL : null,
-					$isRevertableRow ? self::REVERT_LABEL : null,
-				] ) ),
-				array_keys( $actionLinks ),
-				'every action the viewer is offered is a link, in that order, and nothing else is'
+			$this->assertNull(
+				DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-actions' ),
+				'the server renders no actions for the revision itself'
 			);
 		}
 
@@ -492,6 +559,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	public static function provideViewWhenRevisionsPresent(): array {
 		$allRights = [
 			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+			'abusereview-vandalism-alpha-tester',
 		];
 		return [
 			'False positives and handled revisions excluded' => [
@@ -733,7 +801,208 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'expectedRevIdsCallback' => static fn () => [ static::$deletedNoFurtherActionRevId ],
 				'expectedFiltersAppliedCount' => 2,
 			],
+			'Vandalism tab is selected' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-vandalism' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [ static::$revertableTaggedContentRevId ],
+				'expectedFiltersAppliedCount' => 0,
+			],
+			'Vandalism tab is selected showing handled revisions' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => true,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-vandalism' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertedVandalismRevId,
+					static::$revertableTaggedContentRevId,
+				],
+				'expectedFiltersAppliedCount' => 1,
+			],
+			'Personal info tab is selected' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-personal-info' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedFiltersAppliedCount' => 0,
+			],
+			'Selected tab is unknown' => [
+				'includeFalsePositiveRevisions' => false,
+				'includeHandledRevisions' => false,
+				'descendingOrder' => true,
+				'extraQueryParamsCallback' => static fn () => [ 'tab' => 'mw-private-unknown' ],
+				'authorityRights' => $allRights,
+				'expectedRevIdsCallback' => static fn () => [],
+				'expectedFiltersAppliedCount' => 0,
+			],
 		];
+	}
+
+	/** @dataProvider provideViewWithRecentEditsFilter */
+	public function testViewWithRecentEditsFilter(
+		array $delayMinutesByTag,
+		string $tab,
+		bool $showRecentEdits,
+		callable $expectedRevIdsCallback,
+		array $expectedTabCounts,
+		int $expectedFiltersApplied
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => $delayMinutesByTag,
+		] );
+		$this->setGroupPermissions( [ 'suppress-test' => array_fill_keys( [
+			'viewsuppressed', 'deleterevision', 'suppressrevision', 'deletedhistory', 'deletedtext',
+			'abusereview-vandalism-alpha-tester',
+		], true ) ] );
+
+		$data = [ 'tab' => $tab ];
+		if ( $showRecentEdits ) {
+			$data['showRecentEdits'] = '1';
+		}
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( $data ) );
+		$context->setUser( $this->getTestUser( [ 'suppress-test' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		ConvertibleTimestamp::setFakeTime( self::RECENT_EDITS_NOW );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$this->assertSame(
+			$delayMinutesByTag[$tab] ?? 0,
+			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseActiveFilters']['recentEditsDelayMinutes'],
+			'The filter dialog needs the delay of the selected queue for its label'
+		);
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		$this->assertSame(
+			$expectedRevIdsCallback(),
+			array_map(
+				static fn ( Element $row ): int => (int)DOMCompat::getAttribute( $row, 'data-rev-id' ),
+				iterator_to_array( DOMCompat::querySelectorAll( $htmlAsNode, self::ROW_SELECTOR ) )
+			)
+		);
+
+		foreach ( $expectedTabCounts as $flag => $expectedCount ) {
+			$selectedTab = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-' . $flag
+			);
+			$tabCount = $this->assertSelectorMatchesOneElementInNode(
+				$selectedTab,
+				'.mw-wikimediaantiabuse-abuse-review-tabs__count .cdx-info-chip__text'
+			);
+			$this->assertSame(
+				$expectedCount,
+				DOMCompat::getInnerHTML( $tabCount ),
+				'A tab counts the default queue of its own flag, which keeps the delay of that flag'
+			);
+		}
+
+		$this->verifyFilterButtonPresent( $htmlAsNode, $expectedFiltersApplied );
+	}
+
+	public static function provideViewWithRecentEditsFilter(): array {
+		$bothQueuesDelayed = [
+			'mw-private-personal-info' => 10,
+			'mw-private-vandalism' => 10,
+		];
+		$delayedQueueTabCounts = [
+			'mw-private-personal-info' => '1',
+			'mw-private-vandalism' => '0',
+		];
+		return [
+			'Personal info queue hides the rows after the cutoff' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => false,
+				'expectedRevIdsCallback' => static fn () => [ static::$taggedContentRevId ],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 0,
+			],
+			'Personal info queue shows them again when the filter is set' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 1,
+			],
+			'Vandalism queue hides its only row' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-vandalism',
+				'showRecentEdits' => false,
+				'expectedRevIdsCallback' => static fn () => [],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 0,
+			],
+			'Vandalism queue shows it again when the filter is set' => [
+				'delayMinutesByTag' => $bothQueuesDelayed,
+				'tab' => 'mw-private-vandalism',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [ static::$revertableTaggedContentRevId ],
+				'expectedTabCounts' => $delayedQueueTabCounts,
+				'expectedFiltersApplied' => 1,
+			],
+			'Queue with no delay counts no filter for one it does not offer' => [
+				'delayMinutesByTag' => [ 'mw-private-vandalism' => 10 ],
+				'tab' => 'mw-private-personal-info',
+				'showRecentEdits' => true,
+				'expectedRevIdsCallback' => static fn () => [
+					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+				],
+				'expectedTabCounts' => [
+					'mw-private-personal-info' => '3',
+					'mw-private-vandalism' => '0',
+				],
+				'expectedFiltersApplied' => 0,
+			],
+		];
+	}
+
+	public function testViewShowsARecentRevisionNamedInTheFilter(): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
+		] );
+		$this->setGroupPermissions(
+			[ 'vandalism-test' => [ 'abusereview-vandalism-alpha-tester' => true ] ]
+		);
+
+		$context = RequestContext::getMain();
+		$context->setRequest( new FauxRequest( [
+			'tab' => 'mw-private-vandalism',
+			'revision' => [ (string)static::$revertableTaggedContentRevId ],
+		] ) );
+		$context->setUser( $this->getTestUser( [ 'vandalism-test' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		ConvertibleTimestamp::setFakeTime( self::RECENT_EDITS_NOW );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$row = $this->assertSelectorMatchesOneElementInNode(
+			DOMUtils::parseHTML( $html ),
+			self::ROW_SELECTOR
+		);
+		$this->assertSame(
+			static::$revertableTaggedContentRevId,
+			(int)DOMCompat::getAttribute( $row, 'data-rev-id' ),
+			'A revision named in the filter shows even when the queue hides recent edits'
+		);
 	}
 
 	/**
@@ -825,60 +1094,233 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
-	public function testShowsEchoNotificationBannerWhenReferrerIsEchoNotification(): void {
+	/** @dataProvider provideEchoNotificationBannerWhenReferrerIsEchoNotification */
+	public function testEchoNotificationBannerWhenReferrerIsEchoNotification(
+		bool $userCanSeePersonalInfoTag
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+		] );
+		$this->setGroupPermissions( 'abusereview-vandalism-alpha-tester', 'abusereview-vandalism-alpha-tester', true );
 		$context = RequestContext::getMain();
 		$context->setRequest( new FauxRequest( [
 			'referrer' => 'echo_notification',
 			'revision' => [ static::$taggedContentRevId ],
 		] ) );
+		$context->setUser(
+			$userCanSeePersonalInfoTag ?
+				$this->getTestUser( [ 'suppress' ] )->getUser() :
+				$this->getTestUser( [ 'abusereview-vandalism-alpha-tester' ] )->getUser()
+		);
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		if ( $userCanSeePersonalInfoTag ) {
+			$echoBanner = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+			);
+
+			$echoBannerContent = $this->assertSelectorMatchesOneElementInNode(
+				$echoBanner,
+				'.cdx-message__content'
+			);
+
+			$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
+				SpecialPage::getTitleValueFor( 'AbuseReview' ),
+				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)',
+				[],
+				[ 'tab' => 'mw-private-personal-info' ]
+			);
+			// Parameter 2 is 2 because of the deleted tagged content revision and
+			// the revertable tagged content revision
+			$this->assertSame(
+				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, '
+					. $expectedLinkParameter . ')',
+				trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
+				'The echo notification banner should have the expected label'
+			);
+		} else {
+			$this->assertNull( DOMCompat::querySelector(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+			) );
+		}
+	}
+
+	public static function provideEchoNotificationBannerWhenReferrerIsEchoNotification(): array {
+		return [
+			'User can see personal info tag' => [ 'userCanSeePersonalInfoTag' => true ],
+			'User cannot see personal info tag' => [ 'userCanSeePersonalInfoTag' => false ],
+		];
+	}
+
+	/** @dataProvider provideDoesNotShowTabsWhenOnlyOneTagEnabled */
+	public function testDoesNotShowTabsWhenOnlyOneTagEnabled(
+		bool $personalInfoTagEnabled,
+		bool $vandalismTagEnabled
+	): void {
+		$this->setGroupPermissions( 'suppress', 'abusereview-vandalism-alpha-tester', true );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
+			'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+		] );
+
+		$context = RequestContext::getMain();
 		$context->setUser( $this->getTestUser( [ 'suppress' ] )->getUser() );
 		$context->setLanguage( 'qqx' );
 		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
 
-		$echoBanner = $this->assertSelectorMatchesOneElementInNode(
-			DOMUtils::parseHTML( $html ),
-			'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
-		);
-
-		$echoBannerContent = $this->assertSelectorMatchesOneElementInNode(
-			$echoBanner,
-			'.cdx-message__content'
-		);
-
-		$expectedLinkParameter = $this->getServiceContainer()->getLinkRenderer()->makeKnownLink(
-			SpecialPage::getTitleValueFor( 'AbuseReview' ),
-			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner-link)'
-		);
-		// Parameter 2 is 2 because of the deleted tagged content revision and the revertable tagged content revision
-		$this->assertSame(
-			'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, ' . $expectedLinkParameter . ')',
-			trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
-			'The echo notification banner should have the expected label'
-		);
+		$this->assertTabElement( DOMUtils::parseHTML( $html ), false, null );
 	}
 
-	private static function getExpectedVerdictLabel( string $verdict, bool $held ): string {
-		return '(wikimediaantiabuse-special-abuse-review-action-'
-			. ( $held ? 'unmark-' : 'mark-' ) . $verdict . ')';
+	public static function provideDoesNotShowTabsWhenOnlyOneTagEnabled(): array {
+		return [
+			'Only personal info tag enabled' => [
+				'personalInfoEnabled' => true,
+				'vandalismEnabled' => false,
+			],
+			'Only vandalism tag enabled' => [
+				'personalInfoEnabled' => false,
+				'vandalismEnabled' => true,
+			],
+		];
+	}
+
+	/**
+	 * Validates the tab element in the given HTML node.
+	 */
+	private function assertTabElement(
+		Element|Document $htmlAsNode,
+		bool $shouldDisplayTabs,
+		?string $expectedSelectedTab
+	): void {
+		if ( $shouldDisplayTabs ) {
+			$tabsElement = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs'
+			);
+
+			if ( $expectedSelectedTab !== null ) {
+				$selectedTab = $this->assertSelectorMatchesOneElementInNode(
+					$tabsElement,
+					'.cdx-tabs__list__item.mw-wikimediaantiabuse-abuse-review-tab-' . $expectedSelectedTab
+				);
+				$this->assertSame(
+					'true',
+					$selectedTab->getAttribute( 'aria-selected' ),
+					'The selected tab should have been selected'
+				);
+			} else {
+				$this->assertNull(
+					DOMCompat::querySelector(
+						$tabsElement,
+						'.cdx-tabs__list__item[aria-selected="true"]'
+					),
+					'No tab should be selected when an unknown tab is selected'
+				);
+			}
+
+			// The number of rows is the number of rows created in ::addDBDataOnce that remain in the "needs review"
+			// state.
+			$expectedTabs = [
+				'mw-private-personal-info' => '3',
+				'mw-private-vandalism' => '1',
+			];
+			$actualTabs = DOMCompat::querySelectorAll( $tabsElement, '.cdx-tabs__list__item' );
+			foreach ( $actualTabs as $actualTab ) {
+				$expectedTab = array_key_first( $expectedTabs );
+				$expectedCount = array_shift( $expectedTabs );
+
+				$this->assertSame(
+					'cdx-tabs__list__item mw-wikimediaantiabuse-abuse-review-tab-' . $expectedTab,
+					$actualTab->getAttribute( 'class' ),
+					'Tab should have the expected classes'
+				);
+
+				$infoChipTextElement = $this->assertSelectorMatchesOneElementInNode(
+					$actualTab,
+					'.mw-wikimediaantiabuse-abuse-review-tabs__count .cdx-info-chip__text'
+				);
+
+				$this->assertSame(
+					$expectedCount,
+					DOMCompat::getInnerHTML( $infoChipTextElement ),
+					'Info chip text should have the expected row count'
+				);
+			}
+		} else {
+			$this->assertNull(
+				DOMCompat::querySelector(
+					$htmlAsNode,
+					'.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs'
+				),
+				'Tabs should not be displayed when only one flag is enabled'
+			);
+		}
+	}
+
+	/**
+	 * Asserts the verdict chip in the provided row is as expected
+	 */
+	private function assertVerdictChip( Element $row, string $heldVerdict ): void {
+		$verdicts = $this->assertSelectorMatchesOneElementInNode(
+			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
+		);
+		$this->assertSame(
+			$heldVerdict,
+			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
+			'the row names the verdict it holds, which the queue steps over'
+		);
+		$chip = $this->assertSelectorMatchesOneElementInNode( $verdicts, '.cdx-info-chip' );
+		$this->assertTrue(
+			DOMCompat::getClassList( $chip )->contains( self::VERDICT_CHIPS[$heldVerdict]['class'] ),
+			'the chip carries the status its verdict stands for'
+		);
+		$this->assertSame(
+			self::VERDICT_CHIPS[$heldVerdict]['label'],
+			DOMCompat::getInnerHTML(
+				$this->assertSelectorMatchesOneElementInNode( $chip, '.cdx-info-chip__text' )
+			),
+			'the chip names the verdict the row holds'
+		);
+		$this->assertCount(
+			0,
+			DOMCompat::querySelectorAll( $verdicts, 'button' ),
+			'a row that holds a verdict offers no button to record one'
+		);
 	}
 
 	/**
 	 * @param Element $row
-	 * @param array[] $expected One [ 'pressed' => bool, 'disabled' => bool, 'title' => string ]
-	 *   per button
+	 * @param array[] $expected One [ 'disabled' => bool, 'title' => string ] per button
 	 */
 	private function assertVerdictButtons( Element $row, array $expected ): void {
-		$buttons = DOMCompat::querySelectorAll(
-			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts button'
+		$verdicts = $this->assertSelectorMatchesOneElementInNode(
+			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
 		);
-		$this->assertSameSize( $expected, $buttons, 'one button per verdict' );
+		$this->assertNull(
+			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
+			'a row that holds no verdict names none'
+		);
+		$controls = $this->assertSelectorMatchesOneElementInNode(
+			$verdicts, '.mw-wikimediaantiabuse-abuse-review-verdict-controls'
+		);
+		$buttons = DOMCompat::querySelectorAll( $controls, 'button' );
+		$this->assertSameSize( $expected, $buttons, 'the controls wrapper holds one button per verdict' );
+		$this->assertSameSize(
+			$buttons,
+			DOMCompat::querySelectorAll( $verdicts, 'button' ),
+			'every verdict button of the row sits inside the controls wrapper'
+		);
 
 		foreach ( $expected as $index => $state ) {
 			$button = $buttons[$index];
-			$this->assertSame(
-				$state['pressed'] ? 'true' : 'false',
+			$this->assertNull(
 				DOMCompat::getAttribute( $button, 'aria-pressed' ),
-				"button $index reads as pressed only when the row holds that verdict"
+				"button $index is not announced as a toggle, the chip carrying the state instead"
 			);
 			$this->assertSame(
 				$state['disabled'],
@@ -895,31 +1337,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				"button $index explains itself on hover, a verdict it holds before the note"
 			);
 		}
-	}
-
-	private function getVerdictsPayload( Document|Element $node ): array {
-		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
-			$node,
-			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
-		);
-
-		$payload = json_decode( DOMCompat::getAttribute( $mountPoint, 'data-verdicts' ), true );
-		$this->assertIsArray( $payload, 'the mount point carries a decodable payload' );
-		return $payload;
-	}
-
-	/** @return array<string,string> The href of each rendered revision action, by its label */
-	private function getActionLinks( Document|Element $node ): array {
-		$links = DOMCompat::querySelectorAll(
-			$node,
-			'.mw-wikimediaantiabuse-abuse-review-actions a'
-		);
-
-		$hrefs = [];
-		foreach ( $links as $link ) {
-			$hrefs[DOMCompat::getInnerHTML( $link )] = DOMCompat::getAttribute( $link, 'href' );
-		}
-		return $hrefs;
 	}
 
 	public function addDBDataOnce(): void {
@@ -984,15 +1401,19 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->assertStatusGood( $deletedTaggedContentEditStatus );
 		static::$deletedTaggedContentRevId = $deletedTaggedContentEditStatus->getNewRevision()->getId();
 
-		// A tagged revision whose page and parent both stay live, so the undo can succeed.
+		// A tagged revision whose page and parent both stay live.
 		ConvertibleTimestamp::setFakeTime( '20260101010107' );
 		$fifthPage = $this->getNonexistingTestPage();
 		$revertableParentEditStatus = $this->editPage( $fifthPage, 'Content to revert to' );
 		$this->assertStatusGood( $revertableParentEditStatus );
-		static::$revertableTaggedContentParentRevId = $revertableParentEditStatus->getNewRevision()->getId();
 		$revertableEditStatus = $this->editPage( $fifthPage, 'Revertable tagged content' );
 		$this->assertStatusGood( $revertableEditStatus );
 		static::$revertableTaggedContentRevId = $revertableEditStatus->getNewRevision()->getId();
+
+		ConvertibleTimestamp::setFakeTime( '20260101010108' );
+		$revertedEditStatus = $this->editPage( $firstPage, 'Reverted content' );
+		$this->assertStatusGood( $revertedEditStatus );
+		static::$revertedVandalismRevId = $revertedEditStatus->getNewRevision()->getId();
 
 		ConvertibleTimestamp::setFakeTime( false );
 
@@ -1033,9 +1454,14 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			static::$deletedNoFurtherActionRevId
 		);
 		$changeTagsStore->addTags(
-			[ 'mw-private-personal-info' ],
+			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$revertableTaggedContentRevId
+		);
+		$changeTagsStore->addTags(
+			[ 'mw-private-vandalism', 'mw-reverted' ],
+			null,
+			static::$revertedVandalismRevId
 		);
 
 		$this->revisionDelete(
