@@ -89,6 +89,22 @@ class VandalismAlphaTesterHandlerTest extends MediaWikiUnitTestCase {
 				'alphaTesters' => [],
 				'expectedRights' => [ 'viewsuppressed' ],
 			],
+			'CheckUser when personal info tag is disabled' => [
+				'rights' => [ 'checkuser' ],
+				'userName' => 'TestUser',
+				'vandalismTagEnabled' => true,
+				'personalInfoTagEnabled' => false,
+				'alphaTesters' => [],
+				'expectedRights' => [ 'checkuser', 'abusereview-vandalism-alpha-tester' ],
+			],
+			'CheckUser when vandalism tag is disabled' => [
+				'rights' => [ 'checkuser' ],
+				'userName' => 'TestUser',
+				'vandalismTagEnabled' => false,
+				'personalInfoTagEnabled' => true,
+				'alphaTesters' => [],
+				'expectedRights' => [ 'checkuser' ],
+			],
 		];
 	}
 }

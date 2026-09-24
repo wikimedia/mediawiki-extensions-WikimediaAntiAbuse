@@ -25,10 +25,11 @@ class VandalismAlphaTesterHandler implements UserGetRightsHook {
 			 && $this->config->get( 'WikimediaAntiAbuseEnablePersonalInfoTag' );
 
 		// Any user who can see the personal info tag are included in the alpha test, along with
-		// any user who is explictly listed in the alpha testers config.
+		// any user who is explictly listed in the alpha testers config and CheckUsers.
 		if (
 			$userCanSeePersonalInfoTag ||
-			in_array( $user->getName(), $this->config->get( 'WikimediaAntiAbuseVandalismTagAlphaTesters' ), true )
+			in_array( $user->getName(), $this->config->get( 'WikimediaAntiAbuseVandalismTagAlphaTesters' ), true ) ||
+			in_array( 'checkuser', $rights, true )
 		) {
 			$rights[] = 'abusereview-vandalism-alpha-tester';
 		}
