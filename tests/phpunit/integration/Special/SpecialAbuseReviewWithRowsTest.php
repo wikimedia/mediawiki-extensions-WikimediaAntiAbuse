@@ -190,7 +190,15 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'(wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism)',
 					$alphaTestWarning
 				);
+				$this->assertStringContainsString(
+					'(wikimediaantiabuse-special-abuse-review-recent-edits-hidden: 10)',
+					$tabSummaryHtml
+				);
 			} else {
+				$this->assertStringNotContainsString(
+					'wikimediaantiabuse-special-abuse-review-recent-edits-hidden',
+					$tabSummaryHtml
+				);
 				$this->assertNull( DOMCompat::querySelector(
 					$htmlAsNode,
 					'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning'
