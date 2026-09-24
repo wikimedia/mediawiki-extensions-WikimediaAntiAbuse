@@ -105,6 +105,17 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		} else {
 			$expectedTab = in_array( $data['tab'] ?? '', $validTabs, true ) ? $data['tab'] : '';
 		}
+		$expectedAppliedFiltersInInstrumentation = [
+			'show_false_positives' => $includeFalsePositiveRevisions,
+			'show_handled_revisions' => $includeHandledRevisions,
+			'username' => [],
+			'revision' => $expectedRevisionIdFilter,
+			'page' => $expectedPageFilter,
+			'tab' => $expectedTab,
+		];
+		if ( $expectedTab === 'mw-private-vandalism' ) {
+			$expectedAppliedFiltersInInstrumentation['show_recent_edits'] = (bool)( $data['showRecentEdits'] ?? false );
+		}
 		$client->expects( $this->once() )
 			->method( 'submitInteraction' )
 			->with(
@@ -113,14 +124,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				[
 					'is_paging_results' => array_key_exists( 'offset', $data ) || ( $data['dir'] ?? '' ) === 'prev',
 					'pager_limit' => $data['limit'] ?? 50,
-					'applied_filters' => [
-						'show_false_positives' => $includeFalsePositiveRevisions,
-						'show_handled_revisions' => $includeHandledRevisions,
-						'username' => [],
-						'revision' => $expectedRevisionIdFilter,
-						'page' => $expectedPageFilter,
-						'tab' => $expectedTab,
-					]
+					'applied_filters' => $expectedAppliedFiltersInInstrumentation,
 				]
 			);
 		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
@@ -874,6 +878,32 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$context->setRequest( new FauxRequest( $data ) );
 		$context->setUser( $this->getTestUser( [ 'suppress-test' ] )->getUser() );
 		$context->setLanguage( 'qqx' );
+
+		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$expectedFiltersAppliedForInstrumentation = [
+			'show_false_positives' => false,
+			'show_handled_revisions' => false,
+			'username' => [],
+			'revision' => [],
+			'page' => [],
+			'tab' => $tab,
+		];
+		if ( ( $delayMinutesByTag[$tab] ?? 0 ) > 0 ) {
+			$expectedFiltersAppliedForInstrumentation['show_recent_edits'] = $showRecentEdits;
+		}
+		$client->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				$context,
+				'page_load',
+				[
+					'is_paging_results' => array_key_exists( 'offset', $data ) || ( $data['dir'] ?? '' ) === 'prev',
+					'pager_limit' => $data['limit'] ?? 50,
+					'applied_filters' => $expectedFiltersAppliedForInstrumentation,
+				]
+			);
+		$this->setService( 'WikimediaAntiAbuseAbuseReviewInstrumentationClient', $client );
+
 		ConvertibleTimestamp::setFakeTime( self::RECENT_EDITS_NOW );
 		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
 

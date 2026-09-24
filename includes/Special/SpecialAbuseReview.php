@@ -204,7 +204,7 @@ class SpecialAbuseReview extends SpecialPage {
 			]
 		);
 
-		return [
+		$filtersForInstrumentation = [
 			'show_false_positives' => $showFalsePositives,
 			'show_handled_revisions' => $showHandledRevisions,
 			'username' => $this->usernamesFilter,
@@ -212,6 +212,10 @@ class SpecialAbuseReview extends SpecialPage {
 			'page' => $pagersFilterAsStringArray,
 			'tab' => $this->selectedTab,
 		];
+		if ( $configuredDelayMinutes > 0 ) {
+			$filtersForInstrumentation['show_recent_edits'] = $showRecentEdits;
+		}
+		return $filtersForInstrumentation;
 	}
 
 	/**
