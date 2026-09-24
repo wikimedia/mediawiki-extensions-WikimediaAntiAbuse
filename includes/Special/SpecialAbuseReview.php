@@ -382,10 +382,17 @@ class SpecialAbuseReview extends SpecialPage {
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
 			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
+			$selectedTabSummaryHtml = $this->msg( $selectedTabMsgKey )->parseAsBlock();
+			$delayMinutes = $this->getConfiguredDelayMinutes( $this->selectedTab );
+			if ( $delayMinutes > 0 ) {
+				$selectedTabSummaryHtml .= $this->msg( 'wikimediaantiabuse-special-abuse-review-recent-edits-hidden' )
+					->numParams( $delayMinutes )
+					->parseAsBlock();
+			}
 			$selectedTabSummary .= Html::rawElement(
 				'div',
 				[ 'class' => 'mw-wikimediaantiabuse-abuse-review-tab-summary' ],
-				$this->msg( $selectedTabMsgKey )->parseAsBlock()
+				$selectedTabSummaryHtml
 			);
 		}
 

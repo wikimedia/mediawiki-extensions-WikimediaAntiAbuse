@@ -20,6 +20,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "Recent edits",
 	"wikimediaantiabuse-special-abuse-review-show-recent-edits": "Include recent edits (last $1 {{PLURAL:$1|minute|minutes}})",
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help": "Also show the edits made in the last $1 {{PLURAL:$1|minute|minutes}}.",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Edits from the last $1 {{PLURAL:$1|minute|minutes}} are hidden by default. Use filters to include recent edits.",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "Handled revisions include items removed from the default queue because the content was suppressed or a reviewer marked no further action needed.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Apply Filters",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filters",
