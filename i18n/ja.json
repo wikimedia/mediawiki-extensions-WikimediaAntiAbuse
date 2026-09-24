@@ -13,6 +13,7 @@
 	"wikimediaantiabuse-special-abuse-review-summary": "このページでは、レビュー対象として自動的に判定された編集を表示します。フラグは、判定された理由を示します。",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "個人情報を含む可能性が高いと判断された編集です。\n\nオーバーサイトされた内容を閲覧可能な権限を有する利用者のみが閲覧できます。",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "荒らしに該当する可能性が高いと判断された編集です。\n\nアルファテストに参加している利用者のみが閲覧できます。",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism": "この荒らし判定機能は、現在開発中で、アルファテストを行っています。一般公開に先立って、性能評価と利用者からのフィードバックを得るために、限られた利用者にのみ提供中です。",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "レビュー対象として通知された $1 {{PLURAL:$1|件}}を表示しています。これ以外にもレビュー対象の編集が $2 {{PLURAL:$2|件}}あります。$3",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "個人情報を含む可能性がある編集をすべて表示",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "誤判定を含む",

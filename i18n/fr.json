@@ -7,6 +7,7 @@
 	"wikimediaantiabuse-special-abuse-review": "Examen des abus",
 	"wikimediaantiabuse-special-abuse-review-caption": "Révisions signalées pour examen",
 	"wikimediaantiabuse-special-abuse-review-summary": "Cette page affiche les modifications qui ont été automatiquement signalées pour révision.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism": "Cette fonctionnalité de détection du vandalisme est actuellement en phase de test alpha et fait encore l'objet de développements actifs. Elle est accessible à un nombre limité d'utilisateurs afin d'évaluer ses performances et de recueillir leurs commentaires avant un éventuel déploiement plus large.",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Afficher les faux positifs",
 	"wikimediaantiabuse-special-abuse-review-show-handled-revisions": "Afficher les révisions traitées",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filtrer",
