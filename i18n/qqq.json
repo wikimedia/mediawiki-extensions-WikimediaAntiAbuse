@@ -1,6 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
+			"Dreamy Jazz",
 			"Siebrand"
 		]
 	},
@@ -10,7 +11,7 @@
 	"wikimediaantiabuse-special-abuse-review-tabs-label": "Accessible label for the list of flag tabs on [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Label of the tab on [[Special:AbuseReview]] that shows revisions flagged as containing personal information. Keep short as text over around 27 characters will be truncated.\n\nParameters:\n* $1 - the HTML showing the number of flagged revisions in the tab.\n* $2 - the number of flagged revisions in the tab for PLURAL support",
 	"wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism": "Label of the tab on [[Special:AbuseReview]] that shows revisions flagged as vandalism. Keep short as text over around 27 characters will be truncated.\n\nParameters:\n* $1 - the HTML showing the number of flagged revisions in the tab.\n* $2 - the number of flagged revisions in the tab for PLURAL support",
-	"wikimediaantiabuse-special-abuse-review-tab-count-capped": "Row count shown on a tab of [[Special:AbuseReview]] when the tab holds more rows than were counted.\n\nParameters:\n* $1 - the number of rows counted",
+	"wikimediaantiabuse-special-abuse-review-tab-count-capped": "{{optional}}\n{{identical|$1+}}\n\nRow count shown on a tab of [[Special:AbuseReview]] when the tab holds more rows than were counted.\n\nParameters:\n* $1 - the number of rows counted",
 	"wikimediaantiabuse-special-abuse-review-summary": "Introductory text shown on [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "Text shown when the user is viewing the queue of edits flagged as likely personal information on [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Text shown when the user is viewing the queue of edits flagged as likely vandalism on [[Special:AbuseReview]].",

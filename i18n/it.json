@@ -8,6 +8,7 @@
 	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Informazioni personali $1",
 	"wikimediaantiabuse-special-abuse-review-tab-count-capped": "$1+",
 	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Includi falsi positivi",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Le modifiche apportate {{PLURAL:$1|nell'ultimo minuto|negli ultimi $1 minuti}} sono nascoste per impostazione predefinita. Utilizza i filtri per includere le modifiche recenti.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Applica filtri",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filtri",
 	"wikimediaantiabuse-special-abuse-review-filter-close": "Annulla",

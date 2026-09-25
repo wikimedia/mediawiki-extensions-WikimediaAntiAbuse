@@ -21,6 +21,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "Letzte Bearbeitungen",
 	"wikimediaantiabuse-special-abuse-review-show-recent-edits": "Aktuelle Bearbeitungen einbeziehen (die {{PLURAL:$1|letzte Minute|letzten $1 Minuten}})",
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help": "Zeige auch die Änderungen an, {{PLURAL:$1|die in der letzten Minute|die in der letzten $1 Minuten}} vorgenommen wurden.",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Änderungen der letzten {{PLURAL:$1|Minute wird|$1 Minuten werden}} standardmäßig ausgeblendet. Verwende Filter, um die neuesten Änderungen einzublenden.",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "Zu den bearbeiteten Versionen gehören Elemente, die aus der Standardwarteschlange entfernt wurden, weil der Inhalt unterdrückt wurde oder ein Prüfer festgestellt hat, dass keine weiteren Maßnahmen erforderlich sind.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Filter anwenden",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filter",

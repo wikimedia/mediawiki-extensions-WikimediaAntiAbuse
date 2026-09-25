@@ -22,6 +22,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "Tafatirradii u dambeeyay",
 	"wikimediaantiabuse-special-abuse-review-show-recent-edits": "Ku dar tafatirradii u dambeeyay ($1 {{PLURAL:$1|daqiiqo|daqiiqadod}})",
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help": "Sidoo kale muuji tafatirradii la sameeyay $1 {{PLURAL:$1|daqiiqo|daqiiqadood}} ee u dambeeyay.",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Tafatirrada $1 {{PLURAL:$1|daqiiqadii|daqiiqo ee}} u dambeeyay si caadi ah waa loo qariyaa. Isticmaal shaandheeyayaasha si aad ugu darto tafatirradii u dambeeyay.",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "Dib u eegisyada la maareeyey waxaa ku jira kuwa laga saaray safka caadiga ah sababtoo ah nuxurka waa la qariyey ama dib u eeguhu wuxuu calaamadeeyey inaan tallaabo dheeraad ah loo baahnayn.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Codso shaandheeyeyaasha",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Shaandheeyeyaasha",
