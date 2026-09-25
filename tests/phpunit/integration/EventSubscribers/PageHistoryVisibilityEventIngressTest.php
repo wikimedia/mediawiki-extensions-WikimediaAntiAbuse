@@ -5,7 +5,6 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\EventSubscribers;
 
 use MediaWiki\Context\RequestContext;
-use MediaWiki\Extension\Notifications\Mapper\EventMapper;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers\PageHistoryVisibilityEventIngress;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
@@ -51,7 +50,8 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 
 		$this->listener = new PageHistoryVisibilityEventIngress(
 			new EchoPersonalInfoFlagNotificationModerator(
-				$this->getServiceContainer()->get( 'EchoEventMapper' )
+				$this->getServiceContainer()->get( 'EchoEventMapper' ),
+				$this->getServiceContainer()->get( 'EchoEventController' )
 			),
 			$this->getServiceContainer()->getConnectionProvider(),
 			$this->instrumentationClient,
@@ -71,8 +71,7 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 	}
 
 	/** @dataProvider provideVisibilityTransition */
-	public function testModeratesOnVisibilityTransition(
-		bool $initiallyDeleted,
+	public function testDeletesOnVisibilityTransition(
 		int $oldBits,
 		int $newBits,
 		bool $expectedDeleted
@@ -86,12 +85,7 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 		);
 
 		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $revisionId );
-		if ( $initiallyDeleted ) {
-			( new EventMapper() )->toggleDeleted( [ $eventId ], true );
-		}
-
-		$expectsInstrumentationEvent = !$initiallyDeleted && $expectedDeleted;
-		$this->instrumentationClient->expects( $expectsInstrumentationEvent ? $this->once() : $this->never() )
+		$this->instrumentationClient->expects( $expectedDeleted ? $this->once() : $this->never() )
 			->method( 'submitInteraction' )
 			->with(
 				RequestContext::getMain(),
@@ -132,26 +126,22 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 
 	public static function provideVisibilityTransition(): array {
 		return [
-			'suppressing a revision moderates the event' => [
-				'initiallyDeleted' => false,
+			'suppressing a revision deletes the event' => [
 				'oldBits' => 0,
 				'newBits' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
 				'expectedDeleted' => true,
 			],
-			'unsuppressing a revision leaves the event moderated' => [
-				'initiallyDeleted' => true,
+			'unsuppressing a revision does not restore or delete an event' => [
 				'oldBits' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
 				'newBits' => 0,
-				'expectedDeleted' => true,
+				'expectedDeleted' => false,
 			],
 			'plain revision-deletion leaves the event untouched' => [
-				'initiallyDeleted' => false,
 				'oldBits' => 0,
 				'newBits' => RevisionRecord::DELETED_TEXT,
 				'expectedDeleted' => false,
 			],
 			'restricting metadata without hiding text leaves the event untouched' => [
-				'initiallyDeleted' => false,
 				'oldBits' => 0,
 				'newBits' => RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED,
 				'expectedDeleted' => false,
@@ -177,7 +167,7 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 			'test reason'
 		) );
 
-		$this->assertEventDeleted( $targetEventId, true, 'The event for the suppressed revision must be moderated' );
+		$this->assertEventDeleted( $targetEventId, true, 'The event for the suppressed revision must be deleted' );
 		$this->assertEventDeleted( $otherRevisionEventId, false, 'An event for a different revision is untouched' );
 		$this->assertEventDeleted( $otherTypeEventId, false, 'An event of a different type is untouched' );
 	}
@@ -266,7 +256,12 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 	private function assertEventDeleted( int $eventId, bool $expectedDeleted, string $message = '' ): void {
 		$this->assertSame(
 			$expectedDeleted,
-			( new EventMapper() )->fetchById( $eventId, true )->isDeleted(),
+			!$this->getDb()->newSelectQueryBuilder()
+				->select( 'event_id' )
+				->from( 'echo_event' )
+				->where( [ 'event_id' => $eventId ] )
+				->caller( __METHOD__ )
+				->fetchField(),
 			$message
 		);
 	}

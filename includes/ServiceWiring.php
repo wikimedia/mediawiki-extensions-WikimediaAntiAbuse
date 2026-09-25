@@ -127,9 +127,14 @@ return [
 		$enabled = $services->getMainConfig()->get( 'WikimediaAntiAbuseEnablePersonalInfoFlagNotifications' )
 			&& $services->getExtensionRegistry()->isLoaded( 'Echo' );
 
-		return $enabled
-			? new EchoPersonalInfoFlagNotificationModerator( $services->get( 'EchoEventMapper' ) )
-			: new NullPersonalInfoFlagNotificationModerator();
+		if ( !$enabled ) {
+			return new NullPersonalInfoFlagNotificationModerator();
+		}
+
+		return new EchoPersonalInfoFlagNotificationModerator(
+			$services->get( 'EchoEventMapper' ),
+			$services->get( 'EchoEventController' )
+		);
 	},
 
 	'WikimediaAntiAbusePersonalInfoFlagNotifier' => static fn (

@@ -5,7 +5,6 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Unit\Notifications;
 
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
-use MediaWiki\Revision\RevisionRecord;
 use MediaWikiUnitTestCase;
 
 /**
@@ -16,8 +15,7 @@ class NullPersonalInfoFlagNotificationModeratorTest extends MediaWikiUnitTestCas
 	public function testTouchesNothing(): void {
 		$moderator = new NullPersonalInfoFlagNotificationModerator();
 
-		$moderator->hideForRevisions( 123, [ 456 ] );
-		$moderator->restoreForRevision( $this->createNoOpMock( RevisionRecord::class ) );
+		$moderator->deleteForRevisions( 123, [ 456 ] );
 
 		$this->addToAssertionCount( 1 );
 	}

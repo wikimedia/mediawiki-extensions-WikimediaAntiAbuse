@@ -43,7 +43,7 @@ class AbuseReviewTagService {
 	}
 
 	/**
-	 * Tag a flagged revision as a false positive, and hide its flag notification.
+	 * Tag a flagged revision as a false positive, and delete its personal info flag notifications if any
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -77,14 +77,14 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
@@ -96,8 +96,7 @@ class AbuseReviewTagService {
 	}
 
 	/**
-	 * Put a false positive back in the review queue. The flag notification comes back
-	 * with it, unless the revision is suppressed.
+	 * Put a false positive back in the review queue.
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -122,8 +121,6 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			$this->notificationModerator->restoreForRevision( $status->getValue() );
-
 			return StatusValue::newGood();
 		}
 
@@ -142,7 +139,7 @@ class AbuseReviewTagService {
 	 * - Keep the tag that flagged the revision for review, as "no further action"
 	 *   is indicative of a true positive
 	 * - Throw an error if "false positive" is already set on the revision
-	 * - Hide the flag notification, as the revision no longer needs a reviewer
+	 * - Deletes its personal info flag notifications if any on success
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -162,7 +159,7 @@ class AbuseReviewTagService {
 
 		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
@@ -185,14 +182,13 @@ class AbuseReviewTagService {
 			'performer' => $authority->getUser()->getName(),
 		] );
 
-		$this->notificationModerator->hideForRevisions( $revision->getPageId(), [ $revisionId ] );
+		$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 		return StatusValue::newGood();
 	}
 
 	/**
 	 * Remove the no-further-action tag from a revision, putting it back in the review queue.
-	 * The flag notification comes back with it, unless the revision is suppressed.
 	 *
 	 * @param Authority $authority
 	 * @param int $revisionId
@@ -217,8 +213,6 @@ class AbuseReviewTagService {
 				'tag' => $tag,
 				'performer' => $authority->getUser()->getName(),
 			] );
-
-			$this->notificationModerator->restoreForRevision( $status->getValue() );
 
 			return StatusValue::newGood();
 		}

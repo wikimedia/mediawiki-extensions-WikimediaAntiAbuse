@@ -46,7 +46,7 @@ class PageHistoryVisibilityEventIngress extends DomainEventIngress
 			return;
 		}
 
-		$this->notificationModerator->hideForRevisions( $pageIdentity->getId(), $newlySuppressedRevisionIds );
+		$this->notificationModerator->deleteForRevisions( $pageIdentity->getId(), $newlySuppressedRevisionIds );
 
 		$dbr = $this->dbProvider->getReplicaDatabase();
 		$revisionsIdsTaggedWithPersonalInfoTag = $dbr->newSelectQueryBuilder()

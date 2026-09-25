@@ -4,24 +4,17 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Notifications;
 
-use MediaWiki\Revision\RevisionRecord;
-
 /**
- * Shows or hides the personal-info flag notification, to follow what the revision still needs.
+ * Removes the personal-info flag notification when the revision no longer needs a reviewer.
  */
 interface IPersonalInfoFlagNotificationModerator {
 
 	/**
-	 * Hides the notification for each of the given revisions of one page.
+	 * Deletes the notification for each of the given revisions of one page, for all recipients.
+	 * Intended for use after a revision has been handled by a verdict or suppression.
 	 *
 	 * @param int $pageId
 	 * @param int[] $revisionIds
 	 */
-	public function hideForRevisions( int $pageId, array $revisionIds ): void;
-
-	/**
-	 * Shows the notification for one revision again. Takes no action for a revision which no
-	 * longer needs a reviewer, such as a suppressed or a deleted one.
-	 */
-	public function restoreForRevision( RevisionRecord $revision ): void;
+	public function deleteForRevisions( int $pageId, array $revisionIds ): void;
 }
