@@ -7,7 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\DomainEvent\DomainEventIngress;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Page\Event\PageHistoryVisibilityChangedEvent;
@@ -21,7 +21,7 @@ class PageHistoryVisibilityEventIngress extends DomainEventIngress
 {
 
 	public function __construct(
-		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator,
+		private readonly IPersonalInfoFlagNotificationDeleter $notificationDeleter,
 		private readonly IConnectionProvider $dbProvider,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 		private readonly NamespaceInfo $namespaceInfo,
@@ -46,7 +46,7 @@ class PageHistoryVisibilityEventIngress extends DomainEventIngress
 			return;
 		}
 
-		$this->notificationModerator->deleteForRevisions( $pageIdentity->getId(), $newlySuppressedRevisionIds );
+		$this->notificationDeleter->deleteForRevisions( $pageIdentity->getId(), $newlySuppressedRevisionIds );
 
 		$dbr = $this->dbProvider->getReplicaDatabase();
 		$revisionsIdsTaggedWithPersonalInfoTag = $dbr->newSelectQueryBuilder()

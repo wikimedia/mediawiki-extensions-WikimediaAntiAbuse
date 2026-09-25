@@ -136,7 +136,7 @@
 		{
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\EventSubscribers\\PageHistoryVisibilityEventIngress",
 			"services": [
-				"WikimediaAntiAbusePersonalInfoFlagNotificationModerator",
+				"WikimediaAntiAbusePersonalInfoFlagNotificationDeleter",
 				"ConnectionProvider",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
 				"NamespaceInfo",

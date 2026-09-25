@@ -12,7 +12,7 @@ use MediaWiki\Extension\Notifications\Mapper\EventMapper;
  * Deletes the notification through Echo when a revision is handled either by verdict or suppression, so
  * notifications only appear when a user needs to take action.
  */
-class EchoPersonalInfoFlagNotificationModerator implements IPersonalInfoFlagNotificationModerator {
+class EchoPersonalInfoFlagNotificationDeleter implements IPersonalInfoFlagNotificationDeleter {
 
 	public function __construct(
 		private readonly EventMapper $eventMapper,

@@ -7,7 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Notifications;
 /**
  * Removes the personal-info flag notification when the revision no longer needs a reviewer.
  */
-interface IPersonalInfoFlagNotificationModerator {
+interface IPersonalInfoFlagNotificationDeleter {
 
 	/**
 	 * Deletes the notification for each of the given revisions of one page, for all recipients.

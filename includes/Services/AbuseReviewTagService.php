@@ -7,7 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Services;
 use MediaWiki\Block\AbstractBlock;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Permissions\Authority;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
@@ -37,7 +37,7 @@ class AbuseReviewTagService {
 		private readonly RevisionLookup $revisionLookup,
 		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly ReadOnlyMode $readOnlyMode,
-		private readonly IPersonalInfoFlagNotificationModerator $notificationModerator,
+		private readonly IPersonalInfoFlagNotificationDeleter $notificationDeleter,
 		private readonly LoggerInterface $logger,
 	) {
 	}
@@ -77,14 +77,14 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
@@ -159,7 +159,7 @@ class AbuseReviewTagService {
 
 		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 			return StatusValue::newGood();
 		}
@@ -182,7 +182,7 @@ class AbuseReviewTagService {
 			'performer' => $authority->getUser()->getName(),
 		] );
 
-		$this->notificationModerator->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+		$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
 
 		return StatusValue::newGood();
 	}

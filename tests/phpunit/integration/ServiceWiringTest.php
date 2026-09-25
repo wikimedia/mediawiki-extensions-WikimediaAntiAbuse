@@ -4,8 +4,8 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration;
 
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationDeleter;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationDeleter;
 use MediaWikiIntegrationTestCase;
 
 /**
@@ -27,7 +27,7 @@ class ServiceWiringTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/** @dataProvider providePersonalInfoFlagNotificationsEnabled */
-	public function testFlagNotificationModeratorFollowsTheFeatureFlag(
+	public function testFlagNotificationDeleterFollowsTheFeatureFlag(
 		bool $personalInfoFlagNotificationsEnabled,
 		string $expectedClass
 	): void {
@@ -39,7 +39,7 @@ class ServiceWiringTest extends MediaWikiIntegrationTestCase {
 
 		$this->assertInstanceOf(
 			$expectedClass,
-			$this->getServiceContainer()->get( 'WikimediaAntiAbusePersonalInfoFlagNotificationModerator' )
+			$this->getServiceContainer()->get( 'WikimediaAntiAbusePersonalInfoFlagNotificationDeleter' )
 		);
 	}
 
@@ -47,11 +47,11 @@ class ServiceWiringTest extends MediaWikiIntegrationTestCase {
 		return [
 			'Personal-info flag notifications enabled' => [
 				'personalInfoFlagNotificationsEnabled' => true,
-				'expectedClass' => EchoPersonalInfoFlagNotificationModerator::class,
+				'expectedClass' => EchoPersonalInfoFlagNotificationDeleter::class,
 			],
 			'Personal-info flag notifications disabled' => [
 				'personalInfoFlagNotificationsEnabled' => false,
-				'expectedClass' => NullPersonalInfoFlagNotificationModerator::class,
+				'expectedClass' => NullPersonalInfoFlagNotificationDeleter::class,
 			],
 		];
 	}

@@ -5,19 +5,19 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Notifications;
 
 use MediaWiki\Extension\Notifications\Model\Event;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Page\WikiPage;
 use MediaWikiIntegrationTestCase;
 
 /**
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationDeleter
  * @group Database
  */
-class EchoPersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegrationTestCase {
+class EchoPersonalInfoFlagNotificationDeleterTest extends MediaWikiIntegrationTestCase {
 
 	private const string OTHER_EVENT_TYPE = 'wikimedia-anti-abuse-test-other';
-	private const string PAGE_NAME = 'WikimediaAntiAbuse notification moderator test page';
+	private const string PAGE_NAME = 'WikimediaAntiAbuse notification deleter test page';
 
 	private ?bool $originalAlwaysInsert = null;
 	private WikiPage $page;
@@ -60,7 +60,7 @@ class EchoPersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegration
 		$otherRevisionEventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, $untouchedRevisionId );
 		$otherTypeEventId = $this->createEvent( self::OTHER_EVENT_TYPE, $firstRevisionId );
 
-		$this->newModerator()->deleteForRevisions(
+		$this->newDeleter()->deleteForRevisions(
 			$this->page->getId(),
 			[ $firstRevisionId, $secondRevisionId ]
 		);
@@ -76,7 +76,7 @@ class EchoPersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegration
 	public function testNoOpWhenThereIsNothingToDelete( bool $pageIsKnown, array $revisionIds ): void {
 		$eventId = $this->createEvent( PersonalInfoFlagNotifier::EVENT_TYPE, 1001 );
 
-		$this->newModerator()
+		$this->newDeleter()
 			->deleteForRevisions( $pageIsKnown ? $this->page->getId() : 0, $revisionIds );
 		$this->runDeferredUpdates();
 
@@ -90,8 +90,8 @@ class EchoPersonalInfoFlagNotificationModeratorTest extends MediaWikiIntegration
 		];
 	}
 
-	private function newModerator(): EchoPersonalInfoFlagNotificationModerator {
-		return new EchoPersonalInfoFlagNotificationModerator(
+	private function newDeleter(): EchoPersonalInfoFlagNotificationDeleter {
+		return new EchoPersonalInfoFlagNotificationDeleter(
 			$this->getServiceContainer()->get( 'EchoEventMapper' ),
 			$this->getServiceContainer()->get( 'EchoEventController' )
 		);

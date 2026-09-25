@@ -8,7 +8,7 @@ use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\EventSubscribers\PageHistoryVisibilityEventIngress;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
-use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationModerator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Page\Event\PageHistoryVisibilityChangedEvent;
@@ -49,7 +49,7 @@ class PageHistoryVisibilityEventIngressTest extends MediaWikiIntegrationTestCase
 		$this->instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
 
 		$this->listener = new PageHistoryVisibilityEventIngress(
-			new EchoPersonalInfoFlagNotificationModerator(
+			new EchoPersonalInfoFlagNotificationDeleter(
 				$this->getServiceContainer()->get( 'EchoEventMapper' ),
 				$this->getServiceContainer()->get( 'EchoEventController' )
 			),
