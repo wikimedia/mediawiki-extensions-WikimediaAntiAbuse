@@ -2,6 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"GuoPC",
+			"Ouclie",
 			"Shizhao"
 		]
 	},
@@ -80,6 +81,6 @@
 	"notification-header-personal-info-flagged": "对<strong>$1</strong>的编辑可能包含个人信息。",
 	"notification-bundle-header-personal-info-flagged": "$1次{{PLURAL:$1|编辑}}可能包含个人信息。",
 	"notification-link-text-personal-info-flagged": "查看已标记的{{PLURAL:$1|编辑}}",
-	"right-abusereview-vandalism-alpha-tester": "访问AbuseReview破坏检测工具的alpha测试版",
-	"action-abusereview-vandalism-alpha-tester": "访问AbuseReview破坏检测工具的alpha测试版"
+	"right-abusereview-vandalism-alpha-tester": "访问滥用审查破坏检测工具的alpha测试版本",
+	"action-abusereview-vandalism-alpha-tester": "访问滥用审查破坏检测工具的alpha测试版本"
 }
