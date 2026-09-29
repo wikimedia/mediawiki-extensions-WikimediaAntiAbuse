@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Jobs;
 
+use MediaWiki\Context\IContextSource;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Jobs\CheckRevisionJob;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ActionsToTake;
@@ -12,6 +14,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\IModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
@@ -32,17 +35,24 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
 		$this->setModelToRunHook();
-		$this->setTemporaryHook(
-			'WikimediaAntiAbuseModelResult',
-			static function (
-				ModelToRun $modelToRun,
-				RevisionRecord $revisionRecord,
-				IModelResponse $response,
-				ActionsToTake $actionsToTake
-			): void {
-				$actionsToTake->addTags( [ 'test-tag-name' ] );
-			}
-		);
+		$this->setModelResultHookAddingTags( [ 'test-tag-name', 'test-tag-name-2' ] );
+
+		$interactions = [];
+		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$instrumentationClient->expects( $this->exactly( 2 ) )
+			->method( 'submitInteraction' )
+			->willReturnCallback( function (
+				IContextSource $context,
+				string $action,
+				array $interactionData
+			) use ( &$interactions ): void {
+				$this->assertSame(
+					'revision_matched_content_policy',
+					$action,
+					'The interaction should use the content policy match action'
+				);
+				$interactions[] = $interactionData;
+			} );
 
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->expects( $this->once() )
@@ -50,9 +60,36 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			->with( 'Test policy text', 'test-content-policy-name', 'test content' )
 			->willReturn( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
 
-		$this->assertTrue( $this->newJob( $revisionId, $evaluator )->run() );
-		$this->assertRevisionTags( [ 'test-tag-name' ], $revisionId,
-			'The tag registered by the model-result hook should be applied to the revision' );
+		$this->assertTrue( $this->newJob(
+			$revisionId,
+			$evaluator,
+			instrumentationClient: $instrumentationClient
+		)->run() );
+		$this->assertRevisionTags(
+			[ 'test-tag-name', 'test-tag-name-2' ],
+			$revisionId,
+			'The tags registered by the model-result hook should be applied to the revision'
+		);
+		$this->assertArrayEquals(
+			[
+				[
+					'action_subtype' => 'tag_added',
+					'identifier' => $revisionId,
+					'identifier_type' => 'revision',
+					'abuse_review_tag' => 'test-tag-name',
+				],
+				[
+					'action_subtype' => 'tag_added',
+					'identifier' => $revisionId,
+					'identifier_type' => 'revision',
+					'abuse_review_tag' => 'test-tag-name-2',
+				],
+			],
+			$interactions,
+			false,
+			false,
+			'Interaction data should be as expected'
+		);
 	}
 
 	public function testNotifiesWhenPersonalInfoTagApplied(): void {
@@ -60,17 +97,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 
 		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
 		$this->setModelToRunHook();
-		$this->setTemporaryHook(
-			'WikimediaAntiAbuseModelResult',
-			static function (
-				ModelToRun $modelToRun,
-				RevisionRecord $revisionRecord,
-				IModelResponse $response,
-				ActionsToTake $actionsToTake
-			): void {
-				$actionsToTake->addTags( [ ChangeTagsHandler::PERSONAL_INFO_TAG ] );
-			}
-		);
+		$this->setModelResultHookAddingTags( [ ChangeTagsHandler::PERSONAL_INFO_TAG ] );
 
 		$notifier = $this->createMock( PersonalInfoFlagNotifier::class );
 		$notifier->expects( $this->once() )
@@ -84,6 +111,53 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$this->assertTrue( $this->newJob( $revisionId, $evaluator, null, $notifier )->run() );
 		$this->assertRevisionTags( [ ChangeTagsHandler::PERSONAL_INFO_TAG ], $revisionId,
 			'The personal-info tag registered by the model-result hook should be applied' );
+	}
+
+	public function testDoesNotSubmitInteractionForTagAlreadyOnRevision(): void {
+		$revisionId = $this->createRevisionId();
+		$this->getServiceContainer()->getChangeTagsStore()->addTags( [ 'test-tag-one' ], null, $revisionId );
+
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+		$this->setModelToRunHook();
+		$this->setModelResultHookAddingTags( [ 'test-tag-one', 'test-tag-two' ] );
+
+		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$instrumentationClient->expects( $this->once() )
+			->method( 'submitInteraction' )
+			->with(
+				RequestContext::getMain(),
+				'revision_matched_content_policy',
+				[
+					'action_subtype' => 'tag_added',
+					'identifier' => $revisionId,
+					'identifier_type' => 'revision',
+					'abuse_review_tag' => 'test-tag-two',
+				]
+			);
+
+		$evaluator = $this->newEvaluatorReturning( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
+
+		$this->assertTrue(
+			$this->newJob( $revisionId, $evaluator, instrumentationClient: $instrumentationClient )->run()
+		);
+	}
+
+	public function testDoesNotSubmitInteractionWhenNoTagsAdded(): void {
+		$revisionId = $this->createRevisionId();
+
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableModelChecks', true );
+		$this->setModelToRunHook();
+		$this->setModelResultHookAddingTags( [] );
+
+		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
+		$instrumentationClient->expects( $this->never() )
+			->method( 'submitInteraction' );
+
+		$evaluator = $this->newEvaluatorReturning( new CoPEModelResponse( [ 'test-key' => 'test-value' ] ) );
+
+		$this->assertTrue(
+			$this->newJob( $revisionId, $evaluator, instrumentationClient: $instrumentationClient )->run()
+		);
 	}
 
 	public function testNullResponseSkipsModelResultHook(): void {
@@ -413,6 +487,23 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
+	/**
+	 * @param string[] $tags
+	 */
+	private function setModelResultHookAddingTags( array $tags ): void {
+		$this->setTemporaryHook(
+			'WikimediaAntiAbuseModelResult',
+			static function (
+				ModelToRun $modelToRun,
+				RevisionRecord $revisionRecord,
+				IModelResponse $response,
+				ActionsToTake $actionsToTake
+			) use ( $tags ): void {
+				$actionsToTake->addTags( $tags );
+			}
+		);
+	}
+
 	private function newNeverCalledEvaluator(): ContentPolicyEvaluator {
 		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
 		$evaluator->expects( $this->never() )
@@ -444,7 +535,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		?RevisionLookup $revisionLookup = null,
 		?PersonalInfoFlagNotifier $notifier = null,
 		?IContentPolicyScoreEventLogger $eventLogger = null,
-		?ArchivedRevisionLookup $archivedRevisionLookup = null
+		?ArchivedRevisionLookup $archivedRevisionLookup = null,
+		?IAbuseReviewInstrumentationClient $instrumentationClient = null
 	): CheckRevisionJob {
 		$services = $this->getServiceContainer();
 
@@ -458,7 +550,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			$services->getChangeTagsStore(),
 			$notifier ?? $services->get( 'WikimediaAntiAbusePersonalInfoFlagNotifier' ),
 			new NullLogger(),
-			$eventLogger ?? $this->createMock( IContentPolicyScoreEventLogger::class )
+			$eventLogger ?? $this->createMock( IContentPolicyScoreEventLogger::class ),
+			$instrumentationClient ?? $this->createMock( IAbuseReviewInstrumentationClient::class ),
 		);
 	}
 }

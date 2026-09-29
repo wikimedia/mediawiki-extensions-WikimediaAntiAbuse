@@ -303,7 +303,8 @@
 				"ChangeTagsStore",
 				"WikimediaAntiAbusePersonalInfoFlagNotifier",
 				"WikimediaAntiAbuseLogger",
-				"WikimediaAntiAbuseContentPolicyScoreEventLogger"
+				"WikimediaAntiAbuseContentPolicyScoreEventLogger",
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
 			],
 			"needsPage": false
 		}
