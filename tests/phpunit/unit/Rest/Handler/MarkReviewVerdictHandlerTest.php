@@ -58,6 +58,7 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			'action_subtype' => 'mark',
 			'identifier' => 123,
 			'identifier_type' => 'revision',
+			'abuse_review_tag' => self::TAG,
 		];
 		if ( in_array( $referrer, SpecialAbuseReview::VALID_REFERRERS, true ) ) {
 			$expectedInstrumentationData['referrer'] = $referrer;

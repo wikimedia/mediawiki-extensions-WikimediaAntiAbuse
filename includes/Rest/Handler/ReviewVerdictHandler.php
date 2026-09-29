@@ -57,6 +57,7 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 			'action_subtype' => $this->verdictIsSet() ? 'mark' : 'unmark',
 			'identifier' => $revision,
 			'identifier_type' => 'revision',
+			'abuse_review_tag' => $tag,
 		];
 		$referrer = $this->getValidatedBody()['referrer'] ?? '';
 		if ( in_array( $referrer, SpecialAbuseReview::VALID_REFERRERS, true ) ) {

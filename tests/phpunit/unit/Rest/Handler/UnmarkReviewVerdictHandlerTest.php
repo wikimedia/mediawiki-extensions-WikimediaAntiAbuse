@@ -61,6 +61,7 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 					'action_subtype' => 'unmark',
 					'identifier' => 123,
 					'identifier_type' => 'revision',
+					'abuse_review_tag' => self::TAG,
 				]
 			);
 

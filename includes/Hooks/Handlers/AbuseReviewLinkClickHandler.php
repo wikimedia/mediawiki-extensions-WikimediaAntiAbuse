@@ -23,6 +23,7 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 
 	public const string SUBTYPE_PARAM = 'ar_subtype';
 	public const string REVISION_PARAM = 'ar_revid';
+	public const string TAG_PARAM = 'ar_tag';
 
 	public const string SUBTYPE_TIMESTAMP = 'timestamp';
 	public const string SUBTYPE_PAGE_TITLE = 'page_title';
@@ -79,16 +80,26 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 			return;
 		}
 
-		$this->recordLinkClick( $output, $subtype, $revisionId );
+		// Only allow the user to attribute the click to a tag they can see
+		$tag = $request->getRawVal( self::TAG_PARAM );
+		if ( $tag !== null && !in_array( $tag, $viewableTags, true ) ) {
+			return;
+		}
+
+		$this->recordLinkClick( $output, $subtype, $tag, $revisionId );
 		$this->redirectToCleanUrl( $title, $output, $request );
 	}
 
-	private function recordLinkClick( OutputPage $output, string $subtype, int $revisionId ): void {
-		$this->instrumentationClient->submitInteraction( $output->getContext(), 'link_click', [
+	private function recordLinkClick( OutputPage $output, string $subtype, ?string $tag, int $revisionId ): void {
+		$interactionData = [
 			'action_subtype' => $subtype,
 			'identifier' => $revisionId,
 			'identifier_type' => 'revision',
-		] );
+		];
+		if ( $tag !== null ) {
+			$interactionData['abuse_review_tag'] = $tag;
+		}
+		$this->instrumentationClient->submitInteraction( $output->getContext(), 'link_click', $interactionData );
 	}
 
 	/**
@@ -103,6 +114,7 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 		unset(
 			$queryParams[self::SUBTYPE_PARAM],
 			$queryParams[self::REVISION_PARAM],
+			$queryParams[self::TAG_PARAM],
 			$queryParams['title']
 		);
 
