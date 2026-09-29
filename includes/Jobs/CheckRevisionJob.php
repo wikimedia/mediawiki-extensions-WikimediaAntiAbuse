@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Jobs;
 
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Config\Config;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\HookRunner;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ActionsToTake;
@@ -14,6 +15,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\CoPEModelResponse;
 use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ModelToRun;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
 use MediaWiki\JobQueue\IJobSpecification;
 use MediaWiki\JobQueue\Job;
@@ -39,6 +41,7 @@ class CheckRevisionJob extends Job {
 		private readonly PersonalInfoFlagNotifier $personalInfoFlagNotifier,
 		private readonly LoggerInterface $logger,
 		private readonly IContentPolicyScoreEventLogger $contentPolicyScoreEventLogger,
+		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
 	) {
 		parent::__construct( self::TYPE, $params );
 	}
@@ -122,6 +125,18 @@ class CheckRevisionJob extends Job {
 		$tagsToAdd = $this->collectActionsToTake( $modelToRun, $revisionRecord, $response )->getTagsToAdd();
 		if ( $tagsToAdd ) {
 			$tagsEffectivelyAdded = $this->applyTags( $modelToRun, $revisionRecord, $tagsToAdd );
+			foreach ( $tagsEffectivelyAdded as $tag ) {
+				$this->instrumentationClient->submitInteraction(
+					RequestContext::getMain(),
+					'revision_matched_content_policy',
+					[
+						'action_subtype' => 'tag_added',
+						'identifier' => $revisionRecord->getId(),
+						'identifier_type' => 'revision',
+						'abuse_review_tag' => $tag,
+					]
+				);
+			}
 			$this->notifyWhenPersonalInfoFlagged( $tagsEffectivelyAdded, $revisionRecord );
 		}
 
