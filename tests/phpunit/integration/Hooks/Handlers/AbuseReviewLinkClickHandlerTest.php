@@ -25,22 +25,29 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		// A tag declares its view rights only while enabled, so the queue needs one enabled tag.
-		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', true );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+		] );
 	}
 
-	public function testRecordsTheClickAndRedirectsToTheCleanUrl(): void {
+	/** @dataProvider provideRecordsTheClickAndRedirectsToTheCleanUrl */
+	public function testRecordsTheClickAndRedirectsToTheCleanUrl( ?string $tag ): void {
+		$expectedInteractionData = [
+			'action_subtype' => 'timestamp',
+			'identifier' => 42,
+			'identifier_type' => 'revision',
+		];
+		if ( $tag !== null ) {
+			$expectedInteractionData['abuse_review_tag'] = $tag;
+		}
 		$client = $this->createMock( IAbuseReviewInstrumentationClient::class );
 		$client->expects( $this->once() )
 			->method( 'submitInteraction' )
 			->with(
 				$this->anything(),
 				'link_click',
-				[
-					'action_subtype' => 'timestamp',
-					'identifier' => 42,
-					'identifier_type' => 'revision',
-				]
+				$expectedInteractionData
 			);
 
 		$title = Title::makeTitle( NS_MAIN, 'Example' );
@@ -48,6 +55,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			'title' => $title->getPrefixedDBkey(),
 			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP,
 			AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
+			AbuseReviewLinkClickHandler::TAG_PARAM => $tag,
 			'diff' => 'prev',
 			'oldid' => '42',
 		] );
@@ -58,9 +66,17 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 		$this->assertNotSame( '', $redirect, 'the reviewer is sent on to the clean address' );
 		$this->assertStringNotContainsString( AbuseReviewLinkClickHandler::SUBTYPE_PARAM, $redirect );
 		$this->assertStringNotContainsString( AbuseReviewLinkClickHandler::REVISION_PARAM, $redirect );
+		$this->assertStringNotContainsString( AbuseReviewLinkClickHandler::TAG_PARAM, $redirect );
 		$this->assertStringContainsString( 'oldid=42', $redirect );
 		// The title is addressed by the path, so carrying it as well would name it twice.
 		$this->assertSame( 1, substr_count( $redirect, 'Example' ) );
+	}
+
+	public static function provideRecordsTheClickAndRedirectsToTheCleanUrl(): array {
+		return [
+			'With tag specified' => [ 'tag' => 'mw-private-personal-info' ],
+			'With no tag specified' => [ 'tag' => null ],
+		];
 	}
 
 	public function testLeavesARequestForAnInvalidTitleAlone(): void {
@@ -109,6 +125,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 				'query' => [
 					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'not-a-link-we-name',
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
+					AbuseReviewLinkClickHandler::TAG_PARAM => 'mw-private-personal-info',
 				],
 				'wasPosted' => false,
 				'canViewQueue' => true,
@@ -136,10 +153,29 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 				'wasPosted' => true,
 				'canViewQueue' => true,
 			],
+			'names a tag that is not an abuse review tag' => [
+				'query' => [
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
+					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
+					AbuseReviewLinkClickHandler::TAG_PARAM => 'not-an-abuse-review-tag',
+				],
+				'wasPosted' => false,
+				'canViewQueue' => true,
+			],
+			'names a tag that the user cannot see' => [
+				'query' => [
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
+					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
+					AbuseReviewLinkClickHandler::TAG_PARAM => 'mw-private-vandalism',
+				],
+				'wasPosted' => false,
+				'canViewQueue' => true,
+			],
 			'comes from someone who cannot view the queue' => [
 				'query' => [
 					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
+					AbuseReviewLinkClickHandler::TAG_PARAM => 'mw-private-personal-info',
 				],
 				'wasPosted' => false,
 				'canViewQueue' => false,

@@ -488,6 +488,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return [
 			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => $subtype,
 			AbuseReviewLinkClickHandler::REVISION_PARAM => $row->rev_id,
+			AbuseReviewLinkClickHandler::TAG_PARAM => $this->abuseReviewTag,
 		];
 	}
 

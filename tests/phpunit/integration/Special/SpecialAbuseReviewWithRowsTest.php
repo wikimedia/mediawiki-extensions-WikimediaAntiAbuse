@@ -280,6 +280,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$timestampLinkQuery = [
 					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'timestamp',
 					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
 				];
 				if ( $isArchivedRevision ) {
 					$expectedTimestampHref = SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( [
@@ -363,6 +364,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					$pageTitle->getLocalURL( [
 						AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'page_title',
 						AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+						AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
 					] ),
 					$pageLinkHref,
 					'the title links to the page itself'
