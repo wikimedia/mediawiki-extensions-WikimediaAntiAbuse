@@ -195,18 +195,28 @@ html {
 		}
 	}
 
-	&__page {
+	&__page-line {
 		display: block;
-		font-weight: bold;
 		// anywhere rather than break-word: only anywhere narrows the min-content
 		// width that the column sizes itself to.
 		overflow-wrap: anywhere;
+	}
+
+	&__page {
+		font-weight: bold;
 	}
 
 	&__author {
 		display: block;
 		color: @color-subtle;
 		overflow-wrap: anywhere;
+	}
+
+	// font-weight is restated from mediawiki.special module, which is not loaded
+	.mw-uctop {
+		display: block;
+		margin-top: @spacing-25;
+		font-weight: bold;
 	}
 
 	&__tags {
@@ -246,15 +256,8 @@ html {
 	}
 
 	&__changes-header {
-		display: flex;
-		justify-content: space-between;
-		gap: @spacing-100;
 		margin-top: @spacing-100;
 		margin-bottom: @spacing-50;
-	}
-
-	&__full-diff {
-		font-weight: bold;
 	}
 
 	&__diff {

@@ -147,7 +147,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			],
 			'was posted' => [
 				'query' => [
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_DIFF,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 				],
 				'wasPosted' => true,
@@ -155,7 +155,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			],
 			'names a tag that is not an abuse review tag' => [
 				'query' => [
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_DIFF,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 					AbuseReviewLinkClickHandler::TAG_PARAM => 'not-an-abuse-review-tag',
 				],
@@ -164,7 +164,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 			],
 			'names a tag that the user cannot see' => [
 				'query' => [
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_DIFF,
 					AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 					AbuseReviewLinkClickHandler::TAG_PARAM => 'mw-private-vandalism',
 				],

@@ -258,10 +258,24 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				true
 			);
 
+			// The revisions of ::addDBDataOnce that no later edit has superseded. The two
+			// archived revisions are on deleted pages, which show no revision at all.
+			$isCurrentRevision = in_array(
+				$actualRevId,
+				[
+					static::$noFurtherActionRevId,
+					static::$falsePositiveRevId,
+					static::$revertableTaggedContentRevId,
+					static::$revertedVandalismRevId,
+				],
+				true
+			);
+
 			$actualRevision = $isArchivedRevision ?
 				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
 				$revisionStore->getRevisionById( $actualRevId );
 			$pageTitle = Title::newFromPageIdentity( $actualRevision->getPage() );
+			$canSeeRevisionText = $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser );
 
 			$timestampCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
@@ -274,9 +288,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'The timestamp cell carries the formatted time of the revision'
 			);
 
-			// Link to diff should only exist if the user can see the revision text
+			// Link to the revision should only exist if the user can see the revision text
 			$timestampLink = DOMCompat::querySelector( $timestampCellNode, 'a' );
-			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
+			if ( $canSeeRevisionText ) {
 				$timestampLinkQuery = [
 					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'timestamp',
 					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
@@ -286,18 +300,16 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					$expectedTimestampHref = SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( [
 						'target' => $pageTitle->getPrefixedText(),
 						'timestamp' => $actualRevision->getTimestamp(),
-						'diff' => 'prev',
 					] + $timestampLinkQuery );
 				} else {
-					$expectedTimestampHref = $pageTitle->getLocalURL( [
-						'diff' => 'prev',
-						'oldid' => $actualRevId,
-					] + $timestampLinkQuery );
+					$expectedTimestampHref = $pageTitle->getLocalURL(
+						[ 'oldid' => $actualRevId ] + $timestampLinkQuery
+					);
 				}
 				$this->assertSame(
 					$expectedTimestampHref,
 					DOMCompat::getAttribute( $timestampLink, 'href' ),
-					'the timestamp links to the diff of this revision'
+					'the timestamp links to the revision itself, the diff being reached beside the title'
 				);
 			} else {
 				$this->assertNull(
@@ -315,6 +327,23 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				);
 			} else {
 				$this->assertStringNotContainsString( 'history-deleted', $timestampCellHtml );
+			}
+
+			// A current revision is marked, and a not-current revision is not marked.
+			if ( $isCurrentRevision ) {
+				$this->assertSame(
+					'(uctop)',
+					DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
+						$timestampCellNode,
+						'.mw-uctop'
+					) ),
+					'the row says its revision is the one the page currently shows'
+				);
+			} else {
+				$this->assertNull(
+					DOMCompat::querySelector( $timestampCellNode, '.mw-uctop' ),
+					'a superseded revision is left unmarked'
+				);
 			}
 
 			$detailsCellNode = $this->assertSelectorMatchesOneElementInNode(
@@ -371,43 +400,57 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				);
 			}
 
-			// Link to the full diff should only exist if the user can see the revision text
-			if ( $actualRevision->userCan( RevisionRecord::DELETED_TEXT, $testUser ) ) {
-				$this->assertStringContainsString(
-					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
-					$detailsCellHtml
-				);
-				$fullDiffLink = $this->assertSelectorMatchesOneElementInNode(
-					$tableRow,
-					'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
-				);
-				$fullDiffHref = DOMCompat::getAttribute( $fullDiffLink, 'href' );
-				$this->assertNull(
-					DOMCompat::getAttribute( $fullDiffLink, 'target' ),
-					'no target=_blank on the link'
-				);
-				if ( $isArchivedRevision ) {
-					$undeleteQuery = 'target=' . urlencode( $pageTitle->getPrefixedText() ) .
-						'&timestamp=' . $actualRevision->getTimestamp();
-					$this->assertStringContainsString( 'Special:Undelete', $fullDiffHref );
-					$this->assertStringContainsString( $undeleteQuery . '&diff=prev', $fullDiffHref );
-					$this->assertStringNotContainsString( 'oldid=', $fullDiffHref );
-				} else {
-					$this->assertStringContainsString( 'diff=prev', $fullDiffHref );
-					$this->assertStringContainsString( 'oldid=' . $actualRevId, $fullDiffHref );
-				}
-				$this->assertStringContainsString(
-					AbuseReviewLinkClickHandler::SUBTYPE_PARAM . '=full_diff',
-					$fullDiffHref,
-					'the full diff link names the click it stands for'
-				);
+			// Diff links should be present next to the page title. History links should be present for
+			// non-deleted pages and absent for deleted pages.
+			$toolLinksNode = $this->assertSelectorMatchesOneElementInNode(
+				$tableRow,
+				'.mw-wikimediaantiabuse-abuse-review-row__page-line .mw-changeslist-links'
+			);
+
+			$expectedToolLinkHrefs = [];
+			if ( $canSeeRevisionText ) {
+				$diffLinkQuery = [
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'diff',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
+				];
+				$expectedToolLinkHrefs[] = $isArchivedRevision
+					? SpecialPage::getTitleFor( 'Undelete' )->getLocalURL( [
+						'target' => $pageTitle->getPrefixedText(),
+						'timestamp' => $actualRevision->getTimestamp(),
+						'diff' => 'prev',
+					] + $diffLinkQuery )
+					: $pageTitle->getLocalURL(
+						[ 'diff' => 'prev', 'oldid' => $actualRevId ] + $diffLinkQuery
+					);
 			} else {
-				$this->assertStringNotContainsString( 'oldid=' . $actualRevId, $detailsCellHtml );
-				$this->assertStringNotContainsString(
-					'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
-					$detailsCellHtml
+				$this->assertStringContainsString(
+					'(diff)',
+					DOMCompat::getInnerHTML( $toolLinksNode ),
+					'plain text if the diff is not visible'
 				);
 			}
+			if ( !$isArchivedRevision ) {
+				$expectedToolLinkHrefs[] = $pageTitle->getLocalURL( [
+					'action' => 'history',
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'page_history',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
+				] );
+			}
+			$this->assertSame(
+				$expectedToolLinkHrefs,
+				array_map(
+					static fn ( Element $link ): string => DOMCompat::getAttribute( $link, 'href' ),
+					iterator_to_array( DOMCompat::querySelectorAll( $toolLinksNode, 'a' ) )
+				),
+				'the diff and history links are correct'
+			);
+
+			$changesHeader = DOMCompat::querySelector(
+				$detailsCellNode,
+				'.mw-wikimediaantiabuse-abuse-review-row__changes-header'
+			);
 
 			if ( $actualRevision->isDeleted( RevisionRecord::DELETED_TEXT ) ) {
 				$this->assertStringContainsString( 'history-deleted', $pageCellHtml );
@@ -420,17 +463,40 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				$this->assertStringNotContainsString( 'history-deleted', $pageCellHtml );
 			}
 
-			$authorCellHtml = $this->assertSelectorMatchesOneElementInNode(
+			$authorCellNode = $this->assertSelectorMatchesOneElementInNode(
 				$tableRow,
-				'.mw-wikimediaantiabuse-abuse-review-row__author',
-				true
+				'.mw-wikimediaantiabuse-abuse-review-row__author'
 			);
+			$authorCellHtml = DOMCompat::getInnerHTML( $authorCellNode );
+			// User tool links are present if the performing user can see the author's name.
+			$userToolLinks = DOMCompat::querySelector( $authorCellNode, '.mw-usertoollinks' );
 			if ( $actualRevision->userCan( RevisionRecord::DELETED_USER, $testUser ) ) {
-				$this->assertStringContainsString(
-					$actualRevision->getUser( RevisionRecord::RAW )->getName(),
-					$authorCellHtml
+				$authorName = $actualRevision->getUser( RevisionRecord::RAW )->getName();
+				$this->assertStringContainsString( $authorName, $authorCellHtml );
+				$this->assertNotNull(
+					$userToolLinks,
+					'user tool links are present'
+				);
+				$this->assertSelectorMatchesOneElementInNode(
+					$userToolLinks,
+					'.mw-usertoollinks-talk'
+				);
+				$this->assertSame(
+					SpecialPage::getTitleFor( 'Contributions', $authorName )->getLocalURL(),
+					DOMCompat::getAttribute(
+						$this->assertSelectorMatchesOneElementInNode(
+							$userToolLinks,
+							'.mw-usertoollinks-contribs'
+						),
+						'href'
+					),
+					'contributions links are present'
 				);
 			} else {
+				$this->assertNull(
+					$userToolLinks,
+					'a hidden author has no tool links'
+				);
 				$this->assertStringNotContainsString(
 					$actualRevision->getUser( RevisionRecord::RAW )->getName(),
 					$authorCellHtml
@@ -1101,11 +1167,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				true
 			),
 			'MediaWiki core\'s own wording explains the refusal, the parent being deleted not suppressed'
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
-			$rowHtml,
-			'and the link to the full diff stays, core refusing it there in the same terms'
 		);
 	}
 

@@ -18,6 +18,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributio
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
 use MediaWiki\Html\Html;
+use MediaWiki\Linker\Linker;
 use MediaWiki\Linker\LinkRenderer;
 use MediaWiki\Navigation\CodexPagerNavigationBuilder;
 use MediaWiki\Page\LinkBatchFactory;
@@ -224,22 +225,18 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * HTML containing a link to the diff for a revision.
+	 * HTML containing a link to the revision along with whether the revision is current.
+	 *
 	 * If the viewer does not have access to view the revision, no link is returned.
 	 * Otherwise, the visibility classes for deleted/suppressed are added.
 	 */
 	private function buildTimestamp( Title $title, stdClass $row ): string {
 		$timestamp = $this->getLanguage()->userTimeAndDate( $row->timestamp, $this->getUser() );
 
-		if ( !RevisionRecord::userCanBitfield(
-			(int)$row->deleted,
-			RevisionRecord::DELETED_TEXT,
-			$this->getAuthority(),
-			$title
-		) ) {
+		if ( !$this->canSeeRowText( $title, $row ) ) {
 			$dateLink = htmlspecialchars( $timestamp );
 		} else {
-			[ $target, $query ] = $this->diffLinkTarget(
+			[ $target, $query ] = $this->revisionLinkTarget(
 				$title,
 				$row,
 				AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP
@@ -248,11 +245,23 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		$visibilityClasses = $this->visibilityClasses( (int)$row->deleted, RevisionRecord::DELETED_TEXT );
-		if ( !$visibilityClasses ) {
-			return $dateLink;
+		if ( $visibilityClasses ) {
+			$dateLink = Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $dateLink );
 		}
 
-		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $dateLink );
+		return $dateLink . $this->buildCurrentRevisionMark( $row );
+	}
+
+	/**
+	 * Marks a row whose flagged revision is the latest revision on the page, similar to
+	 * Special:Contributions.
+	 */
+	private function buildCurrentRevisionMark( stdClass $row ): string {
+		if ( !$this->isCurrentRevision( $row ) ) {
+			return '';
+		}
+
+		return Html::element( 'span', [ 'class' => 'mw-uctop' ], $this->msg( 'uctop' )->text() );
 	}
 
 	/**
@@ -268,8 +277,12 @@ class AbuseReviewPager extends CodexTablePager {
 
 		return Html::rawElement(
 			'span',
-			[ 'class' => $pageClasses ],
-			$this->buildPageLink( $title, $row )
+			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__page-line' ],
+			Html::rawElement(
+				'span',
+				[ 'class' => $pageClasses ],
+				$this->buildPageLink( $title, $row )
+			) . $this->buildPageToolLinks( $title, $row )
 		) . Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__author' ],
@@ -479,6 +492,54 @@ class AbuseReviewPager extends CodexTablePager {
 		);
 	}
 
+	private function buildPageToolLinks( Title $title, stdClass $row ): string {
+		$links = [ $this->buildDiffLink( $title, $row ) ];
+		// No history link is needed for deleted pages, since page title link shows the
+		// history on Special:Undelete
+		if ( !$this->isArchivedRow( $row ) ) {
+			$links[] = $this->getLinkRenderer()->makeKnownLink(
+				$title,
+				$this->msg( 'hist' )->text(),
+				[ 'class' => 'mw-changeslist-history' ],
+				array_merge(
+					[ 'action' => 'history' ],
+					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_PAGE_HISTORY, $row )
+				)
+			);
+		}
+
+		return ' ' . Html::rawElement(
+			'span',
+			[ 'class' => 'mw-changeslist-links' ],
+			implode( '', array_map(
+				static fn ( string $link ): string => Html::rawElement( 'span', [], $link ),
+				$links
+			) )
+		);
+	}
+
+	private function buildDiffLink( Title $title, stdClass $row ): string {
+		$label = $this->msg( 'diff' )->text();
+
+		if ( !$this->canSeeRowText( $title, $row ) ) {
+			// Plain text, as is shown on Special:Contributions when the diff cannot be viewed.
+			return htmlspecialchars( $label );
+		}
+
+		[ $target, $query ] = $this->diffLinkTarget(
+			$title,
+			$row,
+			AbuseReviewLinkClickHandler::SUBTYPE_DIFF
+		);
+
+		return $this->getLinkRenderer()->makeKnownLink(
+			$target,
+			$label,
+			[ 'class' => 'mw-changeslist-diff' ],
+			$query
+		);
+	}
+
 	/**
 	 * The parameters that name a link click, which the page the link opens reports.
 	 *
@@ -492,9 +553,26 @@ class AbuseReviewPager extends CodexTablePager {
 		];
 	}
 
-	/** @return array<string,string> Query parameters addressing an archived revision's diff on Special:Undelete */
+	/** @return array<string,string> Query parameters addressing an archived revision on Special:Undelete */
 	private function buildUndeleteQuery( Title $title, stdClass $row ): array {
-		return [ 'target' => $title->getPrefixedText(), 'timestamp' => $row->timestamp, 'diff' => 'prev' ];
+		return [ 'target' => $title->getPrefixedText(), 'timestamp' => $row->timestamp ];
+	}
+
+	/**
+	 * Link for the flagged revision, or to Special:Undelete if the page was deleted.
+	 *
+	 * @return array{0:Title,1:array<string,string|int>}
+	 */
+	private function revisionLinkTarget( Title $title, stdClass $row, string $subtype ): array {
+		$query = $this->linkClickQuery( $subtype, $row );
+		if ( !$this->isArchivedRow( $row ) ) {
+			return [ $title, array_merge( [ 'oldid' => $row->rev_id ], $query ) ];
+		}
+
+		return [
+			SpecialPage::getTitleFor( 'Undelete' ),
+			array_merge( $this->buildUndeleteQuery( $title, $row ), $query ),
+		];
 	}
 
 	/**
@@ -511,7 +589,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 		return [
 			SpecialPage::getTitleFor( 'Undelete' ),
-			array_merge( $this->buildUndeleteQuery( $title, $row ), $query ),
+			array_merge( $this->buildUndeleteQuery( $title, $row ), [ 'diff' => 'prev' ], $query ),
 		];
 	}
 
@@ -533,11 +611,11 @@ class AbuseReviewPager extends CodexTablePager {
 
 		$author = new UserIdentityValue( (int)$row->user, $row->user_text );
 		$userLink = $this->getLinkRenderer()->makeUserLink( $author, $this->getContext() );
-		if ( !$visibilityClasses ) {
-			return $userLink;
+		if ( $visibilityClasses ) {
+			$userLink = Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $userLink );
 		}
 
-		return Html::rawElement( 'span', [ 'class' => $visibilityClasses ], $userLink );
+		return $userLink . Linker::userToolLinks( $author->getId(), $author->getName() );
 	}
 
 	private function buildEditSummary( Title $title, stdClass $row ): string {
@@ -579,12 +657,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildChanges( Title $title, stdClass $row ): string {
-		if ( !RevisionRecord::userCanBitfield(
-			(int)$row->deleted,
-			RevisionRecord::DELETED_TEXT,
-			$this->getAuthority(),
-			$title
-		) ) {
+		if ( !$this->canSeeRowText( $title, $row ) ) {
 			return '';
 		}
 
@@ -593,7 +666,7 @@ class AbuseReviewPager extends CodexTablePager {
 			return '';
 		}
 
-		$header = $this->buildChangesHeader( $title, $row );
+		$header = $this->buildChangesHeader();
 
 		$parent = null;
 		$parentId = $revision->getParentId();
@@ -609,9 +682,8 @@ class AbuseReviewPager extends CodexTablePager {
 			return $header . $this->buildOversizeDiffNotice();
 		}
 
-		// The link stays even with nothing to preview, that being when it is most wanted.
 		if ( $diff === '' ) {
-			return $header;
+			return '';
 		}
 
 		$pageLanguage = $title->getPageLanguage();
@@ -630,25 +702,15 @@ class AbuseReviewPager extends CodexTablePager {
 		);
 	}
 
-	private function buildChangesHeader( Title $title, stdClass $row ): string {
-		$label = Html::element(
-			'strong',
-			[],
-			$this->msg( 'wikimediaantiabuse-special-abuse-review-changes-made' )->text()
-		);
-		$fullDiffLink = Html::element(
-			'a',
-			[
-				'class' => 'mw-wikimediaantiabuse-abuse-review-row__full-diff',
-				'href' => $this->buildFullDiffUrl( $title, $row ),
-			],
-			$this->msg( 'wikimediaantiabuse-special-abuse-review-open-full-diff' )->text()
-		);
-
+	private function buildChangesHeader(): string {
 		return Html::rawElement(
 			'div',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__changes-header' ],
-			$label . $fullDiffLink
+			Html::element(
+				'strong',
+				[],
+				$this->msg( 'wikimediaantiabuse-special-abuse-review-changes-made' )->text()
+			)
 		);
 	}
 
@@ -685,16 +747,6 @@ class AbuseReviewPager extends CodexTablePager {
 			->getHtml();
 	}
 
-	private function buildFullDiffUrl( Title $title, stdClass $row ): string {
-		[ $target, $query ] = $this->diffLinkTarget(
-			$title,
-			$row,
-			AbuseReviewLinkClickHandler::SUBTYPE_FULL_DIFF
-		);
-
-		return $target->getLocalURL( $query );
-	}
-
 	/**
 	 * The classes core marks deleted content with, for content the viewer may still see.
 	 *
@@ -729,6 +781,15 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		return $this->archivedRevisionLookup->getArchivedRevisionRecord( $title, $revisionId );
+	}
+
+	private function canSeeRowText( Title $title, stdClass $row ): bool {
+		return RevisionRecord::userCanBitfield(
+			(int)$row->deleted,
+			RevisionRecord::DELETED_TEXT,
+			$this->getAuthority(),
+			$title
+		);
 	}
 
 	private function canSeeText( ?RevisionRecord $revision, Title $title ): bool {
@@ -909,6 +970,7 @@ class AbuseReviewPager extends CodexTablePager {
 					'comment_data' => 'comment_rev_comment.comment_data',
 					'comment_cid' => 'comment_rev_comment.comment_id',
 					'is_archive' => '0',
+					'page_latest' => 'page_latest',
 				] );
 		} else {
 			$queryBuilder = $this->revisionStore->newArchiveSelectQueryBuilder( $this->getDatabase() )
@@ -926,6 +988,8 @@ class AbuseReviewPager extends CodexTablePager {
 					'comment_data' => 'comment_ar_comment.comment_data',
 					'comment_cid' => 'comment_ar_comment.comment_id',
 					'is_archive' => '1',
+					// An archived page has no latest revision
+					'page_latest' => '0',
 				] );
 		}
 
@@ -1110,6 +1174,14 @@ class AbuseReviewPager extends CodexTablePager {
 	private function isArchivedRow( stdClass $row ): bool {
 		// A select-list literal, so the database hands it back as the string '0' or '1'.
 		return (int)$row->is_archive !== 0;
+	}
+
+	/**
+	 * Whether the row's revision is the one the page currently shows. A revision in the
+	 * archive table is one of a deleted page, which has no current revision.
+	 */
+	private function isCurrentRevision( stdClass $row ): bool {
+		return !$this->isArchivedRow( $row ) && (int)$row->page_latest === (int)$row->rev_id;
 	}
 
 	/**
