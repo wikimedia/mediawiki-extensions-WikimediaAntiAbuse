@@ -1189,28 +1189,25 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 	/** @dataProvider provideEchoNotificationBannerWhenReferrerIsEchoNotification */
 	public function testEchoNotificationBannerWhenReferrerIsEchoNotification(
-		bool $userCanSeePersonalInfoTag
+		array $rights,
+		?int $expectedOtherRevisionsCount
 	): void {
 		$this->overrideConfigValues( [
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
 			'WikimediaAntiAbuseEnableVandalismTag' => true,
 		] );
-		$this->setGroupPermissions( 'abusereview-vandalism-alpha-tester', 'abusereview-vandalism-alpha-tester', true );
+		$this->setGroupPermissions( [ 'abuse-review-test' => array_fill_keys( $rights, true ) ] );
 		$context = RequestContext::getMain();
 		$context->setRequest( new FauxRequest( [
 			'referrer' => 'echo_notification',
 			'revision' => [ static::$taggedContentRevId ],
 		] ) );
-		$context->setUser(
-			$userCanSeePersonalInfoTag ?
-				$this->getTestUser( [ 'suppress' ] )->getUser() :
-				$this->getTestUser( [ 'abusereview-vandalism-alpha-tester' ] )->getUser()
-		);
+		$context->setUser( $this->getTestUser( [ 'abuse-review-test' ] )->getUser() );
 		$context->setLanguage( 'qqx' );
 		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
 
 		$htmlAsNode = DOMUtils::parseHTML( $html );
-		if ( $userCanSeePersonalInfoTag ) {
+		if ( $expectedOtherRevisionsCount !== null ) {
 			$echoBanner = $this->assertSelectorMatchesOneElementInNode(
 				$htmlAsNode,
 				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
@@ -1227,26 +1224,88 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				[],
 				[ 'tab' => 'mw-private-personal-info' ]
 			);
-			// Parameter 2 is 2 because of the deleted tagged content revision and
-			// the revertable tagged content revision
 			$this->assertSame(
-				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, 2, '
-					. $expectedLinkParameter . ')',
+				'(wikimediaantiabuse-special-abuse-review-echo-notification-banner: 1, '
+					. $expectedOtherRevisionsCount . ', ' . $expectedLinkParameter . ')',
 				trim( DOMCompat::getInnerHTML( $echoBannerContent ) ),
 				'The echo notification banner should have the expected label'
 			);
 		} else {
-			$this->assertNull( DOMCompat::querySelector(
-				$htmlAsNode,
-				'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
-			) );
+			$this->assertNull(
+				DOMCompat::querySelector(
+					$htmlAsNode,
+					'.mw-wikimediaantiabuse-abuse-review-echo-notification-banner'
+				),
+				'The echo notification banner should not be shown if the user cannot see the personal info tag'
+			);
 		}
 	}
 
 	public static function provideEchoNotificationBannerWhenReferrerIsEchoNotification(): array {
 		return [
-			'User can see personal info tag' => [ 'userCanSeePersonalInfoTag' => true ],
-			'User cannot see personal info tag' => [ 'userCanSeePersonalInfoTag' => false ],
+			'User can see personal info tag and deleted history' => [
+				'rights' => [ 'viewsuppressed', 'deletedhistory' ],
+				'expectedOtherRevisionsCount' => 2,
+			],
+			'User can see personal info tag but not deleted history' => [
+				'rights' => [ 'viewsuppressed' ],
+				'expectedOtherRevisionsCount' => 1,
+			],
+			'User cannot see personal info tag' => [
+				'rights' => [ 'abusereview-vandalism-alpha-tester', 'deletedhistory' ],
+				'expectedOtherRevisionsCount' => null,
+			],
+		];
+	}
+
+	/** @dataProvider provideTabCountsForDeletedHistoryRight */
+	public function testTabCountsForDeletedHistoryRight(
+		array $rights,
+		array $expectedTabCounts
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [],
+		] );
+		$this->setGroupPermissions( [ 'abuse-review-test' => array_fill_keys( $rights, true ) ] );
+
+		$context = RequestContext::getMain();
+		$context->setUser( $this->getTestUser( [ 'abuse-review-test' ] )->getUser() );
+		$context->setLanguage( 'qqx' );
+		[ $html ] = $this->executeSpecialPage( '', null, null, null, false, $context );
+
+		$htmlAsNode = DOMUtils::parseHTML( $html );
+		foreach ( $expectedTabCounts as $flag => $expectedCount ) {
+			$tabCount = $this->assertSelectorMatchesOneElementInNode(
+				$htmlAsNode,
+				'.mw-wikimediaantiabuse-abuse-review-tab-' . $flag .
+				' .mw-wikimediaantiabuse-abuse-review-tabs__count .cdx-info-chip__text'
+			);
+			$this->assertSame(
+				$expectedCount,
+				DOMCompat::getInnerHTML( $tabCount ),
+				"The $flag tab should have the expected row count"
+			);
+		}
+	}
+
+	public static function provideTabCountsForDeletedHistoryRight(): array {
+		return [
+			'User has deletedhistory right' => [
+				'rights' => [ 'viewsuppressed', 'abusereview-vandalism-alpha-tester', 'deletedhistory' ],
+				'expectedTabCounts' => [
+					'mw-private-personal-info' => '3',
+					'mw-private-vandalism' => '1',
+				],
+			],
+			'User lacks deletedhistory right' => [
+				'rights' => [ 'viewsuppressed', 'abusereview-vandalism-alpha-tester' ],
+				'expectedTabCounts' => [
+					'mw-private-personal-info' => '2',
+					'mw-private-vandalism' => '1',
+				],
+			],
 		];
 	}
 
