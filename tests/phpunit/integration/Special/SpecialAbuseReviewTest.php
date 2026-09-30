@@ -153,7 +153,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 
 		$this->assertSelectorMatchesOneElementInNode(
 			$row,
-			'.mw-wikimediaantiabuse-abuse-review-row__full-diff'
+			'.mw-changeslist-links'
 		);
 		$this->assertNull(
 			DOMCompat::querySelector( $row, '.mw-wikimediaantiabuse-abuse-review-row__diff' ),

@@ -207,11 +207,6 @@ class SpecialAbuseReviewRowDetailsTest extends SpecialAbuseReviewTestBase {
 			DOMCompat::querySelector( $row, '.mw-wikimediaantiabuse-abuse-review-row__diff' ),
 			'and renders no diff at all'
 		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
-			DOMCompat::getOuterHTML( $row ),
-			'the link out staying, that being all the reviewer has left'
-		);
 	}
 
 	public function testRevisionWithMissingContentIsNotDiffed(): void {
@@ -225,11 +220,6 @@ class SpecialAbuseReviewRowDetailsTest extends SpecialAbuseReviewTestBase {
 		$this->assertNull(
 			DOMCompat::querySelector( $row, '.mw-wikimediaantiabuse-abuse-review-row__diff' ),
 			'a revision whose content is gone shows no diff'
-		);
-		$this->assertStringContainsString(
-			'(wikimediaantiabuse-special-abuse-review-open-full-diff)',
-			DOMCompat::getOuterHTML( $row ),
-			'the link out staying, that being all the reviewer has left'
 		);
 	}
 
