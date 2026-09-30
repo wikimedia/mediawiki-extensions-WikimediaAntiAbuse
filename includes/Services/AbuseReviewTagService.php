@@ -77,14 +77,14 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
 			return StatusValue::newGood();
 		}
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
 			return StatusValue::newGood();
 		}
@@ -159,7 +159,7 @@ class AbuseReviewTagService {
 
 		if ( in_array( $noFurtherActionTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
-			$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
 			return StatusValue::newGood();
 		}
@@ -182,7 +182,7 @@ class AbuseReviewTagService {
 			'performer' => $authority->getUser()->getName(),
 		] );
 
-		$this->notificationDeleter->deleteForRevisions( $revision->getPageId(), [ $revisionId ] );
+		$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
 		return StatusValue::newGood();
 	}
@@ -332,5 +332,15 @@ class AbuseReviewTagService {
 		);
 
 		return $this->verdictAttribution->encode( $actorId, ConvertibleTimestamp::now() );
+	}
+
+	/**
+	 * Deletes the notifications for the given revision, for all recipients.
+	 * This is a no-op if the provided tag is not the personal info flag.
+	 */
+	private function deleteNotifications( string $tag, int $pageId, int $revisionId ): void {
+		if ( $tag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
+			$this->notificationDeleter->deleteForRevisions( $pageId, [ $revisionId ] );
+		}
 	}
 }

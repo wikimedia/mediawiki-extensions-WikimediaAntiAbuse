@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 use MediaWiki\Block\DatabaseBlock;
 use MediaWiki\Extension\Notifications\Model\Event;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\IPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
@@ -425,6 +426,31 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		$this->assertTrue(
 			$this->isEventDeleted( $eventId ),
 			'Marking an already-marked revision still deletes a notification which slipped through'
+		);
+	}
+
+	public function testMarkNoFurtherActionSkipsDeletionOfNotificationsIfNotPersonalInfoTag(): void {
+		$this->enableFlagNotifications();
+		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableVandalismTag', true );
+
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		$this->applyTag( $revId, 'mw-private-vandalism' );
+		$eventId = $this->createFlagEvent( $revId );
+
+		$deleter = $this->createNoOpMock( IPersonalInfoFlagNotificationDeleter::class );
+		$this->setService( 'WikimediaAntiAbusePersonalInfoFlagNotificationDeleter', $deleter );
+
+		$this->assertStatusGood( $this->getService()->markNoFurtherAction(
+			$this->mockRegisteredUltimateAuthority(),
+			$revId,
+			'mw-private-vandalism'
+		) );
+		$this->runDeferredUpdates();
+
+		$this->assertFalse(
+			$this->isEventDeleted( $eventId ),
+			'Applying verdict for a different tag must not delete the personal info notification'
 		);
 	}
 
