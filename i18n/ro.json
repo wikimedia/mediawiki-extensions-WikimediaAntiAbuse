@@ -1,0 +1,13 @@
+{
+	"@metadata": {
+		"authors": [
+			"Strainu"
+		]
+	},
+	"wikimediaantiabuse-desc": "Funcții anti-abuz pentru wiki-urile Wikimedia",
+	"wikimediaantiabuse-special-abuse-review": "Revizuirea abuzurilor",
+	"wikimediaantiabuse-special-abuse-review-caption": "Revizii semnalizate pentru revizuire",
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Informații personale $1",
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism": "Vandalism $1",
+	"wikimediaantiabuse-special-abuse-review-filter-username-header": "Utilizator"
+}
