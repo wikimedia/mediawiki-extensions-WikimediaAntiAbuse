@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"MadriCR"
+		]
+	},
+	"wikimediaantiabuse-desc": "Funciones antiabuso para las wikis de Wikimedia",
+	"wikimediaantiabuse-special-abuse-review": "Revisión de abusos",
+	"wikimediaantiabuse-special-abuse-review-caption": "Ediciones marcadas para revisión",
+	"wikimediaantiabuse-special-abuse-review-tabs-label": "Marcadores",
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info": "Información personal $1",
+	"wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism": "Vandalismo $1",
+	"wikimediaantiabuse-special-abuse-review-summary": "Esta página contiene ediciones marcadas automáticamente para su revisión. Los marcadores explican por qué se agregó una edición a la bandeja de entrada.",
+	"wikimediaantiabuse-special-abuse-review-show-false-positives": "Incluir falsos positivos",
+	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "Ediciones recientes"
+}
