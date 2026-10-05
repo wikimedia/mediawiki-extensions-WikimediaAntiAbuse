@@ -1,0 +1,16 @@
+{
+	"@metadata": {
+		"authors": [
+			"Tensama0415"
+		]
+	},
+	"wikimediaantiabuse-api-review-permission-denied": "당신은 이 판의 검토 상태를 변경할 권한이 없습니다.",
+	"wikimediaantiabuse-api-review-not-flagged": "이 판은 편집 필터 검토 태그로 표시되어 있지 않습니다.",
+	"wikimediaantiabuse-api-review-conflicting-verdict": "이 판에는 이미 다른 검토 결과가 있습니다. 이 판을 기록하기 전에 이전 결과를 제거하세요.",
+	"wikimediaantiabuse-api-falsepositive-not-marked": "이 판은 오탐으로 표시되어 있지 않습니다.",
+	"wikimediaantiabuse-api-review-disabled": "이 위키에서는 해당 REST API가 활성화되어 있지 않습니다.",
+	"wikimediaantiabuse-api-review-unknown-tag": "\"$1\" 태그는 검토 가능한 태그가 아닙니다.",
+	"wikimediaantiabuse-api-review-blocked": "편집이 차단된 동안에는 이 API를 사용할 수 없습니다.",
+	"wikimediaantiabuse-api-review-mark-description": "**참고: 이 API는 내부용이며 불안정하므로 WikimediaAntiAbuse 확장 기능 코드 내에서만 호출하세요.**\n\n판에 대한 검토 결과를 기록합니다. '오탐' 판정은 검토 대상 태그를 제거하고 오탐 버전을 추가합니다. 따라서 'mw-private-personal-info' 태그는 'mw-private-personal-info-false-positive' 태그가 됩니다. '추가 조치 없음' 결과는 추가 조치 없음 버전을 추가하고 판에 플래그를 지정한 태그를 유지합니다. 변경하려는 태그를 볼 수 있는 권한이 필요합니다.",
+	"wikimediaantiabuse-api-review-unmark-description": "**참고: 이 API는 내부용이며 불안정하므로 WikimediaAntiAbuse 확장 기능 코드 내에서만 호출하세요.**\n\n판에서 검토 결과를 제거합니다. '오탐' 결과를 제거하면 오탐 버전 대신 검토 가능 태그가 복원됩니다. '추가 조치 불필요' 결과를 제거하면 추가 조치 불필요 버전의 태그가 제거되어 판이 검토 대기열로 돌아갑니다. 변경하려는 태그를 볼 수 있는 권한이 필요합니다."
+}

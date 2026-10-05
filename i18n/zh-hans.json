@@ -23,6 +23,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "最近编辑",
 	"wikimediaantiabuse-special-abuse-review-show-recent-edits": "包含最近编辑（最近$1{{PLURAL:$1|分钟}}）",
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help": "同时会显示最近$1{{PLURAL:$1|分钟}}内做出的编辑。",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "默认会隐藏最近$1{{PLURAL:$1|分钟}}的编辑。请使用过滤器来包含最近的编辑。",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "已处理的修订会包括已从默认队列中移除的项，因为其内容被监督或被审核者标记为无需执行进一步操作。",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "应用过滤器",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "过滤器",
