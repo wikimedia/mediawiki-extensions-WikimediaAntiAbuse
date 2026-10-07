@@ -20,6 +20,10 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public const string VANDALISM_FALSE_POSITIVE_TAG = 'mw-private-vandalism-false-positive';
 	public const string VANDALISM_NO_FURTHER_ACTION_TAG = 'mw-private-vandalism-no-further-action';
 
+	public const string LINK_SPAM_TAG = 'mw-private-link-spam';
+	public const string LINK_SPAM_FALSE_POSITIVE_TAG = 'mw-private-link-spam-false-positive';
+	public const string LINK_SPAM_NO_FURTHER_ACTION_TAG = 'mw-private-link-spam-no-further-action';
+
 	/**
 	 * Maps each abuse review tag to its review-verdict tags. Each verdict tag is
 	 * specific to one flag so it inherits that flag's view rights.
@@ -33,6 +37,10 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 			'falsePositive' => self::VANDALISM_FALSE_POSITIVE_TAG,
 			'noFurtherAction' => self::VANDALISM_NO_FURTHER_ACTION_TAG,
 		],
+		self::LINK_SPAM_TAG => [
+			'falsePositive' => self::LINK_SPAM_FALSE_POSITIVE_TAG,
+			'noFurtherAction' => self::LINK_SPAM_NO_FURTHER_ACTION_TAG,
+		],
 	];
 
 	/** Maps each abuse review and verdict tag to the rights that let a user see the tag. */
@@ -43,6 +51,9 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 		self::VANDALISM_TAG => [ 'abusereview-vandalism-alpha-tester' ],
 		self::VANDALISM_FALSE_POSITIVE_TAG => [ 'abusereview-vandalism-alpha-tester' ],
 		self::VANDALISM_NO_FURTHER_ACTION_TAG => [ 'abusereview-vandalism-alpha-tester' ],
+		self::LINK_SPAM_TAG => [ 'abusereview-vandalism-alpha-tester' ],
+		self::LINK_SPAM_FALSE_POSITIVE_TAG => [ 'abusereview-vandalism-alpha-tester' ],
+		self::LINK_SPAM_NO_FURTHER_ACTION_TAG => [ 'abusereview-vandalism-alpha-tester' ],
 	];
 
 	public function __construct( private readonly Config $config ) {
@@ -99,6 +110,7 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 		return match ( $tag ) {
 			self::PERSONAL_INFO_TAG => $this->isPersonalInfoTagEnabled(),
 			self::VANDALISM_TAG => $this->isVandalismTagEnabled(),
+			self::LINK_SPAM_TAG => $this->isLinkSpamTagEnabled(),
 			default => throw new LogicException( "Unknown tag: $tag" ),
 		};
 	}
@@ -109,5 +121,9 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 
 	private function isVandalismTagEnabled(): bool {
 		return $this->config->get( 'WikimediaAntiAbuseEnableVandalismTag' );
+	}
+
+	private function isLinkSpamTagEnabled(): bool {
+		return $this->config->get( 'WikimediaAntiAbuseEnableLinkSpamTag' );
 	}
 }

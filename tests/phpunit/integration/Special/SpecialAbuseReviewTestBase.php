@@ -23,7 +23,10 @@ abstract class SpecialAbuseReviewTestBase extends SpecialPageTestBase {
 	protected function setUp(): void {
 		parent::setUp();
 
-		$this->overrideConfigValue( 'WikimediaAntiAbuseEnablePersonalInfoTag', true );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
+			'WikimediaAntiAbuseEnableLinkSpamTag' => false,
+		] );
 	}
 
 	/**

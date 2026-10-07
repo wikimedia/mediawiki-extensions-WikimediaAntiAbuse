@@ -572,7 +572,10 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		string $unmark,
 		string $verdictTag
 	): void {
-		$this->overrideConfigValue( 'WikimediaAntiAbuseEnableVandalismTag', true );
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseEnableLinkSpamTag' => true,
+		] );
 		$service = $this->getService();
 		$reviewer = $this->mockRegisteredUltimateAuthority();
 		$revId = $this->createRevisionId();

@@ -371,6 +371,7 @@ class SpecialAbuseReview extends SpecialPage {
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism-rollback
+			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-link-spam
 			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
 			if (
 				$this->selectedTab === 'mw-private-vandalism' &&

@@ -331,6 +331,7 @@ class AbuseReviewPager extends CodexTablePager {
 		// Generates:
 		// * wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info
 		// * wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism
+		// * wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-link-spam
 		$label = $this->msg( 'wikimediaantiabuse-special-abuse-review-flag-chip-' . $tag )->text();
 
 		return ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )

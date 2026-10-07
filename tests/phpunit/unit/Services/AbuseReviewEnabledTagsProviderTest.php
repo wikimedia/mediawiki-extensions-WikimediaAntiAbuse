@@ -15,7 +15,8 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 
 	private function getObjectUnderTest(
 		bool $personalInfoTagEnabled,
-		bool $vandalismTagEnabled
+		bool $vandalismTagEnabled,
+		bool $linkSpamTagEnabled
 	): AbuseReviewEnabledTagsProvider {
 		return new AbuseReviewEnabledTagsProvider(
 			new ServiceOptions(
@@ -23,6 +24,7 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 				[
 					'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
 					'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+					'WikimediaAntiAbuseEnableLinkSpamTag' => $linkSpamTagEnabled,
 				]
 			)
 		);
@@ -32,9 +34,14 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 	public function testGetEnabledReviewableTags(
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled,
+		bool $linkSpamTagEnabled,
 		array $expectedTags
 	): void {
-		$provider = $this->getObjectUnderTest( $personalInfoTagEnabled, $vandalismTagEnabled );
+		$provider = $this->getObjectUnderTest(
+			$personalInfoTagEnabled,
+			$vandalismTagEnabled,
+			$linkSpamTagEnabled
+		);
 		$this->assertSame( $expectedTags, $provider->getEnabledReviewableTags() );
 	}
 
@@ -43,22 +50,36 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 			'No tags enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [],
 			],
 			'Personal info tag enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [ 'mw-private-personal-info' ],
 			],
 			'Vandalism tag enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => true,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [ 'mw-private-vandalism' ],
 			],
-			'Both tags enabled' => [
+			'Link spam tag enabled' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => true,
+				'expectedTags' => [ 'mw-private-link-spam' ],
+			],
+			'All tags enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => true,
-				'expectedTags' => [ 'mw-private-personal-info', 'mw-private-vandalism' ],
+				'linkSpamTagEnabled' => true,
+				'expectedTags' => [
+					'mw-private-personal-info',
+					'mw-private-vandalism',
+					'mw-private-link-spam',
+				],
 			],
 		];
 	}
@@ -67,9 +88,14 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 	public function testGetAllEnabledTags(
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled,
+		bool $linkSpamTagEnabled,
 		array $expectedTags
 	): void {
-		$provider = $this->getObjectUnderTest( $personalInfoTagEnabled, $vandalismTagEnabled );
+		$provider = $this->getObjectUnderTest(
+			$personalInfoTagEnabled,
+			$vandalismTagEnabled,
+			$linkSpamTagEnabled
+		);
 		$this->assertSame( $expectedTags, $provider->getAllEnabledTags() );
 	}
 
@@ -78,11 +104,13 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 			'No tags enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [],
 			],
 			'Personal info tag enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [
 					'mw-private-personal-info',
 					'mw-private-personal-info-false-positive',
@@ -92,22 +120,37 @@ class AbuseReviewEnabledTagsProviderTest extends MediaWikiUnitTestCase {
 			'Vandalism tag enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => true,
+				'linkSpamTagEnabled' => false,
 				'expectedTags' => [
 					'mw-private-vandalism',
 					'mw-private-vandalism-false-positive',
 					'mw-private-vandalism-no-further-action',
 				],
 			],
-			'Both tags enabled' => [
+			'Link spam tag enabled' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => true,
+				'expectedTags' => [
+					'mw-private-link-spam',
+					'mw-private-link-spam-false-positive',
+					'mw-private-link-spam-no-further-action',
+				],
+			],
+			'All tags enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => true,
+				'linkSpamTagEnabled' => true,
 				'expectedTags' => [
 					'mw-private-personal-info',
 					'mw-private-vandalism',
+					'mw-private-link-spam',
 					'mw-private-personal-info-false-positive',
 					'mw-private-personal-info-no-further-action',
 					'mw-private-vandalism-false-positive',
 					'mw-private-vandalism-no-further-action',
+					'mw-private-link-spam-false-positive',
+					'mw-private-link-spam-no-further-action',
 				],
 			],
 		];

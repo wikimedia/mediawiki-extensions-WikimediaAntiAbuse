@@ -29,12 +29,14 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 	public function testUserCanExecute(
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled,
+		bool $linkSpamTagEnabled,
 		array $rights,
 		bool $expected
 	): void {
 		$this->overrideConfigValues( [
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
 			'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+			'WikimediaAntiAbuseEnableLinkSpamTag' => $linkSpamTagEnabled,
 		] );
 		$this->setGroupPermissions( [ 'abuse-review-viewer' => array_fill_keys( $rights, true ) ] );
 
@@ -51,36 +53,49 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			'holds a right over the enabled personal information tag' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'rights' => [ 'viewsuppressed' ],
 				'expected' => true,
 			],
 			'holds the other right over the enabled personal information tag' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'rights' => [ 'suppressrevision' ],
 				'expected' => true,
 			],
 			'holds a right over the enabled vandalism tag' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => true,
+				'linkSpamTagEnabled' => false,
+				'rights' => [ 'abusereview-vandalism-alpha-tester' ],
+				'expected' => true,
+			],
+			'holds a right over the enabled link spam tag' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => true,
 				'rights' => [ 'abusereview-vandalism-alpha-tester' ],
 				'expected' => true,
 			],
 			'holds a right over the disabled tag only' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'rights' => [ 'abusereview-vandalism-alpha-tester' ],
 				'expected' => false,
 			],
 			'holds every right while no tag is enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
+				'linkSpamTagEnabled' => false,
 				'rights' => [ 'viewsuppressed', 'suppressrevision', 'abusereview-vandalism-alpha-tester' ],
 				'expected' => false,
 			],
 			'holds none of the rights' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => true,
+				'linkSpamTagEnabled' => false,
 				'rights' => [],
 				'expected' => false,
 			],

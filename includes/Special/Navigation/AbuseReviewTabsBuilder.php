@@ -92,6 +92,7 @@ readonly class AbuseReviewTabsBuilder {
 		// Generates:
 		// * wikimediaantiabuse-special-abuse-review-tab-mw-private-personal-info
 		// * wikimediaantiabuse-special-abuse-review-tab-mw-private-vandalism
+		// * wikimediaantiabuse-special-abuse-review-tab-mw-private-link-spam
 		$label = $this->context->msg( 'wikimediaantiabuse-special-abuse-review-tab-' . $tab )
 			->rawParams( $this->buildCount( $count ) )
 			->numParams( $count )

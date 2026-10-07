@@ -20,6 +20,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled,
 		bool $vandalismTagInAlphaTest,
+		bool $linkSpamTagEnabled,
 		array $expectedDefinedTags,
 		array $expectedRestrictedTags
 	): void {
@@ -28,6 +29,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 				'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
 				'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
 				'WikimediaAntiAbuseVandalismTagInAlphaTest' => $vandalismTagInAlphaTest,
+				'WikimediaAntiAbuseEnableLinkSpamTag' => $linkSpamTagEnabled,
 			] )
 		);
 
@@ -55,6 +57,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
 				'vandalismTagInAlphaTest' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedDefinedTags' => [],
 				'expectedRestrictedTags' => [],
 			],
@@ -62,6 +65,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
 				'vandalismTagInAlphaTest' => false,
+				'linkSpamTagEnabled' => false,
 				'expectedDefinedTags' => [
 					'mw-private-personal-info',
 					'mw-private-personal-info-false-positive',
@@ -77,6 +81,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => true,
 				'vandalismTagInAlphaTest' => true,
+				'linkSpamTagEnabled' => false,
 				'expectedDefinedTags' => [
 					'mw-private-vandalism',
 					'mw-private-vandalism-false-positive',
@@ -88,10 +93,27 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
 				],
 			],
-			'Personal info and vandalism tags enabled' => [
+			'Link spam tag enabled' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => false,
+				'vandalismTagInAlphaTest' => false,
+				'linkSpamTagEnabled' => true,
+				'expectedDefinedTags' => [
+					'mw-private-link-spam',
+					'mw-private-link-spam-false-positive',
+					'mw-private-link-spam-no-further-action',
+				],
+				'expectedRestrictedTags' => [
+					'mw-private-link-spam' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-link-spam-false-positive' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-link-spam-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
+				],
+			],
+			'All tags enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => true,
 				'vandalismTagInAlphaTest' => false,
+				'linkSpamTagEnabled' => true,
 				'expectedDefinedTags' => [
 					'mw-private-personal-info',
 					'mw-private-personal-info-false-positive',
@@ -99,6 +121,9 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-vandalism',
 					'mw-private-vandalism-false-positive',
 					'mw-private-vandalism-no-further-action',
+					'mw-private-link-spam',
+					'mw-private-link-spam-false-positive',
+					'mw-private-link-spam-no-further-action',
 				],
 				'expectedRestrictedTags' => [
 					'mw-private-personal-info' => [ 'viewsuppressed', 'suppressrevision' ],
@@ -107,6 +132,9 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-vandalism' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
 					'mw-private-vandalism-false-positive' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
 					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
+					'mw-private-link-spam' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-link-spam-false-positive' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-link-spam-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
 				],
 			],
 		];

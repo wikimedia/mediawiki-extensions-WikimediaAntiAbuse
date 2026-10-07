@@ -31,6 +31,10 @@
 			"value": false,
 			"description": "Enables the mw-private-vandalism tag."
 		},
+		"WikimediaAntiAbuseEnableLinkSpamTag": {
+			"value": false,
+			"description": "Enables the mw-private-link-spam tag."
+		},
 		"WikimediaAntiAbuseEnablePersonalInfoFlagNotifications": {
 			"value": false,
 			"description": "Enables Echo notifications, sent to opted-in users with the viewsuppressed or suppressrevision right, when the mw-private-personal-info tag is applied to a revision. Requires the Echo extension."
@@ -62,7 +66,8 @@
 		"WikimediaAntiAbuseAbuseReviewDelayMinutes": {
 			"value": {
 				"mw-private-personal-info": 0,
-				"mw-private-vandalism": 10
+				"mw-private-vandalism": 10,
+				"mw-private-link-spam": 10
 			},
 			"description": "The number of minutes for which Special:AbuseReview hides a new revision, keyed by reviewable tag. A reviewer can show the hidden revisions with the \"include recent edits\" filter. Use 0 to show every revision as soon as it is tagged."
 		}

@@ -13,6 +13,7 @@ class AbuseReviewEnabledTagsProvider {
 	public const array CONSTRUCTOR_OPTIONS = [
 		'WikimediaAntiAbuseEnablePersonalInfoTag',
 		'WikimediaAntiAbuseEnableVandalismTag',
+		'WikimediaAntiAbuseEnableLinkSpamTag',
 	];
 
 	public function __construct(
@@ -35,6 +36,9 @@ class AbuseReviewEnabledTagsProvider {
 		}
 		if ( $this->options->get( 'WikimediaAntiAbuseEnableVandalismTag' ) ) {
 			$enabledReviewableTags[] = ChangeTagsHandler::VANDALISM_TAG;
+		}
+		if ( $this->options->get( 'WikimediaAntiAbuseEnableLinkSpamTag' ) ) {
+			$enabledReviewableTags[] = ChangeTagsHandler::LINK_SPAM_TAG;
 		}
 
 		return $enabledReviewableTags;
