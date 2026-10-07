@@ -36,5 +36,5 @@
 	"echo-pref-tooltip-personal-info": "أبلغني عندما يتم الإبلاغ عن تعديل ما على أنه من المحتمل أن يحتوي على معلومات شخصية.",
 	"notification-header-personal-info-flagged": "قد يحتوي تعديل على <strong>$1</strong> على معلومات شخصية.",
 	"notification-bundle-header-personal-info-flagged": "قد يحتوي $1 {{PLURAL:$1| edit|edits}} على معلومات شخصية.",
-	"notification-link-text-personal-info-flagged": "عرض التعديلات التي تم الإبلاغ عنها"
+	"notification-link-text-personal-info-flagged": "عرض المُعلَّم {{PLURAL:$1|تعديل|تعديلات}}"
 }
