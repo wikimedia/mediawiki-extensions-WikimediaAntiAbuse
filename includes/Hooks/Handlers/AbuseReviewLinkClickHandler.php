@@ -29,12 +29,16 @@ class AbuseReviewLinkClickHandler implements BeforeInitializeHook {
 	public const string SUBTYPE_PAGE_TITLE = 'page_title';
 	public const string SUBTYPE_DIFF = 'diff';
 	public const string SUBTYPE_PAGE_HISTORY = 'page_history';
+	public const string SUBTYPE_UNDO = 'undo';
+	public const string SUBTYPE_CHANGE_VISIBILITY = 'change_visibility';
 
 	private const array SUBTYPES = [
 		self::SUBTYPE_TIMESTAMP,
 		self::SUBTYPE_PAGE_TITLE,
 		self::SUBTYPE_DIFF,
 		self::SUBTYPE_PAGE_HISTORY,
+		self::SUBTYPE_UNDO,
+		self::SUBTYPE_CHANGE_VISIBILITY,
 	];
 
 	public function __construct(

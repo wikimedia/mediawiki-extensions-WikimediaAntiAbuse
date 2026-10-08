@@ -507,6 +507,18 @@ class AbuseReviewPager extends CodexTablePager {
 				)
 			);
 		}
+		$rollbackLink = $this->buildRollbackLink( $title, $row );
+		if ( $rollbackLink !== null ) {
+			$links[] = $rollbackLink;
+		}
+		$undoLink = $this->buildUndoLink( $title, $row );
+		if ( $undoLink !== null ) {
+			$links[] = $undoLink;
+		}
+		$changeVisibilityLink = $this->buildChangeVisibilityLink( $title, $row );
+		if ( $changeVisibilityLink !== null ) {
+			$links[] = $changeVisibilityLink;
+		}
 
 		return ' ' . Html::rawElement(
 			'span',
@@ -515,6 +527,83 @@ class AbuseReviewPager extends CodexTablePager {
 				static fn ( string $link ): string => Html::rawElement( 'span', [], $link ),
 				$links
 			) )
+		);
+	}
+
+	private function buildRollbackLink( Title $title, stdClass $row ): ?string {
+		if ( $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
+			|| !$this->isCurrentRevision( $row )
+			|| !(int)$row->parent_id
+			|| $this->isHandledOutsideAbuseReview( $row )
+			|| !$this->getAuthority()->probablyCan( 'edit', $title )
+			|| !$this->getAuthority()->probablyCan( 'rollback', $title )
+		) {
+			return null;
+		}
+
+		$revision = $this->revisionStore->getRevisionById( (int)$row->rev_id );
+		if ( $revision === null ) {
+			return null;
+		}
+
+		// Returns an empty string when the author is the only contributor to the page.
+		$rollbackLink = Linker::generateRollback( $revision, $this->getContext(), [ 'noBrackets' ] );
+		return $rollbackLink !== '' ? $rollbackLink : null;
+	}
+
+	private function buildUndoLink( Title $title, stdClass $row ): ?string {
+		if ( $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
+			|| $this->isArchivedRow( $row )
+			|| !(int)$row->parent_id
+			|| $this->isHandledOutsideAbuseReview( $row )
+			|| ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0
+			|| !$this->getAuthority()->probablyCan( 'edit', $title )
+		) {
+			return null;
+		}
+
+		// Same markup as the undo link of ChangeToolsFactory.
+		return Html::rawElement(
+			'span',
+			[ 'class' => [ 'mw-history-undo', 'mw-change-tools-undo' ] ],
+			$this->getLinkRenderer()->makeKnownLink(
+				$title,
+				$this->msg( 'editundo' )->text(),
+				[],
+				array_merge(
+					[ 'action' => 'edit', 'undoafter' => $row->parent_id, 'undo' => $row->rev_id ],
+					$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_UNDO, $row )
+				)
+			)
+		);
+	}
+
+	private function buildChangeVisibilityLink( Title $title, stdClass $row ): ?string {
+		// Special:RevisionDelete cannot hide the text of the current revision.
+		if ( $this->abuseReviewTag !== ChangeTagsHandler::PERSONAL_INFO_TAG
+			|| $this->isCurrentRevision( $row )
+			|| $this->isHandledOutsideAbuseReview( $row )
+			|| !$this->getAuthority()->isAllowed( 'suppressrevision' )
+		) {
+			return null;
+		}
+
+		// A revision ID still finds the revision after the page is deleted.
+		// The wpHide* parameters select the text and suppress checkboxes on the form.
+		return $this->getLinkRenderer()->makeKnownLink(
+			SpecialPage::getTitleFor( 'Revisiondelete' ),
+			$this->msg( 'rev-delundel' )->text(),
+			[],
+			array_merge(
+				[
+					'type' => 'revision',
+					'target' => $title->getPrefixedDBkey(),
+					'ids' => $row->rev_id,
+					'wpHidePrimary' => 1,
+					'wpHideRestricted' => 1,
+				],
+				$this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_CHANGE_VISIBILITY, $row )
+			)
 		);
 	}
 
@@ -971,6 +1060,7 @@ class AbuseReviewPager extends CodexTablePager {
 					'comment_cid' => 'comment_rev_comment.comment_id',
 					'is_archive' => '0',
 					'page_latest' => 'page_latest',
+					'parent_id' => 'rev_parent_id',
 				] );
 		} else {
 			$queryBuilder = $this->revisionStore->newArchiveSelectQueryBuilder( $this->getDatabase() )
@@ -990,6 +1080,7 @@ class AbuseReviewPager extends CodexTablePager {
 					'is_archive' => '1',
 					// An archived page has no latest revision
 					'page_latest' => '0',
+					'parent_id' => 'ar_parent_id',
 				] );
 		}
 

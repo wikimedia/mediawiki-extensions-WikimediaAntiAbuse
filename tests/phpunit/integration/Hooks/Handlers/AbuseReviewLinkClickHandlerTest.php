@@ -32,9 +32,12 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/** @dataProvider provideRecordsTheClickAndRedirectsToTheCleanUrl */
-	public function testRecordsTheClickAndRedirectsToTheCleanUrl( ?string $tag ): void {
+	public function testRecordsTheClickAndRedirectsToTheCleanUrl(
+		?string $tag,
+		string $subtype = AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP
+	): void {
 		$expectedInteractionData = [
-			'action_subtype' => 'timestamp',
+			'action_subtype' => $subtype,
 			'identifier' => 42,
 			'identifier_type' => 'revision',
 		];
@@ -53,7 +56,7 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 		$title = Title::makeTitle( NS_MAIN, 'Example' );
 		$context = $this->newContext( $title, [
 			'title' => $title->getPrefixedDBkey(),
-			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => AbuseReviewLinkClickHandler::SUBTYPE_TIMESTAMP,
+			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => $subtype,
 			AbuseReviewLinkClickHandler::REVISION_PARAM => '42',
 			AbuseReviewLinkClickHandler::TAG_PARAM => $tag,
 			'diff' => 'prev',
@@ -76,6 +79,14 @@ class AbuseReviewLinkClickHandlerTest extends MediaWikiIntegrationTestCase {
 		return [
 			'With tag specified' => [ 'tag' => 'mw-private-personal-info' ],
 			'With no tag specified' => [ 'tag' => null ],
+			'Undo link' => [
+				'tag' => 'mw-private-personal-info',
+				'subtype' => AbuseReviewLinkClickHandler::SUBTYPE_UNDO,
+			],
+			'Change visibility link' => [
+				'tag' => 'mw-private-personal-info',
+				'subtype' => AbuseReviewLinkClickHandler::SUBTYPE_CHANGE_VISIBILITY,
+			],
 		];
 	}
 

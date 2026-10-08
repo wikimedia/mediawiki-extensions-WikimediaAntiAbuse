@@ -438,13 +438,44 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
 				] );
 			}
+			if ( $expectedFlag === 'mw-private-vandalism'
+				&& !$isArchivedRevision
+				&& $actualRevision->getParentId()
+				&& $actualRevId !== static::$revertedVandalismRevId
+				&& $canSeeRevisionText
+			) {
+				$expectedToolLinkHrefs[] = $pageTitle->getLocalURL( [
+					'action' => 'edit',
+					'undoafter' => $actualRevision->getParentId(),
+					'undo' => $actualRevId,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'undo',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
+				] );
+			}
+			if ( $expectedFlag === 'mw-private-personal-info'
+				&& !$isCurrentRevision
+				&& !$actualRevision->isDeleted( RevisionRecord::DELETED_RESTRICTED )
+				&& in_array( 'suppressrevision', $authorityRights, true )
+			) {
+				$expectedToolLinkHrefs[] = SpecialPage::getTitleFor( 'Revisiondelete' )->getLocalURL( [
+					'type' => 'revision',
+					'target' => $pageTitle->getPrefixedDBkey(),
+					'ids' => $actualRevId,
+					'wpHidePrimary' => 1,
+					'wpHideRestricted' => 1,
+					AbuseReviewLinkClickHandler::SUBTYPE_PARAM => 'change_visibility',
+					AbuseReviewLinkClickHandler::REVISION_PARAM => $actualRevId,
+					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
+				] );
+			}
 			$this->assertSame(
 				$expectedToolLinkHrefs,
 				array_map(
 					static fn ( Element $link ): string => DOMCompat::getAttribute( $link, 'href' ),
 					iterator_to_array( DOMCompat::querySelectorAll( $toolLinksNode, 'a' ) )
 				),
-				'the diff and history links are correct'
+				'the diff, history, undo and change visibility links are correct'
 			);
 
 			$changesHeader = DOMCompat::querySelector(
