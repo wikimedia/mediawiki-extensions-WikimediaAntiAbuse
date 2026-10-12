@@ -17,7 +17,6 @@ use MediaWiki\Html\Html;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Parser\ParserOptions;
-use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionStore;
 use MediaWiki\SpecialPage\SpecialPage;
 use MediaWiki\Title\Title;
@@ -64,7 +63,6 @@ class SpecialAbuseReview extends SpecialPage {
 	public function __construct(
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly RevisionStore $revisionStore,
-		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
@@ -343,7 +341,6 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->getLinkRenderer(),
 			$this->changeTagsStore,
 			$this->revisionStore,
-			$this->archivedRevisionLookup,
 			$this->linkBatchFactory,
 			$this->rowCommentFormatter,
 			$this->verdictPerformerLookup,

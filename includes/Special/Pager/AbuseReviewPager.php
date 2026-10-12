@@ -24,7 +24,6 @@ use MediaWiki\Navigation\CodexPagerNavigationBuilder;
 use MediaWiki\Page\LinkBatchFactory;
 use MediaWiki\Pager\CodexTablePager;
 use MediaWiki\Pager\IndexPager;
-use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\MutableRevisionRecord;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Revision\RevisionStore;
@@ -64,12 +63,17 @@ class AbuseReviewPager extends CodexTablePager {
 	/** @var array<int,UserIdentity> The performer for each revision ID */
 	private array $verdictPerformers = [];
 
+	/** @var int[] Revision IDs that the next lookup also loads */
+	private array $revisionIdsToLookUp = [];
+
+	/** @var array<int,?RevisionRecord> Looked-up revisions by revision ID, null if not found */
+	private array $revisions = [];
+
 	public function __construct(
 		IContextSource $context,
 		LinkRenderer $linkRenderer,
 		private readonly ChangeTagsStore $changeTagsStore,
 		private readonly RevisionStore $revisionStore,
-		private readonly ArchivedRevisionLookup $archivedRevisionLookup,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
@@ -750,7 +754,7 @@ class AbuseReviewPager extends CodexTablePager {
 			return '';
 		}
 
-		$revision = $this->lookUpRevision( $title, (int)$row->rev_id );
+		$revision = $this->getRevision( (int)$row->rev_id );
 		if ( $revision === null ) {
 			return '';
 		}
@@ -760,7 +764,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$parent = null;
 		$parentId = $revision->getParentId();
 		if ( $parentId ) {
-			$parent = $this->lookUpRevision( $title, $parentId );
+			$parent = $this->getRevision( $parentId );
 			if ( !$this->canSeeText( $parent, $title ) ) {
 				return $header . $this->buildWithheldDiffNotice( $title, $row, $parent );
 			}
@@ -854,22 +858,54 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * A revision from whichever table holds it: the revisions of a deleted page are in the
+	 * Revisions from whichever table holds them: the revisions of a deleted page are in the
 	 * archive table, and a partial undeletion can leave one page's history split across both.
 	 *
 	 * The archive table is only read if the viewer has the deletedtext right.
+	 *
+	 * @param int[] $revisionIds
+	 * @return array<int,?RevisionRecord> Keyed by revision ID
 	 */
-	private function lookUpRevision( Title $title, int $revisionId ): ?RevisionRecord {
-		$revision = $this->revisionStore->getRevisionById( $revisionId );
-		if ( $revision !== null ) {
-			return $revision;
+	private function lookUpRevisions( array $revisionIds ): array {
+		$revisions = $this->revisionStore->newRevisionsFromBatch(
+			$this->revisionStore->newSelectQueryBuilder( $this->getDatabase() )
+				->joinComment()
+				->joinPage()
+				->where( [ 'rev_id' => $revisionIds ] )
+				->caller( __METHOD__ )
+				->fetchResultSet(),
+			[ 'slots' => true ]
+		)->getValue();
+
+		$missingIds = array_values( array_diff( $revisionIds, array_keys( $revisions ) ) );
+		if ( $missingIds === [] || !$this->getAuthority()->isAllowed( 'deletedtext' ) ) {
+			return $revisions;
 		}
 
-		if ( !$this->getAuthority()->isAllowed( 'deletedtext' ) ) {
-			return null;
+		$archivedRevisions = $this->revisionStore->newRevisionsFromBatch(
+			$this->revisionStore->newArchiveSelectQueryBuilder( $this->getDatabase() )
+				->joinComment()
+				->where( [ 'ar_rev_id' => $missingIds ] )
+				->caller( __METHOD__ )
+				->fetchResultSet(),
+			[ 'archive' => true, 'slots' => true ]
+		)->getValue();
+
+		return $revisions + $archivedRevisions;
+	}
+
+	/** On a cache miss, looks up the given ID and all collected IDs in one batch. */
+	private function getRevision( int $revisionId ): ?RevisionRecord {
+		if ( !array_key_exists( $revisionId, $this->revisions ) ) {
+			$revisionIds = array_unique( [ ...$this->revisionIdsToLookUp, $revisionId ] );
+			$this->revisionIdsToLookUp = [];
+
+			$this->revisions += $this->lookUpRevisions( $revisionIds );
+			// Cache a miss as null, so that the next call does not look it up again.
+			$this->revisions += array_fill_keys( $revisionIds, null );
 		}
 
-		return $this->archivedRevisionLookup->getArchivedRevisionRecord( $title, $revisionId );
+		return $this->revisions[$revisionId];
 	}
 
 	private function canSeeRowText( Title $title, stdClass $row ): bool {
@@ -1188,9 +1224,12 @@ class AbuseReviewPager extends CodexTablePager {
 
 		$lb = $this->linkBatchFactory->newLinkBatch()->setCaller( __METHOD__ );
 		$revisionIds = [];
+		$parentIds = [];
 		foreach ( $this->mResult as $row ) {
+			$lb->add( (int)$row->namespace, $row->title );
 			$lb->addUser( new UserIdentityValue( (int)$row->user, $row->user_text ) );
 			$revisionIds[] = (int)$row->rev_id;
+			$parentIds[] = (int)$row->parent_id;
 		}
 
 		$performers = $this->verdictPerformerLookup->lookUpPerformers(
@@ -1208,6 +1247,8 @@ class AbuseReviewPager extends CodexTablePager {
 		$this->formattedComments = $this->rowCommentFormatter->formatRows(
 			$this->mResult, 'comment', 'namespace', 'title', 'rev_id'
 		);
+		// A page creation has no parent, so its parent ID is 0.
+		$this->revisionIdsToLookUp = [ ...$revisionIds, ...array_filter( $parentIds ) ];
 	}
 
 	/** @inheritDoc */

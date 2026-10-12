@@ -25,7 +25,6 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			$this->getServiceContainer()->getLinkRenderer(),
 			$this->getServiceContainer()->getChangeTagsStore(),
 			$this->getServiceContainer()->getRevisionStore(),
-			$this->getServiceContainer()->getArchivedRevisionLookup(),
 			$this->getServiceContainer()->getLinkBatchFactory(),
 			$this->getServiceContainer()->getRowCommentFormatter(),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' ),

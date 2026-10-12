@@ -151,7 +151,6 @@
 			"services": [
 				"ChangeTagsStore",
 				"RevisionStore",
-				"ArchivedRevisionLookup",
 				"LinkBatchFactory",
 				"RowCommentFormatter",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
