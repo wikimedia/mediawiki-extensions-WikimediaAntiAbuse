@@ -155,7 +155,13 @@ return [
 		$services->getChangeTagsStore(),
 		$services->getUserIdentityLookup(),
 		$services->getUserFactory(),
-		$services->getService( 'WikimediaAntiAbuseLogger' )
+		$services->getService( 'WikimediaAntiAbuseLogger' ),
+		$services->getUserOptionsLookup(),
+		$services->getCentralIdLookup(),
+		// If GlobalPreferences is not installed, global opt-ins do not exist.
+		$services->has( 'GlobalPreferences.GlobalPreferencesConnectionProvider' )
+			? $services->getService( 'GlobalPreferences.GlobalPreferencesConnectionProvider' )
+			: null
 	),
 
 	'WikimediaAntiAbuseRevisionSnippetGenerator' => static fn (

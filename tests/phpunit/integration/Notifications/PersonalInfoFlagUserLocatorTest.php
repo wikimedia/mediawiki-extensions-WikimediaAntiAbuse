@@ -4,6 +4,9 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Notifications;
 
+use GlobalPreferences\Storage;
+use MediaWiki\MainConfigNames;
+use MediaWiki\User\Options\UserOptionsManager;
 use MediaWiki\User\User;
 use MediaWikiIntegrationTestCase;
 
@@ -120,5 +123,84 @@ class PersonalInfoFlagUserLocatorTest extends MediaWikiIntegrationTestCase {
 			->locate();
 
 		$this->assertSame( [ $eligible->getId() ], array_keys( $result ) );
+	}
+
+	/** @dataProvider provideGlobalEligibility */
+	public function testLocateWithGlobalOptIn(
+		array $groups,
+		bool $localOptOut,
+		bool $expectEligible
+	): void {
+		$this->markTestSkippedIfExtensionNotLoaded( 'GlobalPreferences' );
+		// Use local ids as central ids, so that the test does not depend on CentralAuth.
+		$this->overrideConfigValue( MainConfigNames::CentralIdLookupProvider, 'local' );
+
+		$user = $this->getTestUser( $groups )->getUser();
+		$userOptionsManager = $this->getServiceContainer()->getUserOptionsManager();
+		$userOptionsManager->setOption(
+			$user,
+			'echo-subscriptions-web-personal-info',
+			'1',
+			UserOptionsManager::GLOBAL_CREATE
+		);
+		$userOptionsManager->saveOptions( $user );
+		$this->assertTrue(
+			$userOptionsManager->isOptionGlobal( $user, 'echo-subscriptions-web-personal-info' ),
+			'opt-in must be stored as a global preference'
+		);
+
+		if ( $localOptOut ) {
+			$userOptionsManager->setOption(
+				$user,
+				'echo-subscriptions-web-personal-info',
+				'0',
+				UserOptionsManager::GLOBAL_OVERRIDE
+			);
+			$userOptionsManager->saveOptions( $user );
+		}
+
+		$result = $this->getServiceContainer()
+			->getService( 'WikimediaAntiAbusePersonalInfoFlagUserLocator' )
+			->locate();
+
+		if ( $expectEligible ) {
+			$this->assertArrayHasKey( $user->getId(), $result );
+		} else {
+			$this->assertArrayNotHasKey( $user->getId(), $result );
+		}
+	}
+
+	public static function provideGlobalEligibility(): array {
+		return [
+			'global opt-in and holds viewsuppressed is eligible' => [
+				'groups' => [ 'suppress' ],
+				'localOptOut' => false,
+				'expectEligible' => true,
+			],
+			'global opt-in without tag access is excluded' => [
+				'groups' => [],
+				'localOptOut' => false,
+				'expectEligible' => false,
+			],
+			'global opt-in disabled by a local exception is excluded' => [
+				'groups' => [ 'suppress' ],
+				'localOptOut' => true,
+				'expectEligible' => false,
+			],
+		];
+	}
+
+	public function testLocateIgnoresGlobalOptInWithoutLocalAccount(): void {
+		$this->markTestSkippedIfExtensionNotLoaded( 'GlobalPreferences' );
+		$this->overrideConfigValue( MainConfigNames::CentralIdLookupProvider, 'local' );
+
+		// No user on this wiki has this central id.
+		( new Storage( 12345678 ) )->replaceAndDelete( [ 'echo-subscriptions-web-personal-info' => '1' ], [] );
+
+		$result = $this->getServiceContainer()
+			->getService( 'WikimediaAntiAbusePersonalInfoFlagUserLocator' )
+			->locate();
+
+		$this->assertSame( [], $result );
 	}
 }

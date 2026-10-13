@@ -10,6 +10,7 @@ $cfg['directory_list'] = array_merge(
 		'../../extensions/Echo',
 		'../../extensions/EventBus',
 		'../../extensions/EventLogging',
+		'../../extensions/GlobalPreferences',
 	]
 );
 
@@ -19,6 +20,7 @@ $cfg['exclude_analysis_directory_list'] = array_merge(
 		'../../extensions/Echo',
 		'../../extensions/EventBus',
 		'../../extensions/EventLogging',
+		'../../extensions/GlobalPreferences',
 	]
 );
 

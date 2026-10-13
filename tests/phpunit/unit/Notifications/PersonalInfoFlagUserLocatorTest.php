@@ -7,6 +7,8 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Unit\Notifications;
 use ArrayIterator;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\User\CentralId\CentralIdLookup;
+use MediaWiki\User\Options\UserOptionsLookup;
 use MediaWiki\User\UserFactory;
 use MediaWiki\User\UserIdentityLookup;
 use MediaWiki\User\UserSelectQueryBuilder;
@@ -68,7 +70,10 @@ class PersonalInfoFlagUserLocatorTest extends MediaWikiUnitTestCase {
 			$this->createMock( ChangeTagsStore::class ),
 			$userIdentityLookup,
 			$this->createMock( UserFactory::class ),
-			$logger
+			$logger,
+			$this->createMock( UserOptionsLookup::class ),
+			$this->createMock( CentralIdLookup::class ),
+			null
 		);
 
 		$this->assertSame( [], $locator->locate() );
