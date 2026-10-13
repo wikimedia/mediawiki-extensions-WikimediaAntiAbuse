@@ -1,9 +1,11 @@
 {
 	"@metadata": {
 		"authors": [
+			"Kropotkine 113",
 			"NClara"
 		]
 	},
+	"wikimediaantiabuse-desc": "Fonctionnalités anti-abus pour les wikis Wikimedia",
 	"wikimediaantiabuse-special-abuse-review": "Examen des abus",
 	"wikimediaantiabuse-special-abuse-review-caption": "Révisions signalées pour examen",
 	"wikimediaantiabuse-special-abuse-review-summary": "Cette page affiche les modifications qui ont été automatiquement signalées pour révision.",
