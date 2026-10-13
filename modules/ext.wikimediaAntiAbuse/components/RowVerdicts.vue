@@ -110,7 +110,7 @@ module.exports = exports = defineComponent( {
 		tag: { type: String, required: true },
 		isFalsePositive: { type: Boolean, default: false },
 		isNoFurtherAction: { type: Boolean, default: false },
-		isHandledOutsideAbuseReview: { type: Boolean, default: false },
+		handledOutsideAbuseReviewMessage: { type: String, default: null },
 		attributionHtml: { type: String, default: null },
 		actionsElement: { type: Object, default: null },
 		detailsElement: { type: Object, default: null },
@@ -139,7 +139,7 @@ module.exports = exports = defineComponent( {
 		}
 
 		const handledOutsideAbuseReviewBlocksMark = computed(
-			() => props.isHandledOutsideAbuseReview && verdict.value === null
+			() => props.handledOutsideAbuseReviewMessage !== null && verdict.value === null
 		);
 
 		const disabledNote = computed( () => {
@@ -147,7 +147,9 @@ module.exports = exports = defineComponent( {
 				// Uses:
 				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info
 				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism
-				return mw.msg( 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' + props.tag );
+				// * wikimediaantiabuse-special-abuse-review-handled-revision-deleted
+				// * wikimediaantiabuse-special-abuse-review-handled-page-deleted
+				return mw.msg( props.handledOutsideAbuseReviewMessage );
 			}
 			return null;
 		} );

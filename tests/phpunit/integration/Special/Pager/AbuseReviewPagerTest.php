@@ -11,6 +11,8 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
 use MediaWikiIntegrationTestCase;
+use Wikimedia\Parsoid\Core\DOMCompat;
+use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
@@ -18,6 +20,25 @@ use MediaWikiIntegrationTestCase;
  */
 class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	use HtmlAssertionHelperTrait;
+
+	private const array VANDALISM_ROW = [
+		'namespace' => NS_MAIN,
+		'title' => 'AbuseReviewPagerTest',
+		'user' => 0,
+		'user_text' => '127.0.0.1',
+		'deleted' => 0,
+		'rev_id' => 2,
+		'parent_id' => 1,
+		'timestamp' => '20260101000000',
+		'ts_tags' => 'mw-private-vandalism',
+		'is_archive' => '0',
+		'page_latest' => 2,
+	];
+
+	private const string VANDALISM_REVERTED_MESSAGE =
+		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
+	private const string REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
+	private const string PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
 
 	private function getObjectUnderTest( string $abuseReviewTag ): AbuseReviewPager {
 		return new AbuseReviewPager(
@@ -75,19 +96,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 
 	/** @dataProvider provideUndoLink */
 	public function testUndoLink( array $rowOverrides, bool $expectUndoLink ): void {
-		$row = (object)array_merge( [
-			'namespace' => NS_MAIN,
-			'title' => 'AbuseReviewPagerTest',
-			'user' => 0,
-			'user_text' => '127.0.0.1',
-			'deleted' => 0,
-			'rev_id' => 2,
-			'parent_id' => 1,
-			'timestamp' => '20260101000000',
-			'ts_tags' => 'mw-private-vandalism',
-			'is_archive' => '0',
-			'page_latest' => 2,
-		], $rowOverrides );
+		$row = (object)array_merge( self::VANDALISM_ROW, $rowOverrides );
 
 		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
 
@@ -106,6 +115,71 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'Text is hidden' => [
 				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT ],
 				'expectUndoLink' => false,
+			],
+		];
+	}
+
+	/** @dataProvider provideHandledOutsideAbuseReviewMessage */
+	public function testHandledOutsideAbuseReviewMessage( array $rowOverrides, ?string $expectedMessage ): void {
+		$row = (object)array_merge( self::VANDALISM_ROW, $rowOverrides );
+
+		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
+
+		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
+			DOMUtils::parseHTML( $html ),
+			'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
+		);
+		$payload = DOMCompat::getAttribute( $mountPoint, 'data-verdicts' );
+		$this->assertNotNull( $payload, 'the mount point carries the verdicts payload' );
+		$verdicts = json_decode( $payload, true, flags: JSON_THROW_ON_ERROR );
+		$this->assertSame(
+			$expectedMessage,
+			$verdicts['handledOutsideAbuseReviewMessage'],
+			'the row names why it is handled outside AbuseReview, or null when it is not'
+		);
+	}
+
+	public static function provideHandledOutsideAbuseReviewMessage(): array {
+		return [
+			'Not handled' => [ 'rowOverrides' => [], 'expectedMessage' => null ],
+			'Edit is reverted' => [
+				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
+				'expectedMessage' => self::VANDALISM_REVERTED_MESSAGE,
+			],
+			'Text is hidden' => [
+				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT ],
+				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
+			],
+			'Text is suppressed' => [
+				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED ],
+				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
+			],
+			'Only the summary is hidden' => [
+				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_COMMENT ],
+				'expectedMessage' => null,
+			],
+			'Only the username is suppressed, as a hide-user block does' => [
+				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED ],
+				'expectedMessage' => null,
+			],
+			'Page is deleted' => [
+				'rowOverrides' => [ 'is_archive' => '1' ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			],
+			'Page is deleted and the edit reverted' => [
+				'rowOverrides' => [ 'is_archive' => '1', 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			],
+			'Page is deleted and the text hidden' => [
+				'rowOverrides' => [ 'is_archive' => '1', 'deleted' => RevisionRecord::DELETED_TEXT ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			],
+			'Text is hidden and the edit reverted' => [
+				'rowOverrides' => [
+					'deleted' => RevisionRecord::DELETED_TEXT,
+					'ts_tags' => 'mw-private-vandalism,mw-reverted',
+				],
+				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
 			],
 		];
 	}

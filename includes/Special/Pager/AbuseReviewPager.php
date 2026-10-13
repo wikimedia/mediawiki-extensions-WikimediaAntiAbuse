@@ -296,7 +296,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private function buildFlags( stdClass $row ): string {
 		$heldVerdict = $this->heldVerdict( $row, $this->abuseReviewTag );
-		$isHandledOutsideAbuseReview = $this->isHandledOutsideAbuseReview( $row );
+		$handledOutsideAbuseReviewMessage = $this->getHandledOutsideAbuseReviewMessage( $row );
 		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
 			$this->getContext(),
 			$this->verdictPerformers,
@@ -313,15 +313,14 @@ class AbuseReviewPager extends CodexTablePager {
 					'tag' => $this->abuseReviewTag,
 					'isFalsePositive' => $heldVerdict === 'falsePositive',
 					'isNoFurtherAction' => $heldVerdict === 'noFurtherAction',
-					'isHandledOutsideAbuseReview' => $isHandledOutsideAbuseReview,
+					'handledOutsideAbuseReviewMessage' => $handledOutsideAbuseReviewMessage,
 					'attributionHtml' => $attributionHtml,
 				], JSON_THROW_ON_ERROR ),
 			],
 			$heldVerdict === null
 				? $this->buildVerdictButtons(
 					(int)$row->rev_id,
-					$this->abuseReviewTag,
-					$isHandledOutsideAbuseReview,
+					$handledOutsideAbuseReviewMessage,
 					$bylineHtml
 				) : $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
 		);
@@ -333,16 +332,7 @@ class AbuseReviewPager extends CodexTablePager {
 		) . $mountPoint;
 	}
 
-	private function buildVerdictButtons(
-		int $revId,
-		string $tag,
-		bool $isHandledOutsideAbuseReview,
-		string $bylineHtml
-	): string {
-		$noteMessage = $isHandledOutsideAbuseReview
-			? 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-' . $tag
-			: null;
-
+	private function buildVerdictButtons( int $revId, ?string $noteMessage, string $bylineHtml ): string {
 		$note = '';
 		$noteId = null;
 		if ( $noteMessage !== null ) {
@@ -1003,6 +993,24 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
+	 * Returns the tables to read the revisions of this queue from, mapped to their revision ID field. The vandalism
+	 * queue skips the archive table unless handled revisions are included, because every revision of a deleted
+	 * page counts as handled there.
+	 *
+	 * @return array<string,string>
+	 */
+	public function getTablesToQuery(): array {
+		$tablesToQuery = [ 'revision' => 'rev_id' ];
+		if ( ( $this->includeHandledRevisions || $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG )
+			&& $this->getAuthority()->isAllowed( 'deletedhistory' )
+		) {
+			$tablesToQuery['archive'] = 'ar_rev_id';
+		}
+
+		return $tablesToQuery;
+	}
+
+	/**
 	 * Builds the query information. This is the same code as written in {@link IndexPager::buildQueryInfo}
 	 * but modifies it to return the per-table query info applying the arguments to each table's query info.
 	 *
@@ -1015,12 +1023,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$fname = __METHOD__ . ' (' . $this->getSqlComment() . ')';
 		$queryInfo = [];
 
-		$tablesToQuery = [ 'revision' ];
-		if ( $this->getAuthority()->isAllowed( 'deletedhistory' ) ) {
-			$tablesToQuery[] = 'archive';
-		}
-
-		foreach ( $tablesToQuery as $table ) {
+		foreach ( array_keys( $this->getTablesToQuery() ) as $table ) {
 			$info = $this->getQueryInfo( $table );
 			$tables = $info['tables'];
 			$fields = $info['fields'];
@@ -1136,9 +1139,9 @@ class AbuseReviewPager extends CodexTablePager {
 		$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
 
 		if ( !$this->includeHandledRevisions ) {
+			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
 
 			if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
-				$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
 				$queryBuilder->where( $this->getDatabase()->orExpr( [
 					new RawSQLExpression( $this->getDatabase()->bitAnd(
 							$deletedField,
@@ -1151,6 +1154,9 @@ class AbuseReviewPager extends CodexTablePager {
 				] ) );
 			}
 			if ( $this->abuseReviewTag === ChangeTagsHandler::VANDALISM_TAG ) {
+				$queryBuilder->where( new RawSQLExpression(
+					$this->getDatabase()->bitAnd( $deletedField, RevisionRecord::DELETED_TEXT ) . ' = 0'
+				) );
 				// mw-reverted may not exist on the wiki, so only apply the exclusion
 				// if the ID exists
 				$revertedTagIds = $this->changeTagsStore->getTagIdsFromNames( [
@@ -1317,24 +1323,39 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * Whether the revision on this row has been handled outside AbuseReview.
-	 * For the personal info tag this is if the content is suppressed, and for the vandalism tag this edit has been
-	 * reverted.
+	 * Returns the key of the message that explains why the revision on this row has been handled outside AbuseReview,
+	 * or null if it has not. For the personal info tag this is if the content is suppressed, and for the
+	 * vandalism tag if the page is deleted, the text is deleted or suppressed, or the edit has been reverted.
 	 *
-	 * This should match the checks in {@link self::getQueryInfo} that exclude handled rows based on
-	 * these checks. If updating this method, make sure to update there too.
-	 *
-	 * @param stdClass $row
-	 * @return bool
+	 * This should match the checks in {@link self::getQueryInfo} and {@link self::getTablesToQuery} that exclude
+	 * handled rows based on these checks. If updating this method, make sure to update there too.
 	 */
-	private function isHandledOutsideAbuseReview( stdClass $row ): bool {
+	private function getHandledOutsideAbuseReviewMessage( stdClass $row ): ?string {
 		if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
 			$deleted = (int)$row->deleted;
-			return ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
+			$isTextSuppressed = ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
 				&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
-		} else {
-			return in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true );
+
+			return $isTextSuppressed
+				? 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info'
+				: null;
 		}
+
+		if ( $this->isArchivedRow( $row ) ) {
+			return 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
+		}
+		if ( ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
+			return 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
+		}
+		if ( in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true ) ) {
+			return 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
+		}
+
+		return null;
+	}
+
+	private function isHandledOutsideAbuseReview( stdClass $row ): bool {
+		return $this->getHandledOutsideAbuseReviewMessage( $row ) !== null;
 	}
 
 	/**

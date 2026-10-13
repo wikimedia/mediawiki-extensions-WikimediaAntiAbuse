@@ -300,12 +300,8 @@ class SpecialAbuseReview extends SpecialPage {
 	 */
 	private function getRowCount( AbuseReviewPager $pager, array $excludeRevisions ): int {
 		$rowCount = 0;
-		$tablesToQuery = [ 'revision' => 'rev_id' ];
-		if ( $this->getAuthority()->isAllowed( 'deletedhistory' ) ) {
-			$tablesToQuery['archive'] = 'ar_rev_id';
-		}
 		$dbr = $this->dbProvider->getReplicaDatabase();
-		foreach ( $tablesToQuery as $table => $revIdField ) {
+		foreach ( $pager->getTablesToQuery() as $table => $revIdField ) {
 			$rowCountQueryBuilder = $dbr->newSelectQueryBuilder()
 				->queryInfo( $pager->getQueryInfo( $table ) )
 				->clearFields()

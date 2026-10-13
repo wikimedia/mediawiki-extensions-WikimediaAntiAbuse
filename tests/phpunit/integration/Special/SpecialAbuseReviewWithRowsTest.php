@@ -39,6 +39,13 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 	/** With a delay of 10 minutes the cutoff is 20260101010104, in the middle of the rows of ::addDBDataOnce. */
 	private const string RECENT_EDITS_NOW = '20260101011104';
 
+	private const string PERSONAL_INFO_SUPPRESSED_MESSAGE =
+		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info';
+	private const string VANDALISM_REVERTED_MESSAGE =
+		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
+	private const string REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
+	private const string PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
+
 	private static int $suppressedContentRevId;
 	private static int $notTaggedContentRevId;
 	private static int $taggedContentRevId;
@@ -239,6 +246,18 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$revisionStore = $this->getServiceContainer()->getRevisionStore();
 		$archivedRevisionLookup = $this->getServiceContainer()->getArchivedRevisionLookup();
 		$qqxLanguage = $this->getServiceContainer()->getLanguageFactory()->getLanguage( 'qqx' );
+		$handledMessages = [
+			'mw-private-personal-info' => [
+				static::$suppressedContentRevId => self::PERSONAL_INFO_SUPPRESSED_MESSAGE,
+				static::$suppressedFalsePositiveRevId => self::PERSONAL_INFO_SUPPRESSED_MESSAGE,
+			],
+			'mw-private-vandalism' => [
+				static::$revertedVandalismRevId => self::VANDALISM_REVERTED_MESSAGE,
+				static::$taggedContentRevId => self::REVISION_DELETED_MESSAGE,
+				static::$suppressedContentRevId => self::REVISION_DELETED_MESSAGE,
+				static::$deletedTaggedContentRevId => self::PAGE_DELETED_MESSAGE,
+			],
+		];
 		foreach ( $tableRows as $tableRowIndex => $tableRow ) {
 			$actualRevId = (int)DOMCompat::getAttribute( $tableRow, 'data-rev-id' );
 			$this->assertContains(
@@ -270,6 +289,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				],
 				true
 			);
+
+			$expectedHandledMessage = $handledMessages[$expectedFlag][$actualRevId] ?? null;
+			$isRowHandledOutsideAbuseReview = $expectedHandledMessage !== null;
 
 			$actualRevision = $isArchivedRevision ?
 				$archivedRevisionLookup->getArchivedRevisionRecord( null, $actualRevId ) :
@@ -441,7 +463,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			if ( $expectedFlag === 'mw-private-vandalism'
 				&& !$isArchivedRevision
 				&& $actualRevision->getParentId()
-				&& $actualRevId !== static::$revertedVandalismRevId
+				&& !$isRowHandledOutsideAbuseReview
 				&& $canSeeRevisionText
 			) {
 				$expectedToolLinkHrefs[] = $pageTitle->getLocalURL( [
@@ -587,21 +609,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'The tag the mark and unmark actions operate on should be as expected'
 			);
 
-			// Depending on the tag, the row may be handled by an action outside AbuseReview (for
-			// personal info the content being suppressed and vandalism the edit being reverted).
-			$isRowHandledOutsideAbuseReview = in_array(
-				$actualRevId,
-				[
-					static::$suppressedContentRevId,
-					static::$suppressedFalsePositiveRevId,
-					static::$revertedVandalismRevId,
-				],
-				true
-			);
 			$this->assertSame(
-				$isRowHandledOutsideAbuseReview,
-				$verdicts['isHandledOutsideAbuseReview'],
-				'a suppressed revision is reported as already handled'
+				$expectedHandledMessage,
+				$verdicts['handledOutsideAbuseReviewMessage'],
+				'the row names why it is handled outside AbuseReview, or null when it is not'
 			);
 			$this->assertSame(
 				$isFalsePositiveRow,
@@ -623,7 +634,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			if ( $heldVerdict !== null ) {
 				$this->assertVerdictChip( $tableRow, $heldVerdict );
 			} else {
-				$note = "(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-$expectedSelectedTab)";
+				$note = "($expectedHandledMessage)";
 				$this->assertVerdictButtons(
 					$tableRow,
 					[
@@ -922,6 +933,9 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'expectedRevIdsCallback' => static fn () => [
 					static::$revertedVandalismRevId,
 					static::$revertableTaggedContentRevId,
+					static::$deletedTaggedContentRevId,
+					static::$taggedContentRevId,
+					static::$suppressedContentRevId,
 				],
 				'expectedFiltersAppliedCount' => 1,
 			],
@@ -1602,12 +1616,12 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 		$changeTagsStore = $this->getServiceContainer()->getChangeTagsStore();
 		$changeTagsStore->addTags(
-			[ 'mw-private-personal-info' ],
+			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$taggedContentRevId
 		);
 		$changeTagsStore->addTags(
-			[ 'mw-private-personal-info' ],
+			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$suppressedContentRevId
 		);
@@ -1622,7 +1636,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			static::$suppressedFalsePositiveRevId
 		);
 		$changeTagsStore->addTags(
-			[ 'mw-private-personal-info' ],
+			[ 'mw-private-personal-info', 'mw-private-vandalism' ],
 			null,
 			static::$deletedTaggedContentRevId
 		);
@@ -1658,6 +1672,11 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 		$this->revisionDelete(
 			static::$taggedContentRevId,
 			[ RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_USER => 1 ]
+		);
+		// Suppressing only the username, as a hide-user block does, leaves the edit in the vandalism queue.
+		$this->revisionDelete(
+			static::$revertableTaggedContentRevId,
+			[ RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED => 1 ]
 		);
 
 		$this->deletePage( $fourthPage );

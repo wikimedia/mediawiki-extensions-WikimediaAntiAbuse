@@ -81,7 +81,7 @@ const payloadFor = ( overrides ) => Object.assign( {
 	tag: 'mw-private-personal-info',
 	isFalsePositive: false,
 	isNoFurtherAction: false,
-	isHandledOutsideAbuseReview: false
+	handledOutsideAbuseReviewMessage: null
 }, overrides );
 
 const isOpen = ( row ) => row.querySelector( '.mw-wikimediaantiabuse-abuse-review-row__details' ).open;
@@ -208,7 +208,10 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	const judged = makeRow( 2, payloadFor( { isNoFurtherAction: true } ), false );
 	const handledOutsideAbuseReview = makeRow(
 		3,
-		payloadFor( { isHandledOutsideAbuseReview: true } ),
+		payloadFor( {
+			handledOutsideAbuseReviewMessage:
+				'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info'
+		} ),
 		false
 	);
 	const waiting = makeRow( 4, payloadFor(), false );

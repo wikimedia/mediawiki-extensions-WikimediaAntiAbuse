@@ -61,7 +61,7 @@ const mountRow = ( given, options ) => {
 		tag: 'mw-private-personal-info',
 		isFalsePositive: false,
 		isNoFurtherAction: false,
-		isHandledOutsideAbuseReview: false,
+		handledOutsideAbuseReviewMessage: null,
 		referrer: ''
 	}, given );
 	props.detailsElement = makeDetails( props.isOpen !== false );
@@ -150,22 +150,27 @@ QUnit.test( 'a request in flight is reported beside the buttons', async function
 } );
 
 QUnit.test.each( 'a revision handled outside AbuseReview cannot be marked, and says why', {
-	'Row is for a personal info flagged revision': {
+	'Row is for a personal info flagged revision whose text is suppressed': {
 		tag: 'mw-private-personal-info',
+		message: 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info',
 		expectedNote: '(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info)'
 	},
-	'Row is for a vandalism flagged revision': {
+	'Row is for a vandalism flagged revision whose text is deleted': {
 		tag: 'mw-private-vandalism',
-		expectedNote: '(wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism)'
+		message: 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted',
+		expectedNote: '(wikimediaantiabuse-special-abuse-review-handled-revision-deleted)'
 	}
 }, ( assert, options ) => {
-	const wrapper = mountRow( { isHandledOutsideAbuseReview: true, tag: options.tag } );
+	const wrapper = mountRow( {
+		handledOutsideAbuseReviewMessage: options.message,
+		tag: options.tag
+	} );
 
 	[ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ].forEach( ( label ) => {
 		const mark = buttonWithLabel( wrapper, label );
 		assert.true(
 			mark.element.disabled,
-			'"' + label + '" is disabled on an already-suppressed revision'
+			'"' + label + '" is disabled on a revision handled outside AbuseReview'
 		);
 		assert.strictEqual(
 			mark.attributes( 'aria-describedby' ),
@@ -226,7 +231,11 @@ QUnit.test( 'only a row holding a verdict offers to send it back', ( assert ) =>
 } );
 
 QUnit.test( 'Handled outside AbuseReview blocks recording a verdict, not clearing the one held', ( assert ) => {
-	const sendBack = sendBackButton( mountRow( { isFalsePositive: true, isHandledOutsideAbuseReview: true } ) );
+	const sendBack = sendBackButton( mountRow( {
+		isFalsePositive: true,
+		handledOutsideAbuseReviewMessage:
+			'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info'
+	} ) );
 
 	assert.notStrictEqual(
 		sendBack,

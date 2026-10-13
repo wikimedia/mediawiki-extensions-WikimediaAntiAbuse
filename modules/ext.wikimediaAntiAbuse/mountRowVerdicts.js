@@ -12,7 +12,7 @@ const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**
  * Whether the row is already handled, so the queue steps over it. A filter can show a
- * row that holds a verdict or whose text is suppressed, and neither waits for review.
+ * row that holds a verdict or was handled outside AbuseReview, and neither waits for review.
  *
  * @param {HTMLElement} row
  * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
@@ -102,7 +102,7 @@ function mountRowVerdicts() {
 			return;
 		}
 
-		if ( props.isHandledOutsideAbuseReview ) {
+		if ( props.handledOutsideAbuseReviewMessage ) {
 			handledOutsideAbuseReviewRows.add( row );
 		}
 
