@@ -6,14 +6,14 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager;
 
 use InvalidArgumentException;
 use LogicException;
-use MediaWiki\ChangeTags\ChangeTags;
-use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Context\DerivativeContext;
 use MediaWiki\Context\IContextSource;
 use MediaWiki\Diff\DifferenceEngine;
+use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\AbuseReviewLinkClickHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewPagerNavigationBuilder;
@@ -36,10 +36,7 @@ use stdClass;
 use Wikimedia\Codex\Component\HtmlSnippet;
 use Wikimedia\Codex\Localization\MediaWikiLocalization;
 use Wikimedia\Codex\Utility\Codex;
-use Wikimedia\Rdbms\FakeResultWrapper;
 use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\RawSQLExpression;
-use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 class AbuseReviewPager extends CodexTablePager {
 
@@ -50,6 +47,17 @@ class AbuseReviewPager extends CodexTablePager {
 	private const array ROW_DATA_FIELDS = [ self::TARGET_FIELD, self::FLAGS_FIELD, self::TIMESTAMP_FIELD ];
 
 	private const int MAX_DIFF_BYTES = 8192;
+
+	private const array HANDLED_REASON_MESSAGES = [
+		AbuseReviewQueueLookup::HANDLED_REASON_SUPPRESSED =>
+			'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info',
+		AbuseReviewQueueLookup::HANDLED_REASON_PAGE_DELETED =>
+			'wikimediaantiabuse-special-abuse-review-handled-page-deleted',
+		AbuseReviewQueueLookup::HANDLED_REASON_REVISION_DELETED =>
+			'wikimediaantiabuse-special-abuse-review-handled-revision-deleted',
+		AbuseReviewQueueLookup::HANDLED_REASON_REVERTED =>
+			'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism',
+	];
 
 	/** @var bool Whether a row has been rendered yet; used to make first row expanded by default */
 	private bool $rowRendered = false;
@@ -72,19 +80,13 @@ class AbuseReviewPager extends CodexTablePager {
 	public function __construct(
 		IContextSource $context,
 		LinkRenderer $linkRenderer,
-		private readonly ChangeTagsStore $changeTagsStore,
+		private readonly AbuseReviewQueueLookup $queueLookup,
 		private readonly RevisionStore $revisionStore,
 		private readonly LinkBatchFactory $linkBatchFactory,
 		private readonly RowCommentFormatter $rowCommentFormatter,
 		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
 		private readonly AbuseReviewVerdictAttributionFormatter $verdictAttributionFormatter,
-		private readonly string $abuseReviewTag,
-		private readonly bool $includeFalsePositives,
-		private readonly bool $includeHandledRevisions,
-		private readonly array $usernamesFilter,
-		private readonly array $revisionsFilter,
-		private readonly array $pagesFilter,
-		private readonly int $delayMinutes,
+		private readonly AbuseReviewQueueFilters $filters,
 		private readonly int $numberOfFiltersApplied,
 	) {
 		parent::__construct(
@@ -168,7 +170,7 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		$detailsAttribs = [ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__details' ];
-		if ( !$this->rowRendered || $this->revisionsFilter ) {
+		if ( !$this->rowRendered || $this->filters->revisionIds ) {
 			$detailsAttribs['open'] = '';
 		}
 		$this->rowRendered = true;
@@ -295,7 +297,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildFlags( stdClass $row ): string {
-		$heldVerdict = $this->heldVerdict( $row, $this->abuseReviewTag );
+		$heldVerdict = $this->queueLookup->getVerdict( $row, $this->filters->abuseReviewTag );
 		$handledOutsideAbuseReviewMessage = $this->getHandledOutsideAbuseReviewMessage( $row );
 		$attributionHtml = $this->verdictAttributionFormatter->formatFor(
 			$this->getContext(),
@@ -310,7 +312,7 @@ class AbuseReviewPager extends CodexTablePager {
 			[
 				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
 				'data-verdicts' => json_encode( [
-					'tag' => $this->abuseReviewTag,
+					'tag' => $this->filters->abuseReviewTag,
 					'isFalsePositive' => $heldVerdict === 'falsePositive',
 					'isNoFurtherAction' => $heldVerdict === 'noFurtherAction',
 					'handledOutsideAbuseReviewMessage' => $handledOutsideAbuseReviewMessage,
@@ -328,7 +330,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return Html::rawElement(
 			'span',
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
-			$this->buildFlagChip( $this->abuseReviewTag )
+			$this->buildFlagChip( $this->filters->abuseReviewTag )
 		) . $mountPoint;
 	}
 
@@ -474,7 +476,7 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	private function buildPageLink( Title $title, stdClass $row ): string {
 		$query = $this->linkClickQuery( AbuseReviewLinkClickHandler::SUBTYPE_PAGE_TITLE, $row );
-		if ( !$this->isArchivedRow( $row ) ) {
+		if ( !$this->queueLookup->isArchivedRow( $row ) ) {
 			return $this->getLinkRenderer()->makeKnownLink( $title, null, [], $query );
 		}
 
@@ -490,7 +492,7 @@ class AbuseReviewPager extends CodexTablePager {
 		$links = [ $this->buildDiffLink( $title, $row ) ];
 		// No history link is needed for deleted pages, since page title link shows the
 		// history on Special:Undelete
-		if ( !$this->isArchivedRow( $row ) ) {
+		if ( !$this->queueLookup->isArchivedRow( $row ) ) {
 			$links[] = $this->getLinkRenderer()->makeKnownLink(
 				$title,
 				$this->msg( 'hist' )->text(),
@@ -525,7 +527,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildRollbackLink( Title $title, stdClass $row ): ?string {
-		if ( $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
+		if ( $this->filters->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
 			|| !$this->isCurrentRevision( $row )
 			|| !(int)$row->parent_id
 			|| $this->isHandledOutsideAbuseReview( $row )
@@ -546,8 +548,8 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildUndoLink( Title $title, stdClass $row ): ?string {
-		if ( $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
-			|| $this->isArchivedRow( $row )
+		if ( $this->filters->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
+			|| $this->queueLookup->isArchivedRow( $row )
 			|| !(int)$row->parent_id
 			|| $this->isHandledOutsideAbuseReview( $row )
 			|| ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0
@@ -574,7 +576,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private function buildChangeVisibilityLink( Title $title, stdClass $row ): ?string {
 		// Special:RevisionDelete cannot hide the text of the current revision.
-		if ( $this->abuseReviewTag !== ChangeTagsHandler::PERSONAL_INFO_TAG
+		if ( $this->filters->abuseReviewTag !== ChangeTagsHandler::PERSONAL_INFO_TAG
 			|| $this->isCurrentRevision( $row )
 			|| $this->isHandledOutsideAbuseReview( $row )
 			|| !$this->getAuthority()->isAllowed( 'suppressrevision' )
@@ -632,7 +634,7 @@ class AbuseReviewPager extends CodexTablePager {
 		return [
 			AbuseReviewLinkClickHandler::SUBTYPE_PARAM => $subtype,
 			AbuseReviewLinkClickHandler::REVISION_PARAM => $row->rev_id,
-			AbuseReviewLinkClickHandler::TAG_PARAM => $this->abuseReviewTag,
+			AbuseReviewLinkClickHandler::TAG_PARAM => $this->filters->abuseReviewTag,
 		];
 	}
 
@@ -648,7 +650,7 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	private function revisionLinkTarget( Title $title, stdClass $row, string $subtype ): array {
 		$query = $this->linkClickQuery( $subtype, $row );
-		if ( !$this->isArchivedRow( $row ) ) {
+		if ( !$this->queueLookup->isArchivedRow( $row ) ) {
 			return [ $title, array_merge( [ 'oldid' => $row->rev_id ], $query ) ];
 		}
 
@@ -666,7 +668,7 @@ class AbuseReviewPager extends CodexTablePager {
 	 */
 	private function diffLinkTarget( Title $title, stdClass $row, string $subtype ): array {
 		$query = $this->linkClickQuery( $subtype, $row );
-		if ( !$this->isArchivedRow( $row ) ) {
+		if ( !$this->queueLookup->isArchivedRow( $row ) ) {
 			return [ $title, array_merge( [ 'diff' => 'prev', 'oldid' => $row->rev_id ], $query ) ];
 		}
 
@@ -944,284 +946,19 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/** @inheritDoc */
 	public function reallyDoQuery( $offset, $limit, $order ): IResultWrapper {
-		$queryInfo = $this->buildQueryInfo( $offset, $limit, $order );
-
-		// Short circuit if only one table is being queried, to avoid the overhead of merging and sorting.
-		if ( count( $queryInfo ) === 1 ) {
-			return $this->getDatabase()->newSelectQueryBuilder()
-				->queryInfo( $queryInfo[0] )
-				->fetchResultSet();
-		}
-
-		$rows = [];
-		foreach ( $queryInfo as $tableQueryInfo ) {
-			$rows = array_merge(
-				$rows,
-				iterator_to_array(
-					$this->getDatabase()->newSelectQueryBuilder()
-						->queryInfo( $tableQueryInfo )
-						->fetchResultSet()
-				)
-			);
-		}
-
-		// Group the rows by timestamp with each row indexed by its rev_id, then sort these groups
-		$groupedRows = [];
-		foreach ( $rows as $row ) {
-			if ( !array_key_exists( $row->timestamp, $groupedRows ) ) {
-				$groupedRows[$row->timestamp] = [];
-			}
-
-			$groupedRows[$row->timestamp][$row->rev_id] = $row;
-		}
-
-		if ( $order === self::QUERY_DESCENDING ) {
-			krsort( $groupedRows );
-			array_walk( $groupedRows, static fn ( &$value ) => krsort( $value ) );
-		} else {
-			ksort( $groupedRows );
-			array_walk( $groupedRows, static fn ( &$value ) => ksort( $value ) );
-		}
-
-		// Flatten the now sorted results into a single array and slice it to the requested limit
-		$sortedRows = [];
-		array_walk_recursive( $groupedRows, static function ( $value ) use ( &$sortedRows ) {
-			$sortedRows[] = $value;
-		} );
-
-		return new FakeResultWrapper( array_slice( $sortedRows, 0, $limit ) );
+		return $this->queueLookup->fetchRows(
+			$this->filters,
+			$this->getAuthority(),
+			$offset,
+			$limit,
+			$order,
+			$this->mIncludeOffset
+		);
 	}
 
-	/**
-	 * Returns the tables to read the revisions of this queue from, mapped to their revision ID field. The vandalism
-	 * queue skips the archive table unless handled revisions are included, because every revision of a deleted
-	 * page counts as handled there.
-	 *
-	 * @return array<string,string>
-	 */
-	public function getTablesToQuery(): array {
-		$tablesToQuery = [ 'revision' => 'rev_id' ];
-		if ( ( $this->includeHandledRevisions || $this->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG )
-			&& $this->getAuthority()->isAllowed( 'deletedhistory' )
-		) {
-			$tablesToQuery['archive'] = 'ar_rev_id';
-		}
-
-		return $tablesToQuery;
-	}
-
-	/**
-	 * Builds the query information. This is the same code as written in {@link IndexPager::buildQueryInfo}
-	 * but modifies it to return the per-table query info applying the arguments to each table's query info.
-	 *
-	 * @inheritDoc
-	 * @return array[] One query info array per queried table, in the format accepted by
-	 *   {@link SelectQueryBuilder::queryInfo}
-	 */
-	protected function buildQueryInfo( $offset, $limit, $order ): array {
-		// Copied, with modification, from IndexPager::buildQueryInfo
-		$fname = __METHOD__ . ' (' . $this->getSqlComment() . ')';
-		$queryInfo = [];
-
-		foreach ( array_keys( $this->getTablesToQuery() ) as $table ) {
-			$info = $this->getQueryInfo( $table );
-			$tables = $info['tables'];
-			$fields = $info['fields'];
-			$conds = $info['conds'] ?? [];
-			$options = $info['options'] ?? [];
-			$joinConds = $info['join_conds'] ?? [];
-			$indexColumns = (array)$this->mIndexField;
-			$sortColumns = array_merge( $indexColumns, $this->mExtraSortFields );
-
-			if ( $order === self::QUERY_ASCENDING ) {
-				$options['ORDER BY'] = $sortColumns;
-				$operator = $this->mIncludeOffset ? '>=' : '>';
-			} else {
-				$orderBy = [];
-				foreach ( $sortColumns as $col ) {
-					$orderBy[] = $col . ' DESC';
-				}
-				$options['ORDER BY'] = $orderBy;
-				$operator = $this->mIncludeOffset ? '<=' : '<';
-			}
-			if ( $offset ) {
-				$offsets = explode( '|', $offset, count( $indexColumns ) );
-				$indexColumns = array_slice( $indexColumns, 0, count( $offsets ) );
-
-				// Convert the index columns to the correct table column names for the revision and archive tables.
-				$indexColumns = array_map( static fn ( $value ) => match ( $value ) {
-				  'timestamp' => $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp',
-				  'rev_id' => $table === 'revision' ? 'rev_id' : 'ar_rev_id',
-				}, $indexColumns );
-
-				$conds[] = $this->getDatabase()->buildComparison( $operator, array_combine( $indexColumns, $offsets ) );
-			}
-			$options['LIMIT'] = intval( $limit );
-
-			// Add the data that would normally be returned by this method to an array
-			// so that it can be returned for both tables
-			$queryInfo[] = [
-				'tables' => $tables,
-				'fields' => $fields,
-				'conds' => $conds,
-				'caller' => $fname,
-				'options' => $options,
-				'join_conds' => $joinConds
-			];
-		}
-		return $queryInfo;
-	}
-
-	/** @inheritDoc */
-	public function getQueryInfo( ?string $table = null ): array {
-		if ( !in_array( $table, [ 'revision', 'archive' ], true ) ) {
-			throw new LogicException(
-				'This ::getQueryInfo method must be provided with a valid table to generate ' .
-				'the correct query info'
-			);
-		}
-
-		if ( $table === 'revision' ) {
-			$queryBuilder = $this->revisionStore->newSelectQueryBuilder( $this->getDatabase() )
-				->joinPage()
-				->joinComment()
-				->clearFields()
-				->select( [
-					'title' => 'page_title',
-					'namespace' => 'page_namespace',
-					'user' => 'actor_user',
-					'user_text' => 'actor_name',
-					'deleted' => 'rev_deleted',
-					'rev_id' => 'rev_id',
-					'timestamp' => 'rev_timestamp',
-					'comment_text' => 'comment_rev_comment.comment_text',
-					'comment_data' => 'comment_rev_comment.comment_data',
-					'comment_cid' => 'comment_rev_comment.comment_id',
-					'is_archive' => '0',
-					'page_latest' => 'page_latest',
-					'parent_id' => 'rev_parent_id',
-				] );
-		} else {
-			$queryBuilder = $this->revisionStore->newArchiveSelectQueryBuilder( $this->getDatabase() )
-				->joinComment()
-				->clearFields()
-				->select( [
-					'title' => 'ar_title',
-					'namespace' => 'ar_namespace',
-					'user' => 'actor_user',
-					'user_text' => 'actor_name',
-					'deleted' => 'ar_deleted',
-					'rev_id' => 'ar_rev_id',
-					'timestamp' => 'ar_timestamp',
-					'comment_text' => 'comment_ar_comment.comment_text',
-					'comment_data' => 'comment_ar_comment.comment_data',
-					'comment_cid' => 'comment_ar_comment.comment_id',
-					'is_archive' => '1',
-					// An archived page has no latest revision
-					'page_latest' => '0',
-					'parent_id' => 'ar_parent_id',
-				] );
-		}
-
-		// If no abuse review tag is defined or if it's not a valid reviewable tag, then show no rows as the
-		// false positive and handled revisions filters won't work
-		if ( !array_key_exists( $this->abuseReviewTag, ChangeTagsHandler::REVIEWABLE_TAGS ) ) {
-			$queryBuilder->where( '1=0' );
-			return $queryBuilder->getQueryInfo();
-		}
-
-		$tagsFilter = [ $this->abuseReviewTag ];
-		if ( $this->includeFalsePositives ) {
-			$tagsFilter[] = ChangeTagsHandler::REVIEWABLE_TAGS[$this->abuseReviewTag]['falsePositive'];
-		}
-		$this->changeTagsStore->addTagsToDisplayQuery( $queryBuilder, $table, $this->getAuthority(), $tagsFilter );
-
-		$revIdField = $table === 'revision' ? 'rev_id' : 'ar_rev_id';
-
-		if ( !$this->includeHandledRevisions ) {
-			$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
-
-			if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
-				$queryBuilder->where( $this->getDatabase()->orExpr( [
-					new RawSQLExpression( $this->getDatabase()->bitAnd(
-							$deletedField,
-							RevisionRecord::DELETED_RESTRICTED
-						) . ' = 0' ),
-					new RawSQLExpression( $this->getDatabase()->bitAnd(
-							$deletedField,
-							RevisionRecord::DELETED_TEXT
-						) . ' = 0' ),
-				] ) );
-			}
-			if ( $this->abuseReviewTag === ChangeTagsHandler::VANDALISM_TAG ) {
-				$queryBuilder->where( new RawSQLExpression(
-					$this->getDatabase()->bitAnd( $deletedField, RevisionRecord::DELETED_TEXT ) . ' = 0'
-				) );
-				// mw-reverted may not exist on the wiki, so only apply the exclusion
-				// if the ID exists
-				$revertedTagIds = $this->changeTagsStore->getTagIdsFromNames( [
-					ChangeTags::TAG_REVERTED
-				] );
-				$revertedTagId = array_pop( $revertedTagIds );
-				if ( $revertedTagId ) {
-					$queryBuilder->leftJoin(
-						'change_tag',
-						'changetagalreadyreverted',
-						[
-							'changetagalreadyreverted.ct_rev_id=' . $revIdField,
-							'changetagalreadyreverted.ct_tag_id=' . $revertedTagId,
-						]
-					);
-					$queryBuilder->andWhere( [ 'changetagalreadyreverted.ct_tag_id' => null ] );
-				}
-			}
-
-			// A verdict tag has no ID until it is first applied, so there may be none to exclude.
-			$noFurtherActionTagIds = array_values( $this->changeTagsStore->getTagIdsFromNames( [
-				ChangeTagsHandler::REVIEWABLE_TAGS[$this->abuseReviewTag]['noFurtherAction']
-			] ) );
-			if ( $noFurtherActionTagIds !== [] ) {
-				$queryBuilder->leftJoin(
-					'change_tag',
-					'changetagnofurtheraction',
-					[
-						'changetagnofurtheraction.ct_rev_id=' . $revIdField,
-						'changetagnofurtheraction.ct_tag_id' => $noFurtherActionTagIds,
-					]
-				);
-				$queryBuilder->andWhere( [ 'changetagnofurtheraction.ct_tag_id' => null ] );
-			}
-		}
-
-		if ( $this->usernamesFilter ) {
-			$queryBuilder->where( $this->getDatabase()->expr( 'actor_name', '=', $this->usernamesFilter ) );
-		}
-
-		if ( $this->revisionsFilter ) {
-			$queryBuilder->where( $this->getDatabase()->expr( $revIdField, '=', $this->revisionsFilter ) );
-		}
-
-		if ( $this->pagesFilter ) {
-			$titleField = $table === 'revision' ? 'page_title' : 'ar_title';
-			$namespaceField = $table === 'revision' ? 'page_namespace' : 'ar_namespace';
-			$queryBuilder->where( $this->getDatabase()->orExpr( array_map(
-				fn ( Title $title ) => $this->getDatabase()->andExpr( [
-					$this->getDatabase()->expr( $titleField, '=', $title->getDBkey() ),
-					$this->getDatabase()->expr( $namespaceField, '=', $title->getNamespace() )
-				] ),
-				$this->pagesFilter
-			) ) );
-		}
-
-		if ( $this->delayMinutes > 0 && !$this->revisionsFilter ) {
-			$timestampField = $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp';
-			$cutoff = $this->getDatabase()->timestamp(
-				ConvertibleTimestamp::time() - $this->delayMinutes * 60
-			);
-			$queryBuilder->where( $this->getDatabase()->expr( $timestampField, '<', $cutoff ) );
-		}
-
-		return $queryBuilder->getQueryInfo();
+	/** Throws, because {@link AbuseReviewQueueLookup::fetchRows} gets the rows from more than one table. */
+	public function getQueryInfo(): never {
+		throw new LogicException( 'Use AbuseReviewQueueLookup::getQueryInfo to get the query info of a table' );
 	}
 
 	/** @inheritDoc */
@@ -1240,7 +977,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 		$performers = $this->verdictPerformerLookup->lookUpPerformers(
 			$revisionIds,
-			$this->abuseReviewTag,
+			$this->filters->abuseReviewTag,
 			$this->getAuthority()
 		);
 		$this->verdictPerformers = $performers;
@@ -1274,96 +1011,22 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	/**
-	 * Returns the verdict held for the row, or `null` if no verdict has been applied.
-	 */
-	private function heldVerdict( stdClass $row, string $tag ): ?string {
-		if ( $this->rowHasVerdictTag( $row->ts_tags, $tag, 'falsePositive' ) ) {
-			return 'falsePositive';
-		}
-		if ( $this->rowHasVerdictTag( $row->ts_tags, $tag, 'noFurtherAction' ) ) {
-			return 'noFurtherAction';
-		}
-
-		return null;
-	}
-
-	/**
-	 * Whether the row carries the given verdict tag for its reviewable tag.
-	 *
-	 * @param string|null $tsTags
-	 * @param string $reviewableTag
-	 * @param string $verdict A key of a {@link ChangeTagsHandler::REVIEWABLE_TAGS} entry
-	 * @return bool
-	 */
-	private function rowHasVerdictTag( ?string $tsTags, string $reviewableTag, string $verdict ): bool {
-		return in_array(
-			ChangeTagsHandler::REVIEWABLE_TAGS[$reviewableTag][$verdict],
-			$this->splitTags( $tsTags ),
-			true
-		);
-	}
-
-	/**
-	 * Whether the row comes from the archive table, its page having been deleted.
-	 *
-	 * @param stdClass $row
-	 * @return bool
-	 */
-	private function isArchivedRow( stdClass $row ): bool {
-		// A select-list literal, so the database hands it back as the string '0' or '1'.
-		return (int)$row->is_archive !== 0;
-	}
-
-	/**
 	 * Whether the row's revision is the one the page currently shows. A revision in the
 	 * archive table is one of a deleted page, which has no current revision.
 	 */
 	private function isCurrentRevision( stdClass $row ): bool {
-		return !$this->isArchivedRow( $row ) && (int)$row->page_latest === (int)$row->rev_id;
+		return !$this->queueLookup->isArchivedRow( $row ) && (int)$row->page_latest === (int)$row->rev_id;
 	}
 
-	/**
-	 * Returns the key of the message that explains why the revision on this row has been handled outside AbuseReview,
-	 * or null if it has not. For the personal info tag this is if the content is suppressed, and for the
-	 * vandalism tag if the page is deleted, the text is deleted or suppressed, or the edit has been reverted.
-	 *
-	 * This should match the checks in {@link self::getQueryInfo} and {@link self::getTablesToQuery} that exclude
-	 * handled rows based on these checks. If updating this method, make sure to update there too.
-	 */
+	/** Returns the message key for the reason from {@link AbuseReviewQueueLookup::getHandledReason}, or null. */
 	private function getHandledOutsideAbuseReviewMessage( stdClass $row ): ?string {
-		if ( $this->abuseReviewTag === ChangeTagsHandler::PERSONAL_INFO_TAG ) {
-			$deleted = (int)$row->deleted;
-			$isTextSuppressed = ( $deleted & RevisionRecord::DELETED_TEXT ) !== 0
-				&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
+		$handledReason = $this->queueLookup->getHandledReason( $row, $this->filters->abuseReviewTag );
 
-			return $isTextSuppressed
-				? 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info'
-				: null;
-		}
-
-		if ( $this->isArchivedRow( $row ) ) {
-			return 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
-		}
-		if ( ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
-			return 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
-		}
-		if ( in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true ) ) {
-			return 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
-		}
-
-		return null;
+		return $handledReason !== null ? self::HANDLED_REASON_MESSAGES[$handledReason] : null;
 	}
 
 	private function isHandledOutsideAbuseReview( stdClass $row ): bool {
-		return $this->getHandledOutsideAbuseReviewMessage( $row ) !== null;
-	}
-
-	/**
-	 * @param string|null $tsTags Comma-separated tags from a row's ts_tags field
-	 * @return string[]
-	 */
-	private function splitTags( ?string $tsTags ): array {
-		return $tsTags !== null && $tsTags !== '' ? explode( ',', $tsTags ) : [];
+		return $this->queueLookup->getHandledReason( $row, $this->filters->abuseReviewTag ) !== null;
 	}
 
 	/** @inheritDoc */
@@ -1376,7 +1039,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 	/** @inheritDoc */
 	public function getIndexField(): array {
-		return [ 'timestamp' => [ 'timestamp', 'rev_id' ] ];
+		return [ 'timestamp' => AbuseReviewQueueLookup::INDEX_COLUMNS ];
 	}
 
 	/** @inheritDoc */

@@ -7,6 +7,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Special\Pager
 use InvalidArgumentException;
 use LogicException;
 use MediaWiki\Context\RequestContext;
+use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
@@ -16,6 +17,7 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
  * @group Database
  */
 class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
@@ -44,19 +46,13 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		return new AbuseReviewPager(
 			RequestContext::getMain(),
 			$this->getServiceContainer()->getLinkRenderer(),
-			$this->getServiceContainer()->getChangeTagsStore(),
+			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewQueueLookup' ),
 			$this->getServiceContainer()->getRevisionStore(),
 			$this->getServiceContainer()->getLinkBatchFactory(),
 			$this->getServiceContainer()->getRowCommentFormatter(),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' ),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter' ),
-			$abuseReviewTag,
-			false,
-			false,
-			[],
-			[],
-			[],
-			0,
+			new AbuseReviewQueueFilters( $abuseReviewTag ),
 			0
 		);
 	}
@@ -67,31 +63,9 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		$objectUnderTest->formatValue( 'unknown', 'some value' );
 	}
 
-	/** @dataProvider provideGetQueryInfoWhenInvalidTableProvided */
-	public function testGetQueryInfoWhenInvalidTableProvided( ?string $table ): void {
+	public function testGetQueryInfoThrows(): void {
 		$this->expectException( LogicException::class );
-		$this->getObjectUnderTest( '' )->getQueryInfo( $table );
-	}
-
-	public static function provideGetQueryInfoWhenInvalidTableProvided(): array {
-		return [
-			'No table provided' => [ 'table' => null ],
-			'Unhandled table provided' => [ 'table' => 'logging' ],
-		];
-	}
-
-	/** @dataProvider provideTablesForEmptyTagsFilter */
-	public function testGetQueryInfoWhenTagsFilterEmpty( string $table ): void {
-		$objectUnderTest = $this->getObjectUnderTest( '' );
-		$actualQueryInfo = $objectUnderTest->getQueryInfo( $table );
-		$this->assertContains( '1=0', $actualQueryInfo['conds'] );
-	}
-
-	public static function provideTablesForEmptyTagsFilter(): array {
-		return [
-			'revision table' => [ 'revision' ],
-			'archive table' => [ 'archive' ],
-		];
+		$this->getObjectUnderTest( '' )->getQueryInfo();
 	}
 
 	/** @dataProvider provideUndoLink */
@@ -214,11 +188,32 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 
 	public static function provideRollbackLink(): array {
 		return [
-			'Latest edit' => [ [], true, true ],
-			'Viewer cannot roll back' => [ [], false, false ],
-			'Edit is not the latest' => [ [ 'page_latest' => 0 ], true, false ],
-			'Edit created the page' => [ [ 'parent_id' => 0 ], true, false ],
-			'Edit is reverted' => [ [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ], true, false ],
+			'Latest edit' => [ 'rowOverrides' => [], 'viewerCanRollback' => true, 'expectRollbackLink' => true ],
+			'Viewer cannot roll back' => [
+				'rowOverrides' => [],
+				'viewerCanRollback' => false,
+				'expectRollbackLink' => false,
+			],
+			'Edit is not the latest' => [
+				'rowOverrides' => [ 'page_latest' => 0 ],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => false,
+			],
+			'Edit created the page' => [
+				'rowOverrides' => [ 'parent_id' => 0 ],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => false,
+			],
+			'Edit is reverted' => [
+				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => false,
+			],
+			'Revision cannot be loaded' => [
+				'rowOverrides' => [ 'rev_id' => 999999999, 'page_latest' => 999999999 ],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => false,
+			],
 		];
 	}
 }

@@ -7,7 +7,9 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Special;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentFormatter\RowCommentFormatter;
 use MediaWiki\Exception\ErrorPageError;
+use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
@@ -48,7 +50,7 @@ class SpecialAbuseReview extends SpecialPage {
 	private array $revisionsFilter;
 	/** @var Title[] */
 	private array $pagesFilter;
-	private int $delayMinutes;
+	private bool $includeRecentEdits;
 
 	/** @var string[] The flags the user may review, in tab order */
 	private array $reviewableFlags;
@@ -71,6 +73,7 @@ class SpecialAbuseReview extends SpecialPage {
 		private readonly AbuseReviewEnabledTagsProvider $abuseReviewEnabledTagsProvider,
 		private readonly AbuseReviewVerdictPerformerLookup $verdictPerformerLookup,
 		private readonly AbuseReviewVerdictAttributionFormatter $verdictAttributionFormatter,
+		private readonly AbuseReviewQueueLookup $queueLookup,
 	) {
 		parent::__construct( 'AbuseReview' );
 	}
@@ -178,8 +181,8 @@ class SpecialAbuseReview extends SpecialPage {
 		}
 
 		$showRecentEdits = $this->getRequest()->getBool( 'showRecentEdits' );
-		$configuredDelayMinutes = $this->getConfiguredDelayMinutes( $this->abuseReviewTag );
-		$this->delayMinutes = $showRecentEdits ? 0 : $configuredDelayMinutes;
+		$configuredDelayMinutes = $this->queueLookup->getDelayMinutes( $this->abuseReviewTag );
+		$this->includeRecentEdits = $showRecentEdits;
 		if ( $showRecentEdits && $configuredDelayMinutes > 0 ) {
 			$this->numberOfFiltersApplied++;
 		}
@@ -246,11 +249,10 @@ class SpecialAbuseReview extends SpecialPage {
 				$this->getAuthority()
 			)[0] ?? '';
 			if ( $tagFilter ) {
-				$pager = $this->getPager(
-					$tagFilter,
-					delayMinutes: $this->getConfiguredDelayMinutes( $tagFilter )
+				$otherRevisionsToReviewCount = $this->getRowCount(
+					new AbuseReviewQueueFilters( $tagFilter ),
+					$this->revisionsFilter
 				);
-				$otherRevisionsToReviewCount = $this->getRowCount( $pager, $this->revisionsFilter );
 				if ( $otherRevisionsToReviewCount ) {
 					$this->displayEchoNotificationBanner( $otherRevisionsToReviewCount );
 				}
@@ -258,13 +260,15 @@ class SpecialAbuseReview extends SpecialPage {
 		}
 
 		$pager = $this->getPager(
-			$this->abuseReviewTag,
-			$this->includeFalsePositives,
-			$this->includeHandledRevisions,
-			$this->usernamesFilter,
-			$this->revisionsFilter,
-			$this->pagesFilter,
-			$this->delayMinutes,
+			new AbuseReviewQueueFilters(
+				$this->abuseReviewTag,
+				includeFalsePositives: $this->includeFalsePositives,
+				includeHandledRevisions: $this->includeHandledRevisions,
+				includeRecentEdits: $this->includeRecentEdits,
+				usernames: $this->usernamesFilter,
+				revisionIds: $this->revisionsFilter,
+				pages: $this->pagesFilter
+			),
 			$this->numberOfFiltersApplied
 		);
 		$this->getOutput()->addParserOutputContent(
@@ -295,15 +299,16 @@ class SpecialAbuseReview extends SpecialPage {
 	}
 
 	/**
-	 * Fetches the number of rows over all pages for the provided pager, optionally excluding specific revisions
-	 * from the count.
+	 * Fetches the number of rows over all pages for the provided queue filters, optionally excluding specific
+	 * revisions from the count.
 	 */
-	private function getRowCount( AbuseReviewPager $pager, array $excludeRevisions ): int {
+	private function getRowCount( AbuseReviewQueueFilters $queueFilters, array $excludeRevisions ): int {
 		$rowCount = 0;
 		$dbr = $this->dbProvider->getReplicaDatabase();
-		foreach ( $pager->getTablesToQuery() as $table => $revIdField ) {
+		$authority = $this->getAuthority();
+		foreach ( $this->queueLookup->getTablesToQuery( $queueFilters, $authority ) as $table => $revIdField ) {
 			$rowCountQueryBuilder = $dbr->newSelectQueryBuilder()
-				->queryInfo( $pager->getQueryInfo( $table ) )
+				->queryInfo( $this->queueLookup->getQueryInfo( $table, $queueFilters, $authority ) )
 				->clearFields()
 				->select( 'changetagdisplay.ct_id' );
 			if ( $excludeRevisions ) {
@@ -319,35 +324,19 @@ class SpecialAbuseReview extends SpecialPage {
 	}
 
 	/**
-	 * Constructs an instance of the {@link AbuseReviewPager} with the provided filters applied,
-	 * or the defaults for each filter if not provided.
+	 * Constructs an instance of the {@link AbuseReviewPager} with the provided filters applied.
 	 */
-	private function getPager(
-		string $abuseReviewTag,
-		bool $includeFalsePositives = false,
-		bool $includeHandledRevisions = false,
-		array $usernamesFilter = [],
-		array $revisionsFilter = [],
-		array $pagesFilter = [],
-		int $delayMinutes = 0,
-		int $numberOfFiltersApplied = 0
-	): AbuseReviewPager {
+	private function getPager( AbuseReviewQueueFilters $queueFilters, int $numberOfFiltersApplied ): AbuseReviewPager {
 		return new AbuseReviewPager(
 			$this->getContext(),
 			$this->getLinkRenderer(),
-			$this->changeTagsStore,
+			$this->queueLookup,
 			$this->revisionStore,
 			$this->linkBatchFactory,
 			$this->rowCommentFormatter,
 			$this->verdictPerformerLookup,
 			$this->verdictAttributionFormatter,
-			$abuseReviewTag,
-			$includeFalsePositives,
-			$includeHandledRevisions,
-			$usernamesFilter,
-			$revisionsFilter,
-			$pagesFilter,
-			$delayMinutes,
+			$queueFilters,
 			$numberOfFiltersApplied
 		);
 	}
@@ -383,7 +372,7 @@ class SpecialAbuseReview extends SpecialPage {
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
 			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
 			$selectedTabSummaryHtml = $this->msg( $selectedTabMsgKey )->parseAsBlock();
-			$delayMinutes = $this->getConfiguredDelayMinutes( $this->selectedTab );
+			$delayMinutes = $this->queueLookup->getDelayMinutes( $this->selectedTab );
 			if ( $delayMinutes > 0 ) {
 				$selectedTabSummaryHtml .= $this->msg( 'wikimediaantiabuse-special-abuse-review-recent-edits-hidden' )
 					->numParams( $delayMinutes )
@@ -399,12 +388,6 @@ class SpecialAbuseReview extends SpecialPage {
 		return $tabsBuilder->getHtml() . $selectedTabSummary;
 	}
 
-	/** Gets the number of minutes for which the given queue hides a new revision. */
-	private function getConfiguredDelayMinutes( string $abuseReviewTag ): int {
-		$delayMinutesByTag = $this->getConfig()->get( 'WikimediaAntiAbuseAbuseReviewDelayMinutes' );
-		return max( 0, (int)( $delayMinutesByTag[$abuseReviewTag] ?? 0 ) );
-	}
-
 	/**
 	 * Gets the list of flags to be used as tabs, along with the number of revisions that would be shown
 	 * in the specified tab.
@@ -418,10 +401,7 @@ class SpecialAbuseReview extends SpecialPage {
 
 		$counts = [];
 		foreach ( $this->reviewableFlags as $flag ) {
-			$counts[$flag] = $this->getRowCount(
-				$this->getPager( $flag, delayMinutes: $this->getConfiguredDelayMinutes( $flag ) ),
-				[]
-			);
+			$counts[$flag] = $this->getRowCount( new AbuseReviewQueueFilters( $flag ), [] );
 		}
 
 		return $counts;

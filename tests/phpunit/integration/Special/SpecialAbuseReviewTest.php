@@ -16,6 +16,8 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters
  * @group Database
  */
 class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {

@@ -10,6 +10,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifie
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewInstrumentationClient;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
@@ -51,6 +52,15 @@ return [
 
 		return new AbuseReviewInstrumentationClient( $services->getService( 'EventLogging.MetricsClientFactory' ) );
 	},
+
+	'WikimediaAntiAbuseAbuseReviewQueueLookup' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewQueueLookup(
+		new ServiceOptions( AbuseReviewQueueLookup::CONSTRUCTOR_OPTIONS, $services->getMainConfig() ),
+		$services->getConnectionProvider(),
+		$services->getRevisionStore(),
+		$services->getChangeTagsStore()
+	),
 
 	'WikimediaAntiAbuseAbuseReviewTagService' => static function ( MediaWikiServices $services ) {
 		return new AbuseReviewTagService(

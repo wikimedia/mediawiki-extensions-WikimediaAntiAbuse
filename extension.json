@@ -158,7 +158,8 @@
 				"ConnectionProvider",
 				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
 				"WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup",
-				"WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter"
+				"WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter",
+				"WikimediaAntiAbuseAbuseReviewQueueLookup"
 			]
 		}
 	},
