@@ -20,6 +20,8 @@
 	"wikimediaantiabuse-special-abuse-review-show-details": "Pokaż szczegóły",
 	"wikimediaantiabuse-special-abuse-review-edit-summary": "Opis zmian:",
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "Nie są wymagane dalsze działania",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Ta edycja została już usunięta.",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Ta edycja została już usunięta wraz z jej stroną.",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Prawdopodobnie dane osobowe",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism": "Prawdopodobnie wandalizm",
 	"wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action": "Nie są wymagane dalsze działania",

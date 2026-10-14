@@ -54,6 +54,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Elimina o veredicto actual e envía de volta esta revisión marcada para a súa revisión.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Esta revisión xa se suprimiu.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Esta revisión xa se reverteu.",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Esta revisión xa se eliminou.",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Esta revisión se eliminou xunto á súa páxina.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Rexistrado {{GENDER:$1|por}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Devolto á revisión {{GENDER:$1|por}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Posible información persoal",

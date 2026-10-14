@@ -54,6 +54,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Ka saar go'aanka hadda jira oo dib ugu dir dib u eegista dib u eegistan calaamadeysan.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Wax ka beddelkan hore ayaa loo caburiyay.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Dib u eegistan horay ayaa loo celiyay.",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Dib u eegistan mar hore ayaa la tirtiray.",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Dib u eegistan mar hore ayaa lala tirtiray boggeeda.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "{{GENDER:$1|Waxaa diiwaangeliyay}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Dib loogu celiyay dib u eegista {{GENDER:$1|waxaa sameeyay}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Waxay u badan tahay macluumaad shakhsiyeed",

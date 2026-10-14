@@ -53,6 +53,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Die aktuelle Prüfung wird aufgehoben und die markierte Version zur erneuten Prüfung zurückgesendet.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Diese Version wurde bereits unterdrückt.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Diese Änderung wurde bereits rückgängig gemacht.",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Diese Version wurde bereits gelöscht.",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Diese Version wurde zusammen mit der zugehörigen Seite bereits gelöscht.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Aufgenommen {{GENDER:$1|von}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Zurück zur Überprüfung {{GENDER:$1|von}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Vermutlich persönliche Informationen",
