@@ -163,6 +163,21 @@
 			]
 		}
 	},
+	"APIListModules": {
+		"abusereview": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Api\\ApiQueryAbuseReview",
+			"services": [
+				"WikimediaAntiAbuseAbuseReviewQueueLookup",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
+				"ChangeTagsStore",
+				"CommentStore",
+				"TitleFactory",
+				"UserNameUtils",
+				"GenderCache",
+				"ContentLanguage"
+			]
+		}
+	},
 	"AvailableRights": [
 		"abusereview-vandalism-alpha-tester"
 	],
