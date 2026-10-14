@@ -18,6 +18,7 @@ use MediaWiki\Title\Title;
 use stdClass;
 use Wikimedia\Rdbms\FakeResultWrapper;
 use Wikimedia\Rdbms\IConnectionProvider;
+use Wikimedia\Rdbms\IReadableDatabase;
 use Wikimedia\Rdbms\IResultWrapper;
 use Wikimedia\Rdbms\RawSQLExpression;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
@@ -318,6 +319,7 @@ class AbuseReviewQueueLookup {
 
 		if ( $filters->usernames ) {
 			$queryBuilder->where( $dbr->expr( 'actor_name', '=', $filters->usernames ) );
+			$queryBuilder->where( $this->getHiddenUsernameConds( $table, $authority, $dbr ) );
 		}
 
 		if ( $filters->revisionIds ) {
@@ -346,6 +348,23 @@ class AbuseReviewQueueLookup {
 		}
 
 		return $queryBuilder->getQueryInfo();
+	}
+
+	/** Returns the conditions that exclude the rows whose username the viewer cannot see. */
+	private function getHiddenUsernameConds( string $table, Authority $authority, IReadableDatabase $dbr ): array {
+		if ( !$authority->isAllowed( 'deletedhistory' ) ) {
+			$hiddenBits = RevisionRecord::DELETED_USER;
+		} elseif ( !$authority->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
+			$hiddenBits = RevisionRecord::SUPPRESSED_USER;
+		} else {
+			return [];
+		}
+
+		$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
+
+		return [
+			new RawSQLExpression( $dbr->bitAnd( $deletedField, $hiddenBits ) . " != $hiddenBits" ),
+		];
 	}
 
 	/** Gets the number of minutes for which the given queue hides a new revision. */
