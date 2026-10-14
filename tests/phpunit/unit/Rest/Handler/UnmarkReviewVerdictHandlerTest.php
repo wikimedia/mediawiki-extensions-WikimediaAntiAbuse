@@ -8,6 +8,7 @@ use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\UnmarkReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictRequestLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Rest\LocalizedHttpException;
 use MediaWiki\Rest\RequestData;
@@ -30,7 +31,7 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		return new RequestData( [
 			'method' => 'POST',
 			'pathParams' => [ 'revision' => 123, 'tag' => self::TAG, 'verdict' => $verdict ],
-			'headers' => [ 'Content-Type' => 'application/json' ],
+			'headers' => [ 'Content-Type' => 'application/json', 'User-Agent' => 'Mozilla/5.0' ],
 		] );
 	}
 
@@ -66,7 +67,11 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			);
 
 		$data = $this->executeHandlerAndGetBodyData(
-			new UnmarkReviewVerdictHandler( $service, $instrumentationClient ),
+			new UnmarkReviewVerdictHandler(
+				$service,
+				$instrumentationClient,
+				$this->createStub( AbuseReviewVerdictRequestLogger::class )
+			),
 			$this->newRequest( $verdict ),
 			[],
 			[],
@@ -106,7 +111,8 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		$this->executeHandler(
 			new UnmarkReviewVerdictHandler(
 				$service,
-				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class ),
+				$this->createNoOpMock( AbuseReviewVerdictRequestLogger::class )
 			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],
@@ -133,7 +139,44 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		$this->executeHandler(
 			new UnmarkReviewVerdictHandler(
 				$service,
-				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class ),
+				$this->createStub( AbuseReviewVerdictRequestLogger::class )
+			),
+			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
+			[],
+			[],
+			$this->pathParams( ReviewVerdictHandler::FALSE_POSITIVE ),
+			[],
+			$authority
+		);
+	}
+
+	public function testRunLogsHandledRequest(): void {
+		$authority = $this->mockRegisteredUltimateAuthority();
+		$status = StatusValue::newGood();
+		$service = $this->createMock( AbuseReviewTagService::class );
+		$service->expects( $this->once() )
+			->method( 'unmarkFalsePositive' )
+			->willReturn( $status );
+
+		$verdictRequestLogger = $this->createMock( AbuseReviewVerdictRequestLogger::class );
+		$verdictRequestLogger->expects( $this->once() )
+			->method( 'logHandledRequest' )
+			->with(
+				$this->identicalTo( $authority ),
+				123,
+				self::TAG,
+				ReviewVerdictHandler::FALSE_POSITIVE,
+				'unmark',
+				$this->identicalTo( $status ),
+				'Mozilla/5.0'
+			);
+
+		$this->executeHandler(
+			new UnmarkReviewVerdictHandler(
+				$service,
+				$this->createStub( IAbuseReviewInstrumentationClient::class ),
+				$verdictRequestLogger
 			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],

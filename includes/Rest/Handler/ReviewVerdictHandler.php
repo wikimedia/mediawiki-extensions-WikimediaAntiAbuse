@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler;
 
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictRequestLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview;
 use MediaWiki\Rest\LocalizedHttpException;
@@ -37,6 +38,7 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 	public function __construct(
 		protected readonly AbuseReviewTagService $abuseReviewTagService,
 		private readonly IAbuseReviewInstrumentationClient $instrumentationClient,
+		private readonly AbuseReviewVerdictRequestLogger $verdictRequestLogger,
 	) {
 	}
 
@@ -49,12 +51,24 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 	public function run( int $revision, string $tag, string $verdict ): Response {
 		$this->validateToken();
 		$status = $this->applyVerdict( $verdict, $revision, $tag );
+		$action = $this->verdictIsSet() ? 'mark' : 'unmark';
+		$userAgent = $this->getRequest()->getHeaderLine( 'Api-User-Agent' )
+			?: $this->getRequest()->getHeaderLine( 'User-Agent' );
+		$this->verdictRequestLogger->logHandledRequest(
+			$this->getAuthority(),
+			$revision,
+			$tag,
+			$verdict,
+			$action,
+			$status,
+			$userAgent
+		);
 		if ( !$status->isGood() ) {
 			throw new LocalizedHttpException( $status->getMessages()[0], (int)$status->getValue() );
 		}
 
 		$instrumentationData = [
-			'action_subtype' => $this->verdictIsSet() ? 'mark' : 'unmark',
+			'action_subtype' => $action,
 			'identifier' => $revision,
 			'identifier_type' => 'revision',
 			'abuse_review_tag' => $tag,

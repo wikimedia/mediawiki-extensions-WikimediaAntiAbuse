@@ -8,6 +8,7 @@ use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\MarkReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictRequestLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview;
 use MediaWiki\Rest\LocalizedHttpException;
@@ -27,11 +28,11 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 
 	private const string TAG = 'mw-private-personal-info';
 
-	private function newRequest( string $verdict, string $referrer = '' ): RequestData {
+	private function newRequest( string $verdict, string $referrer = '', array $headers = [] ): RequestData {
 		return new RequestData( [
 			'method' => 'POST',
 			'pathParams' => [ 'revision' => 123, 'tag' => self::TAG, 'verdict' => $verdict ],
-			'headers' => [ 'Content-Type' => 'application/json' ],
+			'headers' => [ 'Content-Type' => 'application/json' ] + $headers,
 			'bodyContents' => json_encode( [ 'referrer' => $referrer ] )
 		] );
 	}
@@ -73,7 +74,11 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			);
 
 		$data = $this->executeHandlerAndGetBodyData(
-			new MarkReviewVerdictHandler( $service, $instrumentationClient ),
+			new MarkReviewVerdictHandler(
+				$service,
+				$instrumentationClient,
+				$this->createStub( AbuseReviewVerdictRequestLogger::class )
+			),
 			$this->newRequest( $verdict, $referrer ),
 			[],
 			[],
@@ -121,7 +126,8 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		$this->executeHandler(
 			new MarkReviewVerdictHandler(
 				$service,
-				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class ),
+				$this->createNoOpMock( AbuseReviewVerdictRequestLogger::class )
 			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],
@@ -148,7 +154,8 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		$this->executeHandler(
 			new MarkReviewVerdictHandler(
 				$service,
-				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class )
+				$this->createNoOpMock( IAbuseReviewInstrumentationClient::class ),
+				$this->createStub( AbuseReviewVerdictRequestLogger::class )
 			),
 			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE ),
 			[],
@@ -157,5 +164,66 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 			[],
 			$authority
 		);
+	}
+
+	/** @dataProvider provideHandledRequests */
+	public function testRunLogsHandledRequest( StatusValue $status, array $headers, string $expectedUserAgent ): void {
+		$authority = $this->mockRegisteredUltimateAuthority();
+		$service = $this->createMock( AbuseReviewTagService::class );
+		$service->expects( $this->once() )
+			->method( 'markFalsePositive' )
+			->willReturn( $status );
+
+		$verdictRequestLogger = $this->createMock( AbuseReviewVerdictRequestLogger::class );
+		$verdictRequestLogger->expects( $this->once() )
+			->method( 'logHandledRequest' )
+			->with(
+				$this->identicalTo( $authority ),
+				123,
+				self::TAG,
+				ReviewVerdictHandler::FALSE_POSITIVE,
+				'mark',
+				$this->identicalTo( $status ),
+				$expectedUserAgent
+			);
+
+		if ( !$status->isGood() ) {
+			$this->expectExceptionObject(
+				new LocalizedHttpException( new MessageValue( 'wikimediaantiabuse-api-review-blocked' ), 403 )
+			);
+		}
+		$this->executeHandler(
+			new MarkReviewVerdictHandler(
+				$service,
+				$this->createStub( IAbuseReviewInstrumentationClient::class ),
+				$verdictRequestLogger
+			),
+			$this->newRequest( ReviewVerdictHandler::FALSE_POSITIVE, headers: $headers ),
+			[],
+			[],
+			$this->pathParams( ReviewVerdictHandler::FALSE_POSITIVE ),
+			[],
+			$authority
+		);
+	}
+
+	public static function provideHandledRequests(): array {
+		return [
+			'successful mark with an API user agent' => [
+				'status' => StatusValue::newGood(),
+				'headers' => [ 'User-Agent' => 'Mozilla/5.0', 'Api-User-Agent' => 'AbuseReviewTool/1.0' ],
+				'expectedUserAgent' => 'AbuseReviewTool/1.0',
+			],
+			'successful mark without an API user agent' => [
+				'status' => StatusValue::newGood(),
+				'headers' => [ 'User-Agent' => 'Mozilla/5.0' ],
+				'expectedUserAgent' => 'Mozilla/5.0',
+			],
+			'failed mark' => [
+				'status' => StatusValue::newFatal( 'wikimediaantiabuse-api-review-blocked' )->setResult( false, 403 ),
+				'headers' => [ 'User-Agent' => 'Mozilla/5.0' ],
+				'expectedUserAgent' => 'Mozilla/5.0',
+			],
+		];
 	}
 }

@@ -333,7 +333,8 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\MarkReviewVerdictHandler",
 			"services": [
 				"WikimediaAntiAbuseAbuseReviewTagService",
-				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
+				"WikimediaAntiAbuseAbuseReviewVerdictRequestLogger"
 			],
 			"openApiSpec": {
 				"x-i18n-description": "wikimediaantiabuse-api-review-mark-description"
@@ -345,7 +346,8 @@
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Rest\\Handler\\UnmarkReviewVerdictHandler",
 			"services": [
 				"WikimediaAntiAbuseAbuseReviewTagService",
-				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
+				"WikimediaAntiAbuseAbuseReviewInstrumentationClient",
+				"WikimediaAntiAbuseAbuseReviewVerdictRequestLogger"
 			],
 			"openApiSpec": {
 				"x-i18n-description": "wikimediaantiabuse-api-review-unmark-description"
