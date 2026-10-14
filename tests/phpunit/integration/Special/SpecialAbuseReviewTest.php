@@ -9,6 +9,7 @@ use MediaWiki\Exception\ErrorPageError;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Request\FauxRequest;
+use MediaWiki\Revision\RevisionRecord;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\DOM\Element;
 use Wikimedia\Parsoid\Ext\DOMUtils;
@@ -248,6 +249,102 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 			(int)DOMCompat::getAttribute( $reviewRows[0], 'data-rev-id' ),
 			'The visible row should be one performed by the first user'
 		);
+	}
+
+	/** @dataProvider provideUsernameFilterWhenUsernameIsHidden */
+	public function testUsernameFilterWhenUsernameIsHidden(
+		array $rights,
+		int $usernameBits,
+		bool $pageDeleted,
+		bool $expectRow
+	): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [],
+		] );
+		$this->setGroupPermissions( [
+			'abuse-review-test' => array_fill_keys( [ 'abusereview-vandalism-alpha-tester', ...$rights ], true ),
+		] );
+
+		$page = $this->getNonexistingTestPage();
+		$editStatus = $this->editPage( $page, 'Vandalism content' );
+		$this->assertStatusGood( $editStatus );
+		$revision = $editStatus->getNewRevision();
+		$revId = $revision->getId();
+		$this->getServiceContainer()->getChangeTagsStore()->addTags( [ 'mw-private-vandalism' ], rev_id: $revId );
+		$this->revisionDelete( $revId, [ $usernameBits => 1 ] );
+		if ( $pageDeleted ) {
+			$this->deletePage( $page );
+		}
+
+		[ $html ] = $this->executeSpecialPage(
+			request: new FauxRequest( [
+				'tab' => 'mw-private-vandalism',
+				// The vandalism queue shows the rows of deleted pages only with the handled revisions.
+				'wpShowHandledRevisions' => '1',
+				'username' => [ $revision->getUser()->getName() ],
+			] ),
+			performer: $this->getTestUser( [ 'abuse-review-test' ] )->getUser()
+		);
+
+		$this->assertSame(
+			$expectRow,
+			DOMCompat::querySelector(
+				DOMUtils::parseHTML( $html ),
+				self::ROW_SELECTOR . '[data-rev-id="' . $revId . '"]'
+			) !== null,
+			'A row matches the username filter only when the viewer can see the username of its revision'
+		);
+	}
+
+	public static function provideUsernameFilterWhenUsernameIsHidden(): array {
+		$hidden = RevisionRecord::DELETED_USER;
+		$suppressed = RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED;
+
+		return [
+			'Viewer without deletedhistory, hidden username' => [
+				'rights' => [],
+				'usernameBits' => $hidden,
+				'pageDeleted' => false,
+				'expectRow' => false,
+			],
+			'Viewer without deletedhistory, suppressed username' => [
+				'rights' => [],
+				'usernameBits' => $suppressed,
+				'pageDeleted' => false,
+				'expectRow' => false,
+			],
+			'Viewer with deletedhistory, hidden username' => [
+				'rights' => [ 'deletedhistory' ],
+				'usernameBits' => $hidden,
+				'pageDeleted' => false,
+				'expectRow' => true,
+			],
+			'Viewer with deletedhistory, suppressed username' => [
+				'rights' => [ 'deletedhistory' ],
+				'usernameBits' => $suppressed,
+				'pageDeleted' => false,
+				'expectRow' => false,
+			],
+			'Viewer with deletedhistory and suppressrevision, suppressed username' => [
+				'rights' => [ 'deletedhistory', 'suppressrevision' ],
+				'usernameBits' => $suppressed,
+				'pageDeleted' => false,
+				'expectRow' => true,
+			],
+			'Viewer with deletedhistory, deleted page, hidden username' => [
+				'rights' => [ 'deletedhistory' ],
+				'usernameBits' => $hidden,
+				'pageDeleted' => true,
+				'expectRow' => true,
+			],
+			'Viewer with deletedhistory, deleted page, suppressed username' => [
+				'rights' => [ 'deletedhistory' ],
+				'usernameBits' => $suppressed,
+				'pageDeleted' => true,
+				'expectRow' => false,
+			],
+		];
 	}
 
 	/** @dataProvider provideViewWhenReferrerSet */
