@@ -1195,6 +1195,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 		if ( $this->usernamesFilter ) {
 			$queryBuilder->where( $this->getDatabase()->expr( 'actor_name', '=', $this->usernamesFilter ) );
+			$queryBuilder->where( $this->getHiddenUsernameConds( $table ) );
 		}
 
 		if ( $this->revisionsFilter ) {
@@ -1222,6 +1223,23 @@ class AbuseReviewPager extends CodexTablePager {
 		}
 
 		return $queryBuilder->getQueryInfo();
+	}
+
+	/** Returns the conditions that exclude the rows whose username the viewer cannot see. */
+	private function getHiddenUsernameConds( string $table ): array {
+		if ( !$this->getAuthority()->isAllowed( 'deletedhistory' ) ) {
+			$hiddenBits = RevisionRecord::DELETED_USER;
+		} elseif ( !$this->getAuthority()->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
+			$hiddenBits = RevisionRecord::SUPPRESSED_USER;
+		} else {
+			return [];
+		}
+
+		$deletedField = $table === 'revision' ? 'rev_deleted' : 'ar_deleted';
+
+		return [
+			new RawSQLExpression( $this->getDatabase()->bitAnd( $deletedField, $hiddenBits ) . " != $hiddenBits" ),
+		];
 	}
 
 	/** @inheritDoc */
