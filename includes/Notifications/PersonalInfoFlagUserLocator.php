@@ -18,7 +18,8 @@ use Wikimedia\Rdbms\IConnectionProvider;
 
 class PersonalInfoFlagUserLocator {
 
-	private const int MAX_RECIPIENTS = 1000;
+	private const int MAX_LOCAL_OPTED_IN_USERS = 1000;
+	private const int MAX_GLOBAL_OPTED_IN_USERS = 1000;
 
 	private const array SUBSCRIPTION_OPTIONS = [
 		'echo-subscriptions-web-' . PersonalInfoFlagNotifier::CATEGORY,
@@ -56,10 +57,10 @@ class PersonalInfoFlagUserLocator {
 				'up_property' => self::SUBSCRIPTION_OPTIONS,
 				'up_value' => '1',
 			] )
-			->limit( self::MAX_RECIPIENTS )
+			->limit( self::MAX_LOCAL_OPTED_IN_USERS )
 			->caller( __METHOD__ )
 			->fetchFieldValues();
-		$this->warnIfCapReached( $optedInUserIds, 'user_properties' );
+		$this->warnIfCapReached( $optedInUserIds, self::MAX_LOCAL_OPTED_IN_USERS, 'user_properties' );
 
 		$optedInUserIds = array_merge( $optedInUserIds, $this->getGloballyOptedInUserIds() );
 		if ( !$optedInUserIds ) {
@@ -104,13 +105,13 @@ class PersonalInfoFlagUserLocator {
 				'gp_property' => self::SUBSCRIPTION_OPTIONS,
 				'gp_value' => '1',
 			] )
-			->limit( self::MAX_RECIPIENTS )
+			->limit( self::MAX_GLOBAL_OPTED_IN_USERS )
 			->caller( __METHOD__ )
 			->fetchFieldValues();
 		if ( !$centralIds ) {
 			return [];
 		}
-		$this->warnIfCapReached( $centralIds, 'global_preferences' );
+		$this->warnIfCapReached( $centralIds, self::MAX_GLOBAL_OPTED_IN_USERS, 'global_preferences' );
 
 		$userNames = $this->centralIdLookup->namesFromCentralIds(
 			array_map( 'intval', $centralIds ),
@@ -148,12 +149,12 @@ class PersonalInfoFlagUserLocator {
 		return false;
 	}
 
-	private function warnIfCapReached( array $ids, string $table ): void {
-		if ( count( $ids ) === self::MAX_RECIPIENTS ) {
+	private function warnIfCapReached( array $ids, int $limit, string $table ): void {
+		if ( count( $ids ) === $limit ) {
 			$this->logger->warning(
 				'Hit the {limit}-recipient cap in {table}; some opted-in users may not get ' .
 				'the personal-info flag notification.',
-				[ 'limit' => self::MAX_RECIPIENTS, 'table' => $table ]
+				[ 'limit' => $limit, 'table' => $table ]
 			);
 		}
 	}

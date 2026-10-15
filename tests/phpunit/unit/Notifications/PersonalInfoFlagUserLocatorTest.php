@@ -24,7 +24,7 @@ use Wikimedia\Rdbms\SelectQueryBuilder;
 class PersonalInfoFlagUserLocatorTest extends MediaWikiUnitTestCase {
 
 	public function testWarnsWhenRecipientCapIsReached(): void {
-		// MAX_RECIPIENTS is 1000; returning exactly that many opted-in ids trips the cap warning.
+		// MAX_LOCAL_OPTED_IN_USERS is 1000; returning exactly that many opted-in ids trips the cap warning.
 		$selectQueryBuilder = $this->createMock( SelectQueryBuilder::class );
 		$selectQueryBuilder->method( 'select' )
 			->willReturnSelf();
