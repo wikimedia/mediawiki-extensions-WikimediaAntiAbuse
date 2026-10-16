@@ -80,6 +80,9 @@ const PROGRESS_INDICATOR = '.cdx-progress-indicator';
 const PERFORMER = '.mw-wikimediaantiabuse-abuse-review-verdict-performer';
 const CHIP = '.cdx-info-chip';
 const CHIP_TEXT = '.cdx-info-chip__text';
+const DISABLED_NOTE = '.mw-wikimediaantiabuse-abuse-review-disabled-note';
+const REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
+const PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
 
 // The buttons carry an icon rather than a label, so what tells them apart is the name
 // they are given for assistive technology.
@@ -468,7 +471,10 @@ QUnit.test( 'the send-back control is rendered among the row\'s other actions', 
 	);
 } );
 
-QUnit.test( 'a click on a button does not reach the row it would open', async ( assert ) => {
+QUnit.test( 'a click on a button does not reach the row it would open', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restPending() );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
 	// On the page the app sits inside the summary element that opens the row, which any
 	// click reaching it would toggle. This stands in for that ancestor.
 	const ancestor = document.createElement( 'div' );
@@ -536,5 +542,145 @@ QUnit.test( 'sending a row back names who sent it back', async function ( assert
 		wrapper.find( PERFORMER ).element.innerHTML,
 		RETURNED_ATTRIBUTION,
 		'the viewer byline replaces the one the verdict had'
+	);
+} );
+
+QUnit.test( 'a verdict from the server replaces the buttons with its chip and clears the byline', async ( assert ) => {
+	const wrapper = mountRow( { attributionHtml: RETURNED_ATTRIBUTION } );
+
+	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	await flushPromises();
+
+	assert.strictEqual( wrapper.find( CHIP_TEXT ).text(), CHIP_FALSE_POSITIVE, 'the chip names the verdict the server holds' );
+	assert.strictEqual( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ), undefined, 'the mark buttons give way to the chip' );
+	assert.false( wrapper.find( PERFORMER ).exists(), 'nobody is named, the reviewer behind the verdict being unknown' );
+} );
+
+QUnit.test( 'a handled message from the server disables the buttons with its note, and null enables them', async ( assert ) => {
+	const wrapper = mountRow();
+
+	wrapper.vm.applyStatus(
+		{ verdict: null, handledMessage: REVISION_DELETED_MESSAGE },
+		Date.now()
+	);
+	await flushPromises();
+	assert.true( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled, 'a revision handled elsewhere cannot be marked' );
+	assert.strictEqual(
+		wrapper.find( DISABLED_NOTE ).text(),
+		'(' + REVISION_DELETED_MESSAGE + ')',
+		'the note says why the revision cannot be marked'
+	);
+	assert.strictEqual(
+		wrapper.attributes( 'data-handled-outside-abuse-review' ),
+		'',
+		'the wrapper is marked as handled, which is what the queue steps over'
+	);
+
+	wrapper.vm.applyStatus( { verdict: null, handledMessage: null }, Date.now() );
+	await flushPromises();
+	assert.false( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled, 'a revision no longer handled can be marked' );
+	assert.false( wrapper.find( DISABLED_NOTE ).exists(), 'no note is shown for a revision no longer handled' );
+	assert.strictEqual(
+		wrapper.attributes( 'data-handled-outside-abuse-review' ),
+		undefined,
+		'the wrapper is no longer marked as handled'
+	);
+} );
+
+QUnit.test.each( 'a status that may predate the verdict given in the row is ignored', {
+	'arriving while the verdict request is in flight': { post: restPending(), expectedVerdictHeld: undefined },
+	'requested while the verdict request was in flight': {
+		post: { then: ( onSuccess ) => setTimeout( onSuccess, 1, {} ) },
+		expectedVerdictHeld: 'falsePositive'
+	}
+}, async function ( assert, data ) {
+	const clock = this.sandbox.useFakeTimers();
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( data.post );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	const wrapper = mountRow();
+
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
+	const requestedAt = Date.now();
+	await clock.tickAsync( 1 );
+	await flushPromises();
+	wrapper.vm.applyStatus( { verdict: 'noFurtherAction', handledMessage: null }, requestedAt );
+	await flushPromises();
+
+	assert.strictEqual(
+		wrapper.attributes( 'data-verdict-held' ),
+		data.expectedVerdictHeld,
+		'the verdict in the older status is not taken'
+	);
+} );
+
+QUnit.test( 'a status with the verdict held keeps the reason the revision is handled', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restResolving( {} ) );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	const wrapper = mountRow( {
+		isFalsePositive: true,
+		handledOutsideAbuseReviewMessage: REVISION_DELETED_MESSAGE
+	} );
+
+	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	await sendBackButton( wrapper ).trigger( 'click' );
+	await flushPromises();
+
+	assert.true( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled, 'the row sent back cannot be marked' );
+	assert.strictEqual(
+		wrapper.find( DISABLED_NOTE ).text(),
+		'(' + REVISION_DELETED_MESSAGE + ')',
+		'the row sent back says why it cannot be marked'
+	);
+} );
+
+QUnit.test( 'a status repeating the verdict held keeps the byline', async ( assert ) => {
+	const wrapper = mountRow( { isFalsePositive: true, attributionHtml: PRIOR_ATTRIBUTION } );
+
+	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	await flushPromises();
+
+	assert.true( wrapper.find( PERFORMER ).exists(), 'the reviewer who recorded the verdict is still named' );
+} );
+
+QUnit.test.each( 'a deleted page keeps the verdict shown, and blocks marking a row holding none', {
+	'a row holding a verdict': {
+		props: { isFalsePositive: true, attributionHtml: PRIOR_ATTRIBUTION },
+		expectedChips: [ CHIP_FALSE_POSITIVE ],
+		expectedBylines: [ PRIOR_ATTRIBUTION ],
+		expectedDisabled: [],
+		expectedNotes: []
+	},
+	'a row holding no verdict': {
+		props: {},
+		expectedChips: [],
+		expectedBylines: [],
+		expectedDisabled: [ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ],
+		expectedNotes: [ '(' + PAGE_DELETED_MESSAGE + ')' ]
+	}
+}, async ( assert, data ) => {
+	const wrapper = mountRow( data.props );
+
+	wrapper.vm.showPageDeleted( PAGE_DELETED_MESSAGE, Date.now() );
+	await flushPromises();
+
+	assert.deepEqual(
+		wrapper.findAll( CHIP_TEXT ).map( ( chip ) => chip.text() ),
+		data.expectedChips,
+		'the row keeps the chip it showed'
+	);
+	assert.deepEqual(
+		wrapper.findAll( PERFORMER ).map( ( performer ) => performer.element.innerHTML ),
+		data.expectedBylines,
+		'the row keeps the byline it showed'
+	);
+	assert.deepEqual(
+		wrapper.findAll( 'button:disabled' ).map( ( button ) => button.attributes( 'aria-label' ) ),
+		data.expectedDisabled,
+		'only a row holding no verdict has its mark buttons disabled'
+	);
+	assert.deepEqual(
+		wrapper.findAll( DISABLED_NOTE ).map( ( note ) => note.text() ),
+		data.expectedNotes,
+		'only a row holding no verdict notes why it cannot be marked'
 	);
 } );

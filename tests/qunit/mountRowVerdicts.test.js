@@ -206,6 +206,39 @@ QUnit.test( 'a verdict skips a row a filter shows as handled', async function ( 
 	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
+QUnit.test( 'a verdict skips a row the poll reports as handled', async function ( assert ) {
+	const clock = this.sandbox.useFakeTimers();
+	// Stop the poller from adding its listener, so later tests send no requests.
+	this.sandbox.stub( document, 'addEventListener' );
+	mw.config.set( 'wgWikimediaAntiAbuseRowStatus', {
+		queue: 'mw-private-personal-info',
+		pollSeconds: 30,
+		handledReasonMessages: {
+			suppressed: 'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info'
+		}
+	} );
+	this.sandbox.stub( mw.Api.prototype, 'get' ).resolves( { query: { abusereview: [
+		{ revid: 1, status: 'unhandled' },
+		{ revid: 2, status: 'handled', handledreason: 'suppressed' },
+		{ revid: 3, status: 'unhandled' }
+	] } } );
+	this.sandbox.stub( mw.Rest.prototype, 'post' )
+		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const first = makeRow( 1, payloadFor(), true );
+	const handledElsewhere = makeRow( 2, payloadFor(), false );
+	const waiting = makeRow( 3, payloadFor(), false );
+	mountRowVerdicts();
+	await clock.tickAsync( 30000 );
+
+	clickButton( first, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.false( isOpen( handledElsewhere ), 'the row the poll reports as handled is stepped over' );
+	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
+} );
+
 QUnit.test( 'sending a row back does not advance the queue', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );

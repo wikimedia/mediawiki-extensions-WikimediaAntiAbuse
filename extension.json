@@ -74,6 +74,10 @@
 				"mw-private-link-spam": 10
 			},
 			"description": "The number of minutes for which Special:AbuseReview hides a new revision, keyed by reviewable tag. A reviewer can show the hidden revisions with the \"include recent edits\" filter. Use 0 to show every revision as soon as it is tagged."
+		},
+		"WikimediaAntiAbuseAbuseReviewPollSeconds": {
+			"value": 3,
+			"description": "The number of seconds between two checks of the rows that Special:AbuseReview shows, while the page is visible. Each check updates the rows whose verdict or handled state changed. Use 0 to turn the checks off."
 		}
 	},
 	"HookHandlers": {
@@ -236,6 +240,7 @@
 			"packageFiles": [
 				"dispatcher.js",
 				"mountRowVerdicts.js",
+				"pollRowStatus.js",
 				"components/RowVerdicts.vue",
 				"rest.js",
 				"utils.js",
@@ -299,6 +304,7 @@
 		"packageFiles": [
 			"tests/qunit/index.js",
 			"tests/qunit/mountRowVerdicts.test.js",
+			"tests/qunit/pollRowStatus.test.js",
 			"tests/qunit/rest.test.js",
 			"tests/qunit/components/RowVerdicts.test.js",
 			"tests/qunit/utils.test.js",

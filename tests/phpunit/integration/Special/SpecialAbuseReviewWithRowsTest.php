@@ -65,6 +65,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
 			'WikimediaAntiAbuseEnableVandalismTag' => true,
 			'WikimediaAntiAbuseAbuseReviewDelayMinutes' => [ 'mw-private-vandalism' => 10 ],
+			'WikimediaAntiAbuseAbuseReviewPollSeconds' => 15,
 		] );
 		// VandalismAlphaTesterHandler will add rights to the user, so skip it so the rights
 		// we specify in the test are the only ones granted
@@ -160,6 +161,28 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 			],
 			$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseViewerBylines']
 		);
+
+		if ( $expectedTab ) {
+			$this->assertSame(
+				[
+					'queue' => $expectedTab,
+					'pollSeconds' => 15,
+					'handledReasonMessages' => [
+						'suppressed' => self::PERSONAL_INFO_SUPPRESSED_MESSAGE,
+						'pagedeleted' => self::PAGE_DELETED_MESSAGE,
+						'revisiondeleted' => self::REVISION_DELETED_MESSAGE,
+						'reverted' => self::REVERTED_MESSAGE,
+					],
+				],
+				$context->getOutput()->getJsConfigVars()['wgWikimediaAntiAbuseRowStatus']
+			);
+		} else {
+			$this->assertArrayNotHasKey(
+				'wgWikimediaAntiAbuseRowStatus',
+				$context->getOutput()->getJsConfigVars(),
+				'Rows are not polled when no queue is shown'
+			);
+		}
 
 		$htmlAsNode = DOMUtils::parseHTML( $html );
 		$specialPageSummaryHtml = $this->assertSelectorMatchesOneElementInNode(

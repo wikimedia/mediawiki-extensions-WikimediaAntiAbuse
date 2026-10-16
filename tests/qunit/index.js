@@ -2,6 +2,7 @@
 
 // List all test files here.
 require( './mountRowVerdicts.test.js' );
+require( './pollRowStatus.test.js' );
 require( './rest.test.js' );
 require( './components/RowVerdicts.test.js' );
 require( './utils.test.js' );

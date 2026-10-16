@@ -103,6 +103,13 @@ class SpecialAbuseReview extends SpecialPage {
 		$this->getOutput()->addHtml( '<div id="mw-wikimediaantiabuse-abuse-review-filter-app"></div>' );
 
 		$appliedFilters = $this->parseFilters();
+		if ( $this->abuseReviewTag !== '' ) {
+			$this->getOutput()->addJsConfigVars( 'wgWikimediaAntiAbuseRowStatus', [
+				'queue' => $this->abuseReviewTag,
+				'pollSeconds' => max( 0, (int)$this->getConfig()->get( 'WikimediaAntiAbuseAbuseReviewPollSeconds' ) ),
+				'handledReasonMessages' => AbuseReviewPager::HANDLED_REASON_MESSAGES,
+			] );
+		}
 
 		$this->getOutput()->addHTML( $this->buildTabs() );
 		$pager = $this->displayPager();

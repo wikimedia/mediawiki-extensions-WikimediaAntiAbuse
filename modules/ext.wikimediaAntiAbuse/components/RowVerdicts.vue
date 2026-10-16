@@ -3,6 +3,7 @@
 	<span
 		class="mw-wikimediaantiabuse-abuse-review-verdicts"
 		:data-verdict-held="verdict"
+		:data-handled-outside-abuse-review="handledMessage === null ? null : ''"
 		@click.stop.prevent
 	>
 		<template v-if="chip">
@@ -117,10 +118,13 @@ module.exports = exports = defineComponent( {
 		referrer: { type: String, default: '' }
 	},
 	emits: [ 'verdict-changed' ],
-	setup( props, { emit } ) {
+	setup( props, { emit, expose } ) {
 		const busy = ref( false );
 		const verdict = ref( null );
 		const attribution = ref( props.attributionHtml );
+		const handledMessage = ref( props.handledOutsideAbuseReviewMessage );
+		// Ignore statuses requested before this time.
+		let settledAt = 0;
 		const viewerBylines = mw.config.get( 'wgWikimediaAntiAbuseViewerBylines' ) || {};
 		if ( props.isFalsePositive ) {
 			verdict.value = 'falsePositive';
@@ -139,7 +143,7 @@ module.exports = exports = defineComponent( {
 		}
 
 		const handledOutsideAbuseReviewBlocksMark = computed(
-			() => props.handledOutsideAbuseReviewMessage !== null && verdict.value === null
+			() => handledMessage.value !== null && verdict.value === null
 		);
 
 		const disabledNote = computed( () => {
@@ -149,7 +153,7 @@ module.exports = exports = defineComponent( {
 				// * wikimediaantiabuse-special-abuse-review-handled-reverted
 				// * wikimediaantiabuse-special-abuse-review-handled-revision-deleted
 				// * wikimediaantiabuse-special-abuse-review-handled-page-deleted
-				return mw.msg( props.handledOutsideAbuseReviewMessage );
+				return mw.msg( handledMessage.value );
 			}
 			return null;
 		} );
@@ -208,6 +212,7 @@ module.exports = exports = defineComponent( {
 				failure = error;
 			} finally {
 				busy.value = false;
+				settledAt = Date.now();
 			}
 
 			if ( !succeeded ) {
@@ -219,8 +224,42 @@ module.exports = exports = defineComponent( {
 			emit( 'verdict-changed', next );
 		}
 
+		/**
+		 * Show the status from the server, unless it is out of date.
+		 *
+		 * @param {Object} status
+		 * @param {string|null} status.verdict The verdict held, or null if there is none
+		 * @param {string|null} status.handledMessage Why the revision counts as handled, or null
+		 * @param {number} requestedAt When the status was requested, from Date.now()
+		 */
+		function applyStatus( status, requestedAt ) {
+			if ( busy.value || requestedAt < settledAt ) {
+				return;
+			}
+			if ( status.verdict !== verdict.value ) {
+				verdict.value = status.verdict;
+				attribution.value = null;
+			}
+			// The server sends a reason only for rows with no verdict.
+			if ( status.verdict === null ) {
+				handledMessage.value = status.handledMessage;
+			}
+		}
+
+		/**
+		 * Show that the page is deleted. Keep the verdict if the row has one.
+		 *
+		 * @param {string} message Why the revision counts as handled
+		 * @param {number} requestedAt When the status was requested, from Date.now()
+		 */
+		function showPageDeleted( message, requestedAt ) {
+			applyStatus( { verdict: verdict.value, handledMessage: message }, requestedAt );
+		}
+
+		expose( { applyStatus, showPageDeleted } );
+
 		return {
-			busy, verdict, buttons, chip, disabledNote, isOpen, attribution,
+			busy, verdict, buttons, chip, disabledNote, isOpen, attribution, handledMessage,
 			sendBackLabel: mw.msg( SEND_BACK_LABEL ),
 			sendBackTooltip: mw.msg( SEND_BACK_TOOLTIP ),
 			noteId: 'mw-wikimediaantiabuse-abuse-review-disabled-note-' + props.revId,

@@ -2,12 +2,14 @@
 
 const Vue = require( 'vue' );
 const RowVerdicts = require( './components/RowVerdicts.vue' );
+const { pollRowStatus } = require( './pollRowStatus.js' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
 const DETAILS_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row__details';
-const HELD_VERDICT_SELECTOR =
-	'.mw-wikimediaantiabuse-abuse-review-verdicts[data-verdict-held]';
+const HANDLED_SELECTOR =
+	'.mw-wikimediaantiabuse-abuse-review-verdicts[data-verdict-held],' +
+	'.mw-wikimediaantiabuse-abuse-review-verdicts[data-handled-outside-abuse-review]';
 const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
 
 /**
@@ -15,11 +17,10 @@ const ID_PREFIX = 'mw-wikimediaantiabuse-abuse-review-row-';
  * row that holds a verdict or was handled outside AbuseReview, and neither waits for review.
  *
  * @param {HTMLElement} row
- * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  * @return {boolean}
  */
-function isHandled( row, handledOutsideAbuseReviewRows ) {
-	return !!row.querySelector( HELD_VERDICT_SELECTOR ) || handledOutsideAbuseReviewRows.has( row );
+function isHandled( row ) {
+	return !!row.querySelector( HANDLED_SELECTOR );
 }
 
 /**
@@ -46,9 +47,8 @@ function makeActionsGroup( row ) {
  *
  * @param {HTMLElement} row The row the verdict was given to
  * @param {string|null} verdict The verdict now held, or null if it was cleared
- * @param {Set} handledOutsideAbuseReviewRows The rows the pager marked as handled outside AbuseReview
  */
-function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
+function advanceQueue( row, verdict ) {
 	if ( verdict === null ) {
 		return;
 	}
@@ -65,7 +65,7 @@ function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
 			continue;
 		}
 		const nextDetails = next.querySelector( DETAILS_SELECTOR );
-		if ( nextDetails && !nextDetails.open && !isHandled( next, handledOutsideAbuseReviewRows ) ) {
+		if ( nextDetails && !nextDetails.open && !isHandled( next ) ) {
 			nextDetails.open = true;
 			return;
 		}
@@ -79,7 +79,7 @@ function advanceQueue( row, verdict, handledOutsideAbuseReviewRows ) {
 function mountRowVerdicts() {
 	const referrer = mw.util.getParamValue( 'referrer' ) || '';
 
-	const handledOutsideAbuseReviewRows = new Set();
+	const rows = new Map();
 	// The no-nodelist-unsupported-methods lint rule bans NodeList#forEach.
 	Array.prototype.forEach.call( document.querySelectorAll( APP_SELECTOR ), ( mountPoint ) => {
 		let props;
@@ -102,10 +102,6 @@ function mountRowVerdicts() {
 			return;
 		}
 
-		if ( props.handledOutsideAbuseReviewMessage ) {
-			handledOutsideAbuseReviewRows.add( row );
-		}
-
 		const details = row.querySelector( DETAILS_SELECTOR );
 		const app = Vue.createMwApp( RowVerdicts, Object.assign( {}, props, {
 			revId,
@@ -113,13 +109,15 @@ function mountRowVerdicts() {
 			actionsElement: makeActionsGroup( row ),
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
-				advanceQueue( row, verdict, handledOutsideAbuseReviewRows );
+				advanceQueue( row, verdict );
 			}
 		} ) );
 		// Without a per-app id prefix, every row's Codex components generate the same ids.
 		app.config.idPrefix = ID_PREFIX + revId;
-		app.mount( mountPoint );
+		rows.set( revId, app.mount( mountPoint ) );
 	} );
+
+	pollRowStatus( rows );
 }
 
 module.exports = { mountRowVerdicts };

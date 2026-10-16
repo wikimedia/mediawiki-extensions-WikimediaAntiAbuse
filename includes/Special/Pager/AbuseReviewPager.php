@@ -48,7 +48,7 @@ class AbuseReviewPager extends CodexTablePager {
 
 	private const int MAX_DIFF_BYTES = 8192;
 
-	private const array HANDLED_REASON_MESSAGES = [
+	public const array HANDLED_REASON_MESSAGES = [
 		AbuseReviewQueueLookup::HANDLED_REASON_SUPPRESSED =>
 			'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info',
 		AbuseReviewQueueLookup::HANDLED_REASON_PAGE_DELETED =>
