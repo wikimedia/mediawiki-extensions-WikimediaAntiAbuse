@@ -305,9 +305,8 @@ class AbuseReviewPager extends CodexTablePager {
 			(int)$row->rev_id,
 			$heldVerdict !== null
 		);
-		$bylineHtml = $this->buildByline( $attributionHtml );
 		// @phan-suppress-next-line SecurityCheck-DoubleEscaped
-		$mountPoint = Html::rawElement(
+		$mountPoint = Html::element(
 			'span',
 			[
 				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts-app',
@@ -318,13 +317,7 @@ class AbuseReviewPager extends CodexTablePager {
 					'handledOutsideAbuseReviewMessage' => $handledOutsideAbuseReviewMessage,
 					'attributionHtml' => $attributionHtml,
 				], JSON_THROW_ON_ERROR ),
-			],
-			$heldVerdict === null
-				? $this->buildVerdictButtons(
-					(int)$row->rev_id,
-					$handledOutsideAbuseReviewMessage,
-					$bylineHtml
-				) : $this->buildHeldVerdict( $heldVerdict, $bylineHtml )
+			]
 		);
 
 		return Html::rawElement(
@@ -332,34 +325,6 @@ class AbuseReviewPager extends CodexTablePager {
 			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-row__tags' ],
 			$this->buildFlagChip( $this->filters->abuseReviewTag )
 		) . $mountPoint;
-	}
-
-	private function buildVerdictButtons( int $revId, ?string $noteMessage, string $bylineHtml ): string {
-		$note = '';
-		$noteId = null;
-		if ( $noteMessage !== null ) {
-			$noteId = 'mw-wikimediaantiabuse-abuse-review-disabled-note-' . $revId;
-			$note = Html::element(
-				'span',
-				[ 'id' => $noteId, 'class' => 'mw-wikimediaantiabuse-abuse-review-disabled-note' ],
-				$this->msg( $noteMessage )->text()
-			);
-		}
-
-		$controls = Html::rawElement(
-			'span',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdict-controls' ],
-			$this->buildVerdictButton( 'no-further-action', $noteId, $noteMessage )
-				. $this->buildVerdictButton( 'false-positive', $noteId, $noteMessage )
-		);
-
-		return Html::rawElement(
-			'span',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts' ],
-			$controls
-				. $note
-				. $bylineHtml
-		);
 	}
 
 	private function buildFlagChip( string $tag ): string {
@@ -373,82 +338,6 @@ class AbuseReviewPager extends CodexTablePager {
 			->setStatus( 'notice' )
 			->setText( $label )
 			->getHtml();
-	}
-
-	private function buildHeldVerdict( string $heldVerdict, string $bylineHtml ): string {
-		$chipLabelMsgKey = match ( $heldVerdict ) {
-			'falsePositive' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive',
-			'noFurtherAction' => 'wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action',
-		};
-		$chipHtml = ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
-			->infoChip()
-			->setStatus( $heldVerdict === 'falsePositive' ? 'warning' : 'success' )
-			->setText( $this->msg( $chipLabelMsgKey )->text() )
-			->getHtml();
-
-		return Html::rawElement(
-			'span',
-			[
-				'class' => 'mw-wikimediaantiabuse-abuse-review-verdicts',
-				'data-verdict-held' => $heldVerdict,
-			],
-			$chipHtml . $bylineHtml
-		);
-	}
-
-	private function buildByline( ?string $attributionHtml ): string {
-		if ( $attributionHtml === null ) {
-			return '';
-		}
-
-		return Html::rawElement(
-			'span',
-			[ 'class' => 'mw-wikimediaantiabuse-abuse-review-verdict-performer' ],
-			$attributionHtml
-		);
-	}
-
-	/**
-	 * @param string $verdict
-	 * @param string|null $noteId
-	 * @param string|null $noteMessage Populated if the row doesn't allow a new verdict to be applied
-	 * @return string
-	 */
-	private function buildVerdictButton(
-		string $verdict,
-		?string $noteId,
-		?string $noteMessage
-	): string {
-		$label = $this->msg( 'wikimediaantiabuse-special-abuse-review-action-mark-' . $verdict )->text();
-
-		$attribs = [
-			'type' => 'button',
-			'aria-label' => $label,
-			'title' => $noteMessage !== null
-				? $this->msg( $noteMessage )->text()
-				: $label,
-			'class' => [
-				'cdx-button',
-				'cdx-button--action-default',
-				'cdx-button--weight-normal',
-				'cdx-button--size-small',
-				'cdx-button--framed',
-				'cdx-button--icon-only',
-			],
-		];
-		if ( $noteMessage !== null ) {
-			$attribs['disabled'] = true;
-			$attribs['aria-describedby'] = $noteId;
-		}
-
-		return Html::rawElement( 'button', $attribs, Html::element( 'span', [
-			'class' => [
-				'cdx-icon',
-				'cdx-icon--medium',
-				'mw-wikimediaantiabuse-abuse-review-verdict-icon',
-				'mw-wikimediaantiabuse-abuse-review-verdict-icon--' . $verdict,
-			],
-		] ) );
 	}
 
 	private function buildToggle(): string {

@@ -177,6 +177,11 @@ QUnit.test.each( 'a revision handled outside AbuseReview cannot be marked, and s
 			'mw-wikimediaantiabuse-abuse-review-disabled-note-991',
 			'"' + label + '" points at the note explaining it'
 		);
+		assert.strictEqual(
+			mark.attributes( 'title' ),
+			options.expectedNote,
+			'"' + label + '" explains on hover why it is disabled'
+		);
 	} );
 	assert.strictEqual(
 		wrapper.find( '.mw-wikimediaantiabuse-abuse-review-disabled-note' ).text(),

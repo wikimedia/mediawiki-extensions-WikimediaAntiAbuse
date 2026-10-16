@@ -416,16 +416,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		);
 		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
 
-		$byline = $this->assertSelectorMatchesOneElementInNode(
-			$row,
-			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
-		);
-		$bylineHtml = DOMCompat::getInnerHTML( $byline );
-		$this->assertSame(
-			$bylineHtml,
-			$this->getVerdictsPayload( $row )['attributionHtml'],
-			'the row hands the client the unwrapped byline it rendered'
-		);
+		$bylineHtml = $this->getBylineHtml( $row );
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-verdict-attribution: ' . $reviewer->getName(),
 			$bylineHtml,
@@ -434,7 +425,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		$this->assertStringContainsString(
 			$reviewer->getName(),
 			DOMCompat::getInnerHTML(
-				$this->assertSelectorMatchesOneElementInNode( $byline, 'a.mw-userlink' )
+				$this->assertSelectorMatchesOneElementInNode( DOMUtils::parseHTML( $bylineHtml ), 'a.mw-userlink' )
 			),
 			'the reviewer is linked beside the verdict they recorded'
 		);
@@ -454,10 +445,7 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		[ $html ] = $this->executeSpecialPage( '', new FauxRequest(), null, $reviewer );
 		$row = $this->getRowForRevision( DOMUtils::parseHTML( $html ), $revId );
 
-		$bylineHtml = DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
-			$row,
-			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
-		) );
+		$bylineHtml = $this->getBylineHtml( $row );
 		$this->assertStringContainsString(
 			'(wikimediaantiabuse-special-abuse-review-verdict-returned-attribution: '
 				. $reviewer->getName(),
@@ -484,11 +472,6 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		$this->assertNull(
 			$verdicts['attributionHtml'],
 			'a verdict recorded before attribution existed names nobody'
-		);
-		$this->assertCount(
-			0,
-			DOMCompat::querySelectorAll( $row, '.mw-wikimediaantiabuse-abuse-review-verdict-performer' ),
-			'a verdict recorded before attribution existed renders no byline at all'
 		);
 	}
 
@@ -584,10 +567,10 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 	}
 
 	private function getBylineHtml( Element $row ): string {
-		return DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
-			$row,
-			'.mw-wikimediaantiabuse-abuse-review-verdict-performer'
-		) );
+		$bylineHtml = $this->getVerdictsPayload( $row )['attributionHtml'];
+		$this->assertIsString( $bylineHtml, 'the row hands the client a byline naming who last acted on its flag' );
+
+		return $bylineHtml;
 	}
 
 }

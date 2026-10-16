@@ -27,17 +27,6 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
  */
 class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
-	private const array VERDICT_CHIPS = [
-		'falsePositive' => [
-			'class' => 'cdx-info-chip--warning',
-			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)',
-		],
-		'noFurtherAction' => [
-			'class' => 'cdx-info-chip--success',
-			'label' => '(wikimediaantiabuse-special-abuse-review-verdict-chip-no-further-action)',
-		],
-	];
-
 	/** With a delay of 10 minutes the cutoff is 20260101010104, in the middle of the rows of ::addDBDataOnce. */
 	private const string RECENT_EDITS_NOW = '20260101011104';
 
@@ -627,34 +616,14 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				'the row reports whether it has already been marked as needing no further action'
 			);
 
-			$heldVerdict = null;
-			if ( $isFalsePositiveRow ) {
-				$heldVerdict = 'falsePositive';
-			} elseif ( $isNoFurtherActionRow ) {
-				$heldVerdict = 'noFurtherAction';
-			}
-			if ( $heldVerdict !== null ) {
-				$this->assertVerdictChip( $tableRow, $heldVerdict );
-			} else {
-				$note = "($expectedHandledMessage)";
-				$this->assertVerdictButtons(
+			$this->assertSame(
+				'',
+				DOMCompat::getInnerHTML( $this->assertSelectorMatchesOneElementInNode(
 					$tableRow,
-					[
-						[
-							'disabled' => $isRowHandledOutsideAbuseReview,
-							'title' => $isRowHandledOutsideAbuseReview
-								? $note
-								: '(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)',
-						],
-						[
-							'disabled' => $isRowHandledOutsideAbuseReview,
-							'title' => $isRowHandledOutsideAbuseReview
-								? $note
-								: '(wikimediaantiabuse-special-abuse-review-action-mark-false-positive)',
-						],
-					]
-				);
-			}
+					'.mw-wikimediaantiabuse-abuse-review-verdicts-app'
+				) ),
+				'the server leaves the verdict area for the browser to draw'
+			);
 
 			$this->assertNull(
 				DOMCompat::querySelector( $tableRow, '.mw-wikimediaantiabuse-abuse-review-actions' ),
@@ -1457,83 +1426,6 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					'.cdx-tabs.mw-wikimediaantiabuse-abuse-review-tabs'
 				),
 				'Tabs should not be displayed when only one flag is enabled'
-			);
-		}
-	}
-
-	/**
-	 * Asserts the verdict chip in the provided row is as expected
-	 */
-	private function assertVerdictChip( Element $row, string $heldVerdict ): void {
-		$verdicts = $this->assertSelectorMatchesOneElementInNode(
-			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
-		);
-		$this->assertSame(
-			$heldVerdict,
-			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
-			'the row names the verdict it holds, which the queue steps over'
-		);
-		$chip = $this->assertSelectorMatchesOneElementInNode( $verdicts, '.cdx-info-chip' );
-		$this->assertTrue(
-			DOMCompat::getClassList( $chip )->contains( self::VERDICT_CHIPS[$heldVerdict]['class'] ),
-			'the chip carries the status its verdict stands for'
-		);
-		$this->assertSame(
-			self::VERDICT_CHIPS[$heldVerdict]['label'],
-			DOMCompat::getInnerHTML(
-				$this->assertSelectorMatchesOneElementInNode( $chip, '.cdx-info-chip__text' )
-			),
-			'the chip names the verdict the row holds'
-		);
-		$this->assertCount(
-			0,
-			DOMCompat::querySelectorAll( $verdicts, 'button' ),
-			'a row that holds a verdict offers no button to record one'
-		);
-	}
-
-	/**
-	 * @param Element $row
-	 * @param array[] $expected One [ 'disabled' => bool, 'title' => string ] per button
-	 */
-	private function assertVerdictButtons( Element $row, array $expected ): void {
-		$verdicts = $this->assertSelectorMatchesOneElementInNode(
-			$row, '.mw-wikimediaantiabuse-abuse-review-verdicts'
-		);
-		$this->assertNull(
-			DOMCompat::getAttribute( $verdicts, 'data-verdict-held' ),
-			'a row that holds no verdict names none'
-		);
-		$controls = $this->assertSelectorMatchesOneElementInNode(
-			$verdicts, '.mw-wikimediaantiabuse-abuse-review-verdict-controls'
-		);
-		$buttons = DOMCompat::querySelectorAll( $controls, 'button' );
-		$this->assertSameSize( $expected, $buttons, 'the controls wrapper holds one button per verdict' );
-		$this->assertSameSize(
-			$buttons,
-			DOMCompat::querySelectorAll( $verdicts, 'button' ),
-			'every verdict button of the row sits inside the controls wrapper'
-		);
-
-		foreach ( $expected as $index => $state ) {
-			$button = $buttons[$index];
-			$this->assertNull(
-				DOMCompat::getAttribute( $button, 'aria-pressed' ),
-				"button $index is not announced as a toggle, the chip carrying the state instead"
-			);
-			$this->assertSame(
-				$state['disabled'],
-				DOMCompat::getAttribute( $button, 'disabled' ) !== null,
-				"button $index is out of reach only when the row's state blocks it"
-			);
-			$this->assertNotNull(
-				DOMCompat::getAttribute( $button, 'aria-label' ),
-				"button $index is named, carrying only an icon"
-			);
-			$this->assertSame(
-				$state['title'],
-				DOMCompat::getAttribute( $button, 'title' ),
-				"button $index explains itself on hover, a verdict it holds before the note"
 			);
 		}
 	}
