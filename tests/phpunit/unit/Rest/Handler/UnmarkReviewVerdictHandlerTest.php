@@ -43,14 +43,15 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 	public function testRunUnmarksRevisionAndReturnsJson(
 		string $verdict,
 		string $serviceMethod,
-		string $responseField
+		string $responseField,
+		bool $changed
 	): void {
 		$authority = $this->mockRegisteredUltimateAuthority();
 		$service = $this->createMock( AbuseReviewTagService::class );
 		$service->expects( $this->once() )
 			->method( $serviceMethod )
 			->with( $authority, 123, self::TAG )
-			->willReturn( StatusValue::newGood() );
+			->willReturn( StatusValue::newGood( $changed ) );
 
 		$instrumentationClient = $this->createMock( IAbuseReviewInstrumentationClient::class );
 		$instrumentationClient->expects( $this->once() )
@@ -81,7 +82,7 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		);
 
 		$this->assertSame(
-			[ 'revision' => 123, 'tag' => self::TAG, $responseField => false ],
+			[ 'revision' => 123, 'tag' => self::TAG, $responseField => false, 'changed' => $changed ],
 			$data
 		);
 	}
@@ -92,11 +93,13 @@ class UnmarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 				'verdict' => ReviewVerdictHandler::FALSE_POSITIVE,
 				'serviceMethod' => 'unmarkFalsePositive',
 				'responseField' => 'falsePositive',
+				'changed' => true,
 			],
-			'no further action' => [
+			'no further action already removed' => [
 				'verdict' => ReviewVerdictHandler::NO_FURTHER_ACTION,
 				'serviceMethod' => 'unmarkNoFurtherAction',
 				'responseField' => 'noFurtherAction',
+				'changed' => false,
 			],
 		];
 	}

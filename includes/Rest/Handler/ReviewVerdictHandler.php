@@ -42,7 +42,12 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 	) {
 	}
 
-	/** Record or remove the verdict on the revision. */
+	/**
+	 * Record or remove the verdict on the revision.
+	 *
+	 * @return StatusValue Good: true if the revision changed, false if not.
+	 *   Fatal on failure, with the HTTP status code as its value.
+	 */
 	abstract protected function applyVerdict( string $verdict, int $revision, string $tag ): StatusValue;
 
 	/** The state this endpoint leaves the verdict in. */
@@ -87,6 +92,7 @@ abstract class ReviewVerdictHandler extends SimpleHandler {
 			'revision' => $revision,
 			'tag' => $tag,
 			self::RESPONSE_FIELDS[$verdict] => $this->verdictIsSet(),
+			'changed' => $status->getValue(),
 		] );
 	}
 

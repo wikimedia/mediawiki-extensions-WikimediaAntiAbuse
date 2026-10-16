@@ -48,7 +48,8 @@ class AbuseReviewTagService {
 	 * @param Authority $authority
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag to review, not its false-positive variant
-	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 * @return StatusValue Good: true if the revision changed, false if not.
+	 *   Fatal on failure, with the HTTP status code as its value.
 	 */
 	public function markFalsePositive( Authority $authority, int $revisionId, string $tag ): StatusValue {
 		$status = $this->assertReviewable( $authority, $revisionId, $tag );
@@ -79,14 +80,14 @@ class AbuseReviewTagService {
 
 			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
-			return StatusValue::newGood();
+			return StatusValue::newGood( true );
 		}
 
 		if ( in_array( $falsePositiveTag, $tags, true ) ) {
 			// Idempotent: an earlier mark may have run before the notification existed.
 			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
-			return StatusValue::newGood();
+			return StatusValue::newGood( false );
 		}
 
 		return $this->fatal(
@@ -101,7 +102,8 @@ class AbuseReviewTagService {
 	 * @param Authority $authority
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag to restore, not its false-positive variant
-	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 * @return StatusValue Good: true if the revision changed, false if not.
+	 *   Fatal on failure, with the HTTP status code as its value.
 	 */
 	public function unmarkFalsePositive( Authority $authority, int $revisionId, string $tag ): StatusValue {
 		$status = $this->assertReviewable( $authority, $revisionId, $tag );
@@ -121,11 +123,11 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			return StatusValue::newGood();
+			return StatusValue::newGood( true );
 		}
 
 		if ( in_array( $tag, $tags, true ) ) {
-			return StatusValue::newGood();
+			return StatusValue::newGood( false );
 		}
 
 		return $this->fatal(
@@ -145,7 +147,8 @@ class AbuseReviewTagService {
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag the revision was flagged with, not its
 	 *   false-positive variant
-	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 * @return StatusValue Good: true if the revision changed, false if not.
+	 *   Fatal on failure, with the HTTP status code as its value.
 	 */
 	public function markNoFurtherAction( Authority $authority, int $revisionId, string $tag ): StatusValue {
 		$status = $this->assertReviewable( $authority, $revisionId, $tag );
@@ -161,7 +164,7 @@ class AbuseReviewTagService {
 			// Idempotent: an earlier mark may have run before the notification existed.
 			$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
-			return StatusValue::newGood();
+			return StatusValue::newGood( false );
 		}
 
 		if ( in_array( ChangeTagsHandler::REVIEWABLE_TAGS[$tag]['falsePositive'], $tags, true ) ) {
@@ -184,7 +187,7 @@ class AbuseReviewTagService {
 
 		$this->deleteNotifications( $tag, $revision->getPageId(), $revisionId );
 
-		return StatusValue::newGood();
+		return StatusValue::newGood( true );
 	}
 
 	/**
@@ -194,7 +197,8 @@ class AbuseReviewTagService {
 	 * @param int $revisionId
 	 * @param string $tag The abuse review tag the revision was flagged with, not its
 	 *   false-positive variant
-	 * @return StatusValue Good on success; a fatal whose value is the HTTP status code on failure.
+	 * @return StatusValue Good: true if the revision changed, false if not.
+	 *   Fatal on failure, with the HTTP status code as its value.
 	 */
 	public function unmarkNoFurtherAction( Authority $authority, int $revisionId, string $tag ): StatusValue {
 		$status = $this->assertReviewable( $authority, $revisionId, $tag );
@@ -214,11 +218,11 @@ class AbuseReviewTagService {
 				'performer' => $authority->getUser()->getName(),
 			] );
 
-			return StatusValue::newGood();
+			return StatusValue::newGood( true );
 		}
 
 		if ( $this->isFlagged( $tags, $tag ) ) {
-			return StatusValue::newGood();
+			return StatusValue::newGood( false );
 		}
 
 		return $this->fatal(

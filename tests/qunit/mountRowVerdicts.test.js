@@ -239,6 +239,51 @@ QUnit.test( 'a verdict skips a row the poll reports as handled', async function 
 	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
+QUnit.test( 'a mark refused as a conflicting verdict shows the server verdict on that row', async function ( assert ) {
+	// The poll is turned off, so only the refusal sends a request.
+	mw.config.set( 'wgWikimediaAntiAbuseRowStatus', {
+		queue: 'mw-private-personal-info',
+		pollSeconds: 0,
+		handledReasonMessages: {}
+	} );
+	const get = this.sandbox.stub( mw.Api.prototype, 'get' ).resolves( { query: { abusereview: [
+		{ revid: 2, status: 'false-positive' }
+	] } } );
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( {
+		then: ( onSuccess, onFailure ) => onFailure( 'http', { xhr: { responseJSON: {
+			errorKey: 'wikimediaantiabuse-api-review-conflicting-verdict'
+		} } } )
+	} );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	this.sandbox.stub( mw, 'notify' );
+
+	makeRow( 1, payloadFor(), false );
+	const refused = makeRow( 2, payloadFor(), true );
+	mountRowVerdicts();
+	await flushPromises();
+
+	clickButton( refused, MARK_NO_FURTHER_ACTION_BUTTON_LABEL );
+	await flushPromises();
+
+	assert.strictEqual( get.callCount, 1, 'one status request is sent' );
+	assert.deepEqual( get.firstCall.args[ 0 ], {
+		action: 'query',
+		list: 'abusereview',
+		abrqueue: 'mw-private-personal-info',
+		abrrevid: [ 2 ],
+		abrshowhandled: true,
+		abrshowfalsepositives: true,
+		abrprop: [ 'ids', 'status' ],
+		abrlimit: 50,
+		formatversion: 2
+	}, 'the status request asks the queue about the refused row only' );
+	assert.strictEqual(
+		refused.querySelector( '.cdx-info-chip__text' ).textContent.trim(),
+		'(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)',
+		'the refused row shows the verdict the server holds'
+	);
+} );
+
 QUnit.test( 'sending a row back does not advance the queue', async function ( assert ) {
 	this.sandbox.stub( mw.Rest.prototype, 'post' )
 		.returns( { then: ( onSuccess ) => onSuccess( {} ) } );

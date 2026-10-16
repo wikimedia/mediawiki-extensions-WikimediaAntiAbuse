@@ -451,6 +451,37 @@ QUnit.test( 'a failed mark reports nothing upwards, the state not having changed
 	);
 } );
 
+QUnit.test.each( 'a refused mark reports the error, asking for the server status only for a conflicting verdict', {
+	'a conflicting verdict': {
+		errorKey: 'wikimediaantiabuse-api-review-conflicting-verdict',
+		expectedStatusOutdated: [ [] ]
+	},
+	'a revision no longer flagged': {
+		errorKey: 'wikimediaantiabuse-api-review-not-flagged',
+		expectedStatusOutdated: undefined
+	}
+}, async function ( assert, data ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns(
+		restRejecting( 'http', { xhr: { responseJSON: {
+			errorKey: data.errorKey,
+			messageTranslations: { en: 'You may not do that.' }
+		} } } )
+	);
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+	const notify = this.sandbox.stub( mw, 'notify' );
+
+	const wrapper = mountRow();
+	await buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).trigger( 'click' );
+	await flushPromises();
+
+	assert.deepEqual( notify.args, [ [ 'You may not do that.', { type: 'error' } ] ], 'the refusal is reported once' );
+	assert.deepEqual(
+		wrapper.emitted( 'status-outdated' ),
+		data.expectedStatusOutdated,
+		'the status the server holds is asked for only after a conflicting verdict'
+	);
+} );
+
 QUnit.test( 'the send-back control is rendered among the row\'s other actions', ( assert ) => {
 	const actions = document.createElement( 'div' );
 	document.getElementById( 'qunit-fixture' ).appendChild( actions );
@@ -524,6 +555,54 @@ QUnit.test( 'recording a verdict names the viewer', async function ( assert ) {
 		RECORDED_ATTRIBUTION,
 		'showing the byline the page carries for the viewer'
 	);
+} );
+
+QUnit.test.each( 'a mark names the viewer only when it changed the revision, asking for the server status otherwise', {
+	'the revision took the verdict': {
+		changed: true,
+		expectedBylines: [ RECORDED_ATTRIBUTION ],
+		expectedStatusOutdated: undefined
+	},
+	'another reviewer had recorded the verdict first': {
+		changed: false,
+		expectedBylines: [],
+		expectedStatusOutdated: [ [] ]
+	}
+}, async function ( assert, data ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restResolving( { changed: data.changed } ) );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const wrapper = mountRow( { attributionHtml: RETURNED_ATTRIBUTION } );
+	await buttonWithLabel( wrapper, MARK_NO_FURTHER_ACTION ).trigger( 'click' );
+	await flushPromises();
+
+	assert.deepEqual(
+		wrapper.findAll( PERFORMER ).map( ( performer ) => performer.element.innerHTML ),
+		data.expectedBylines,
+		'the viewer is named only when the mark changed the revision'
+	);
+	assert.deepEqual(
+		wrapper.emitted( 'status-outdated' ),
+		data.expectedStatusOutdated,
+		'the status the server holds is asked for only when the mark changed nothing'
+	);
+	assert.deepEqual(
+		wrapper.emitted( 'verdict-changed' ),
+		[ [ 'noFurtherAction' ] ],
+		'the mark is reported upwards whether or not it changed the revision'
+	);
+} );
+
+QUnit.test( 'a send-back that changed nothing names nobody and asks for the server status', async function ( assert ) {
+	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( restResolving( { changed: false } ) );
+	this.sandbox.stub( mw.Api.prototype, 'getToken' ).returns( Promise.resolve( 'token' ) );
+
+	const wrapper = mountRow( { isNoFurtherAction: true, attributionHtml: PRIOR_ATTRIBUTION } );
+	await sendBackButton( wrapper ).trigger( 'click' );
+	await flushPromises();
+
+	assert.false( wrapper.find( PERFORMER ).exists(), 'nobody is named for a send-back that changed nothing' );
+	assert.deepEqual( wrapper.emitted( 'status-outdated' ), [ [] ], 'the status the server holds is asked for' );
 } );
 
 QUnit.test( 'sending a row back names who sent it back', async function ( assert ) {

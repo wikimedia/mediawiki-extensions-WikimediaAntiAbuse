@@ -90,6 +90,7 @@ const MARK_LABEL_KEYS = {
 const SEND_BACK_LABEL = 'wikimediaantiabuse-special-abuse-review-action-send-back-for-review';
 const SEND_BACK_TOOLTIP =
 	'wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip';
+const CONFLICTING_VERDICT_ERROR = 'wikimediaantiabuse-api-review-conflicting-verdict';
 
 const CHIPS = {
 	falsePositive: {
@@ -117,7 +118,7 @@ module.exports = exports = defineComponent( {
 		detailsElement: { type: Object, default: null },
 		referrer: { type: String, default: '' }
 	},
-	emits: [ 'verdict-changed' ],
+	emits: [ 'verdict-changed', 'status-outdated' ],
 	setup( props, { emit, expose } ) {
 		const busy = ref( false );
 		const verdict = ref( null );
@@ -205,8 +206,9 @@ module.exports = exports = defineComponent( {
 			busy.value = true;
 			let succeeded = false;
 			let failure = null;
+			let response = null;
 			try {
-				await request( props.revId, props.tag, props.referrer );
+				response = await request( props.revId, props.tag, props.referrer );
 				succeeded = true;
 			} catch ( error ) {
 				failure = error;
@@ -217,10 +219,19 @@ module.exports = exports = defineComponent( {
 
 			if ( !succeeded ) {
 				mw.notify( actionErrorMessage( failure ), { type: 'error' } );
+				if ( failure && failure.errorKey === CONFLICTING_VERDICT_ERROR ) {
+					emit( 'status-outdated' );
+				}
 				return;
 			}
 			verdict.value = next;
-			attribution.value = viewerBylines[ next === null ? 'returned' : 'recorded' ] || null;
+			// Nothing changed, so do not name the viewer.
+			if ( response && response.changed === false ) {
+				attribution.value = null;
+				emit( 'status-outdated' );
+			} else {
+				attribution.value = viewerBylines[ next === null ? 'returned' : 'recorded' ] || null;
+			}
 			emit( 'verdict-changed', next );
 		}
 

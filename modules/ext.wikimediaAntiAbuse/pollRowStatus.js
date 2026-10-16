@@ -145,4 +145,4 @@ function pollRowStatus( rows ) {
 	new RowStatusPoller( rows, config.pollSeconds * 1000 ).start();
 }
 
-module.exports = { pollRowStatus };
+module.exports = { pollRowStatus, refreshRows };

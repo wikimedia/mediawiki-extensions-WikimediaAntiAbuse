@@ -565,6 +565,60 @@ class AbuseReviewTagServiceTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	/** @dataProvider provideRepeatableVerdictMethods */
+	public function testVerdictReportsWhetherItChangedTheRevision( string $method, string|null $markFirst ): void {
+		$service = $this->getService();
+		$reviewer = $this->reviewer();
+		$revId = $this->createRevisionId();
+		$this->applyTag( $revId, self::PERSONAL_INFO_TAG );
+		if ( $markFirst !== null ) {
+			$this->assertStatusGood( $service->$markFirst( $reviewer, $revId, self::PERSONAL_INFO_TAG ) );
+		}
+
+		$this->assertTrue(
+			$service->$method( $reviewer, $revId, self::PERSONAL_INFO_TAG )->getValue(),
+			"The first $method reports that it changed the revision"
+		);
+		$this->assertFalse(
+			$service->$method( $reviewer, $revId, self::PERSONAL_INFO_TAG )->getValue(),
+			"Repeating $method reports that the revision already had this state"
+		);
+	}
+
+	public static function provideRepeatableVerdictMethods(): array {
+		return [
+			'mark false positive' => [ 'method' => 'markFalsePositive', 'markFirst' => null ],
+			'unmark false positive' => [ 'method' => 'unmarkFalsePositive', 'markFirst' => 'markFalsePositive' ],
+			'mark no further action' => [ 'method' => 'markNoFurtherAction', 'markFirst' => null ],
+			'unmark no further action' => [ 'method' => 'unmarkNoFurtherAction', 'markFirst' => 'markNoFurtherAction' ],
+		];
+	}
+
+	/** @dataProvider provideSendBackWhileTheOtherVerdictIsHeld */
+	public function testSendingBackWhileTheOtherVerdictIsHeldReportsNoChange( array $tags, string $method ): void {
+		$revId = $this->createRevisionId();
+		foreach ( $tags as $tag ) {
+			$this->applyTag( $revId, $tag );
+		}
+
+		$status = $this->getService()->$method( $this->reviewer(), $revId, self::PERSONAL_INFO_TAG );
+		$this->assertStatusGood( $status );
+		$this->assertFalse( $status->getValue(), "$method reports that it changed nothing" );
+	}
+
+	public static function provideSendBackWhileTheOtherVerdictIsHeld(): array {
+		return [
+			'no further action sent back from a false positive' => [
+				'tags' => [ self::PERSONAL_INFO_FALSE_POSITIVE_TAG ],
+				'method' => 'unmarkNoFurtherAction',
+			],
+			'false positive sent back from a no further action' => [
+				'tags' => [ self::PERSONAL_INFO_TAG, self::PERSONAL_INFO_NO_FURTHER_ACTION_TAG ],
+				'method' => 'unmarkFalsePositive',
+			],
+		];
+	}
+
 	/** @dataProvider provideVerdictsOnEveryContentPolicy */
 	public function testEveryEnabledContentPolicyTakesEveryVerdict(
 		string $tag,

@@ -2,7 +2,7 @@
 
 const Vue = require( 'vue' );
 const RowVerdicts = require( './components/RowVerdicts.vue' );
-const { pollRowStatus } = require( './pollRowStatus.js' );
+const { pollRowStatus, refreshRows } = require( './pollRowStatus.js' );
 
 const APP_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-verdicts-app';
 const ROW_SELECTOR = '.mw-wikimediaantiabuse-abuse-review-row';
@@ -110,6 +110,10 @@ function mountRowVerdicts() {
 			referrer: referrer,
 			onVerdictChanged: ( verdict ) => {
 				advanceQueue( row, verdict );
+			},
+			onStatusOutdated: () => {
+				// If this fails, the next poll or a reload shows the status.
+				refreshRows( rows, [ revId ] ).catch( () => {} );
 			}
 		} ) );
 		// Without a per-app id prefix, every row's Codex components generate the same ids.

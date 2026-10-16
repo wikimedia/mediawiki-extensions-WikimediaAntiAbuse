@@ -46,14 +46,15 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		string $verdict,
 		string $serviceMethod,
 		string $responseField,
-		string $referrer
+		string $referrer,
+		bool $changed
 	): void {
 		$authority = $this->mockRegisteredUltimateAuthority();
 		$service = $this->createMock( AbuseReviewTagService::class );
 		$service->expects( $this->once() )
 			->method( $serviceMethod )
 			->with( $authority, 123, self::TAG )
-			->willReturn( StatusValue::newGood() );
+			->willReturn( StatusValue::newGood( $changed ) );
 
 		$expectedInstrumentationData = [
 			'action_subtype' => 'mark',
@@ -88,7 +89,7 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 		);
 
 		$this->assertSame(
-			[ 'revision' => 123, 'tag' => self::TAG, $responseField => true ],
+			[ 'revision' => 123, 'tag' => self::TAG, $responseField => true, 'changed' => $changed ],
 			$data
 		);
 	}
@@ -100,18 +101,21 @@ class MarkReviewVerdictHandlerTest extends MediaWikiUnitTestCase {
 				'serviceMethod' => 'markFalsePositive',
 				'responseField' => 'falsePositive',
 				'referrer' => '',
+				'changed' => true,
 			],
-			'no further action' => [
+			'no further action already recorded' => [
 				'verdict' => ReviewVerdictHandler::NO_FURTHER_ACTION,
 				'serviceMethod' => 'markNoFurtherAction',
 				'responseField' => 'noFurtherAction',
 				'referrer' => 'invalid_referrer',
+				'changed' => false,
 			],
 			'false positive with valid referrer' => [
 				'verdict' => ReviewVerdictHandler::FALSE_POSITIVE,
 				'serviceMethod' => 'markFalsePositive',
 				'responseField' => 'falsePositive',
 				'referrer' => 'echo_notification',
+				'changed' => true,
 			],
 		];
 	}
