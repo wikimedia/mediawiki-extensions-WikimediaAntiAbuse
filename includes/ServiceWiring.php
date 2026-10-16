@@ -17,6 +17,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributio
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyScoreEventLogger;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\FlaggedEditCounter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IContentPolicyScoreEventLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\NoOpAbuseReviewInstrumentationClient;
@@ -124,6 +125,14 @@ return [
 			$services->getService( 'EventBus.UserEntitySerializer' )
 		);
 	},
+
+	'WikimediaAntiAbuseFlaggedEditCounter' => static fn (
+		MediaWikiServices $services
+	) => new FlaggedEditCounter(
+		$services->getConnectionProvider(),
+		$services->getActorNormalization(),
+		$services->getChangeTagsStore()
+	),
 
 	'WikimediaAntiAbuseHookRunner' => static fn (
 		MediaWikiServices $services
