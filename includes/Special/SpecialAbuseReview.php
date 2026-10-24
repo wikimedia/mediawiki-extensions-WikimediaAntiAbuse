@@ -37,9 +37,6 @@ class SpecialAbuseReview extends SpecialPage {
 	 */
 	public const array VALID_REFERRERS = [ 'echo_notification' ];
 
-	// The paging and ordering the pager reads out of the query string.
-	private const array PAGER_STATE_PARAMS = [ 'limit', 'sort', 'asc', 'desc' ];
-
 	/** @var int The limit of rows to count when building the tabs or Echo banner */
 	private const int ROW_COUNT_CAP = 100;
 
