@@ -3,6 +3,8 @@
 		"authors": []
 	},
 	"wikimediaantiabuse-desc": "Anti-abuse features for Wikimedia wikis",
+	"prefs-abusereview": "Abuse review",
+	"wikimediaantiabuse-pref-abusereview-live-updates": "Automatically update the review status of rows on the Abuse review page",
 	"wikimediaantiabuse-special-abuse-review": "Abuse review",
 	"wikimediaantiabuse-special-abuse-review-caption": "Revisions flagged for review",
 	"wikimediaantiabuse-special-abuse-review-tabs-label": "Flags",

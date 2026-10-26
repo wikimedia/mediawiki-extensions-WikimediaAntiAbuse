@@ -17,6 +17,8 @@ QUnit.module( 'ext.wikimediaAntiAbuse.pollRowStatus', QUnit.newMwEnvironment( {
 		this.clock = this.sandbox.useFakeTimers();
 		this.get = this.sandbox.stub( mw.Api.prototype, 'get' );
 		this.addEventListener = this.sandbox.spy( document, 'addEventListener' );
+		this.liveUpdates = this.sandbox.stub( mw.user.options, 'get' )
+			.withArgs( 'wikimediaantiabuse-abusereview-live-updates' ).returns( 1 );
 	},
 	afterEach() {
 		// Remove the poller's listeners, so later tests send no requests.
@@ -108,6 +110,23 @@ QUnit.test.each( 'nothing is polled without a configuration that turns the poll 
 	await this.clock.tickAsync( INTERVAL );
 
 	assert.true( this.get.notCalled, 'no request is sent' );
+} );
+
+QUnit.test.each( 'the rows are polled only while the live updates preference is ticked', {
+	'ticked, as the default true': { liveUpdates: true, requests: 1 },
+	'ticked, as the number 1': { liveUpdates: 1, requests: 1 },
+	'ticked, as the string "1"': { liveUpdates: '1', requests: 1 },
+	'unticked, as the number 0': { liveUpdates: 0, requests: 0 },
+	'unticked, as the string "0"': { liveUpdates: '0', requests: 0 },
+	'unticked, as saved by Special:Preferences (an empty string)': { liveUpdates: '', requests: 0 }
+}, async function ( assert, data ) {
+	mw.config.set( 'wgWikimediaAntiAbuseRowStatus', ROW_STATUS );
+	this.liveUpdates.returns( data.liveUpdates );
+
+	pollRowStatus( makeRows( this.sandbox, [ 1 ] ) );
+	await this.clock.tickAsync( INTERVAL );
+
+	assert.strictEqual( this.get.callCount, data.requests, 'the number of requests sent within one interval' );
 } );
 
 QUnit.test( 'after a failed request the next one waits twice the interval', async function ( assert ) {

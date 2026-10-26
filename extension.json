@@ -20,7 +20,8 @@
 	"DefaultUserOptions": {
 		"echo-subscriptions-web-personal-info": false,
 		"echo-subscriptions-email-personal-info": false,
-		"echo-subscriptions-push-personal-info": false
+		"echo-subscriptions-push-personal-info": false,
+		"wikimediaantiabuse-abusereview-live-updates": true
 	},
 	"config": {
 		"WikimediaAntiAbuseEnablePersonalInfoTag": {
@@ -113,6 +114,13 @@
 				"ExtensionRegistry"
 			]
 		},
+		"AbuseReviewPreferencesHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewPreferencesHandler",
+			"services": [
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
+				"ChangeTagsStore"
+			]
+		},
 		"EchoHooksHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Notifications\\EchoHooksHandler",
 			"services": [
@@ -143,7 +151,7 @@
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
-		"GetPreferences": "NotificationPreferencesHandler",
+		"GetPreferences": [ "NotificationPreferencesHandler", "AbuseReviewPreferencesHandler" ],
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
 		"UserGetRights": "VandalismAlphaTesterHandler",
@@ -262,7 +270,8 @@
 			"dependencies": [
 				"mediawiki.api",
 				"mediawiki.diff",
-				"mediawiki.jqueryMsg"
+				"mediawiki.jqueryMsg",
+				"user.options"
 			],
 			"messages": [
 				"wikimediaantiabuse-special-abuse-review-action-mark-false-positive",

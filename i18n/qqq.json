@@ -6,6 +6,8 @@
 		]
 	},
 	"wikimediaantiabuse-desc": "{{desc|name=WikimediaAntiAbuse|url=https://www.mediawiki.org/wiki/Extension:WikimediaAntiAbuse}}",
+	"prefs-abusereview": "Heading of the Abuse review section on the Recent changes tab of [[Special:Preferences]].",
+	"wikimediaantiabuse-pref-abusereview-live-updates": "Label for the user preference that turns on automatic refreshing of row statuses on [[Special:AbuseReview]]. This preference is enabled by default.",
 	"wikimediaantiabuse-special-abuse-review": "The page title for [[Special:AbuseReview]].",
 	"wikimediaantiabuse-special-abuse-review-caption": "The caption text for the table on [[Special:AbuseReview]] that shows revisions that have been flagged for review.",
 	"wikimediaantiabuse-special-abuse-review-tabs-label": "Accessible label for the list of flag tabs on [[Special:AbuseReview]].",

@@ -138,7 +138,10 @@ class RowStatusPoller {
  */
 function pollRowStatus( rows ) {
 	const config = mw.config.get( 'wgWikimediaAntiAbuseRowStatus' );
-	if ( !config || !config.pollSeconds || !rows.size ) {
+	if (
+		!config || !config.pollSeconds || !rows.size ||
+		!Number( mw.user.options.get( 'wikimediaantiabuse-abusereview-live-updates' ) )
+	) {
 		return;
 	}
 
