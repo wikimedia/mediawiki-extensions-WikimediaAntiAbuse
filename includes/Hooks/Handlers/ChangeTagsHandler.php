@@ -62,6 +62,18 @@ class ChangeTagsHandler implements ListDefinedTagsHook, ListRestrictedTagsHook, 
 	public function onListRestrictedTags( array &$restrictedTags ): void {
 		foreach ( $this->getEnabledTags() as $tag ) {
 			$restrictedTags[$tag] = self::TAG_VIEW_RIGHTS[$tag];
+
+			// If the vandalism queue is out of the alpha test, also allow rollbackers to see the queue
+			if (
+				!$this->config->get( 'WikimediaAntiAbuseVandalismTagInAlphaTest' ) &&
+				in_array(
+					$tag,
+					[ self::VANDALISM_TAG, self::VANDALISM_FALSE_POSITIVE_TAG, self::VANDALISM_NO_FURTHER_ACTION_TAG ],
+					true
+				)
+			) {
+				$restrictedTags[$tag][] = 'rollback';
+			}
 		}
 	}
 

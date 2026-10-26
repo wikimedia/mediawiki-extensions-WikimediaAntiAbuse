@@ -39,6 +39,10 @@
 			"value": [],
 			"description": "The list of usernames that are in the alpha test for the likely vandalism classifier."
 		},
+		"WikimediaAntiAbuseVandalismTagInAlphaTest": {
+			"value": true,
+			"description": "If the mw-private-vandalism tag is in alpha test mode. Does nothing if $wgWikimediaAntiAbuseEnableVandalismTag is not enabled."
+		},
 		"WikimediaAntiAbuseCoPEModelConfig": {
 			"value": {
 				"url": "",
