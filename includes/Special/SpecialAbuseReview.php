@@ -372,7 +372,10 @@ class SpecialAbuseReview extends SpecialPage {
 
 		$selectedTabSummary = '';
 		if ( $this->selectedTab ) {
-			if ( $this->selectedTab === 'mw-private-vandalism' ) {
+			if (
+				$this->selectedTab === 'mw-private-vandalism' &&
+				$this->getConfig()->get( 'WikimediaAntiAbuseVandalismTagInAlphaTest' )
+			) {
 				$selectedTabSummary .= ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
 					->message()
 					->setType( 'warning' )
@@ -388,7 +391,14 @@ class SpecialAbuseReview extends SpecialPage {
 			// Uses:
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info
 			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism
+			// * wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism-rollback
 			$selectedTabMsgKey = 'wikimediaantiabuse-special-abuse-review-tab-summary-' . $this->selectedTab;
+			if (
+				$this->selectedTab === 'mw-private-vandalism' &&
+				 !$this->getConfig()->get( 'WikimediaAntiAbuseVandalismTagInAlphaTest' )
+			) {
+				$selectedTabMsgKey .= '-rollback';
+			}
 			$selectedTabSummaryHtml = $this->msg( $selectedTabMsgKey )->parseAsBlock();
 			$delayMinutes = $this->getConfiguredDelayMinutes( $this->selectedTab );
 			if ( $delayMinutes > 0 ) {

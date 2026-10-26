@@ -19,6 +19,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 	public function testChangeTagRegistration(
 		bool $personalInfoTagEnabled,
 		bool $vandalismTagEnabled,
+		bool $vandalismTagInAlphaTest,
 		array $expectedDefinedTags,
 		array $expectedRestrictedTags
 	): void {
@@ -26,6 +27,7 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 			new HashConfig( [
 				'WikimediaAntiAbuseEnablePersonalInfoTag' => $personalInfoTagEnabled,
 				'WikimediaAntiAbuseEnableVandalismTag' => $vandalismTagEnabled,
+				'WikimediaAntiAbuseVandalismTagInAlphaTest' => $vandalismTagInAlphaTest,
 			] )
 		);
 
@@ -52,12 +54,14 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 			'Tag not enabled' => [
 				'personalInfoTagEnabled' => false,
 				'vandalismTagEnabled' => false,
+				'vandalismTagInAlphaTest' => false,
 				'expectedDefinedTags' => [],
 				'expectedRestrictedTags' => [],
 			],
 			'Personal info tag enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => false,
+				'vandalismTagInAlphaTest' => false,
 				'expectedDefinedTags' => [
 					'mw-private-personal-info',
 					'mw-private-personal-info-false-positive',
@@ -69,9 +73,25 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-personal-info-no-further-action' => [ 'viewsuppressed', 'suppressrevision' ],
 				],
 			],
+			'Vandalism tag enabled in alpha test' => [
+				'personalInfoTagEnabled' => false,
+				'vandalismTagEnabled' => true,
+				'vandalismTagInAlphaTest' => true,
+				'expectedDefinedTags' => [
+					'mw-private-vandalism',
+					'mw-private-vandalism-false-positive',
+					'mw-private-vandalism-no-further-action',
+				],
+				'expectedRestrictedTags' => [
+					'mw-private-vandalism' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-vandalism-false-positive' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
+				],
+			],
 			'Personal info and vandalism tags enabled' => [
 				'personalInfoTagEnabled' => true,
 				'vandalismTagEnabled' => true,
+				'vandalismTagInAlphaTest' => false,
 				'expectedDefinedTags' => [
 					'mw-private-personal-info',
 					'mw-private-personal-info-false-positive',
@@ -84,9 +104,9 @@ class ChangeTagsHandlerTest extends MediaWikiUnitTestCase {
 					'mw-private-personal-info' => [ 'viewsuppressed', 'suppressrevision' ],
 					'mw-private-personal-info-false-positive' => [ 'viewsuppressed', 'suppressrevision' ],
 					'mw-private-personal-info-no-further-action' => [ 'viewsuppressed', 'suppressrevision' ],
-					'mw-private-vandalism' => [ 'abusereview-vandalism-alpha-tester' ],
-					'mw-private-vandalism-false-positive' => [ 'abusereview-vandalism-alpha-tester' ],
-					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester' ],
+					'mw-private-vandalism' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
+					'mw-private-vandalism-false-positive' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
+					'mw-private-vandalism-no-further-action' => [ 'abusereview-vandalism-alpha-tester', 'rollback' ],
 				],
 			],
 		];
