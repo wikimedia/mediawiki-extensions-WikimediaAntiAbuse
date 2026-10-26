@@ -23,7 +23,7 @@
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-header": "Modifications récentes",
 	"wikimediaantiabuse-special-abuse-review-show-recent-edits": "Inclure les modifications récentes ({{PLURAL:$1| dernière minute|dernières $1 minutes}})",
 	"wikimediaantiabuse-special-abuse-review-filter-recent-edits-help": "Afficher également les modifications effectuées au cours {{PLURAL:$1| de la dernière minute| des $1 dernières minutes}}.",
-	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Les modifications faites au cours {{PLURAL:$1| de la dernière minute| des $1 dernières minutes}} sont masquées par défaut. Utilisez les filtres pour inclure les modifications récentes.",
+	"wikimediaantiabuse-special-abuse-review-recent-edits-hidden": "Les modifications faites au cours {{PLURAL:$1|de la dernière minute|des dernières $1 minutes}} sont masquées par défaut. Utilisez les filtres pour inclure les modifications récentes.",
 	"wikimediaantiabuse-special-abuse-review-filter-show-additional-items-help": "Les révisions traitées incluent les éléments retirés de la file d'attente par défaut parce que le contenu a été supprimé ou qu'il a été indiqué qu'aucune autre action n'était nécessaire.",
 	"wikimediaantiabuse-special-abuse-review-filter-submit": "Appliquer les filtres",
 	"wikimediaantiabuse-special-abuse-review-filter-legend": "Filtres",
