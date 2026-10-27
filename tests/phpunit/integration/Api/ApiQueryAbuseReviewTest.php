@@ -136,23 +136,23 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 	public static function provideQueueRequests(): array {
 		return [
 			'personal info list' => [
-				'params' => [ 'list' => 'abusereview', 'abrqueue' => 'personal-info' ],
+				'params' => [ 'list' => 'abusereview', 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG ],
 				'viewerGroups' => [],
 			],
 			'vandalism list' => [
-				'params' => [ 'list' => 'abusereview', 'abrqueue' => 'vandalism' ],
+				'params' => [ 'list' => 'abusereview', 'abrqueue' => ChangeTagsHandler::VANDALISM_TAG ],
 				'viewerGroups' => [],
 			],
 			'personal info generator' => [
-				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => 'personal-info' ],
+				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG ],
 				'viewerGroups' => [],
 			],
 			'vandalism generator' => [
-				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => 'vandalism' ],
+				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => ChangeTagsHandler::VANDALISM_TAG ],
 				'viewerGroups' => [],
 			],
 			'personal info list, viewer of the vandalism queue only' => [
-				'params' => [ 'list' => 'abusereview', 'abrqueue' => 'personal-info' ],
+				'params' => [ 'list' => 'abusereview', 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG ],
 				'viewerGroups' => [ 'vandalism-queue-viewer' ],
 			],
 		];
@@ -170,16 +170,19 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		return [
 			'personal info' => [
 				'enableConfig' => 'WikimediaAntiAbuseEnablePersonalInfoTag',
-				'queue' => 'personal-info',
+				'queue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
 			],
-			'vandalism' => [ 'enableConfig' => 'WikimediaAntiAbuseEnableVandalismTag', 'queue' => 'vandalism' ],
+			'vandalism' => [
+				'enableConfig' => 'WikimediaAntiAbuseEnableVandalismTag',
+				'queue' => ChangeTagsHandler::VANDALISM_TAG,
+			],
 		];
 	}
 
 	/** @dataProvider provideStatuses */
 	public function testListsTheStatusOfEachRow( string $fixture, array $expectedRow ): void {
 		$rowsByRevId = array_column( $this->requestRows( [
-			'abrqueue' => 'vandalism',
+			'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 			'abrprop' => 'ids|status',
 			'abrshowhandled' => '1',
 			'abrshowfalsepositives' => '1',
@@ -234,7 +237,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 				self::$revIds['userHidden'],
 				self::$revIds['unhandled'],
 			],
-			array_column( $this->requestRows( [ 'abrqueue' => 'vandalism' ] ), 'revid' ),
+			array_column( $this->requestRows( [ 'abrqueue' => ChangeTagsHandler::VANDALISM_TAG ] ), 'revid' ),
 			'The queue lists only its unhandled rows unless handled and false positive rows are asked for'
 		);
 	}
@@ -249,7 +252,10 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 
 		$this->assertSame(
 			array_map( static fn ( string $fixture ): int => self::$revIds[$fixture], $expectedFixtures ),
-			array_column( $this->requestRows( [ 'abrqueue' => 'personal-info' ] + $extraParams ), 'revid' ),
+			array_column(
+				$this->requestRows( [ 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG ] + $extraParams ),
+				'revid'
+			),
 			'The queue lists the rows its delay leaves visible'
 		);
 	}
@@ -282,7 +288,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		];
 
 		[ $row ] = $this->requestRows( [
-			'abrqueue' => 'vandalism',
+			'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 			'abrprop' => 'user|userid|comment',
 			'abrrevid' => (string)self::$revIds[$fixture],
 		], $this->getTestUser( $viewerGroups )->getAuthority() );
@@ -335,7 +341,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertSame(
 			[ [ 'revid' => self::$revIds['suppressed'], 'parentid' => self::$revIds['userHidden'] ] ],
 			$this->requestRows( [
-				'abrqueue' => 'vandalism',
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 				'abrprop' => 'ids',
 				'abrrevid' => (string)self::$revIds['suppressed'],
 			] ),
@@ -352,7 +358,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertSame(
 			[ [ 'userhidden' => true, 'commenthidden' => true ] ],
 			$this->requestRows( [
-				'abrqueue' => 'vandalism',
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 				'abrprop' => 'user|comment',
 				'abrrevid' => (string)self::$revIds['userHidden'],
 			] ),
@@ -370,7 +376,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertSame(
 			[ [ 'user' => $editor->getName(), 'userid' => $editor->getId() ] + $expectedFlags ],
 			$this->requestRows( [
-				'abrqueue' => 'vandalism',
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 				'abrprop' => 'user|userid',
 				'abrrevid' => (string)self::$revIds[$fixture],
 			] ),
@@ -391,7 +397,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertSame(
 			[ [ 'tags' => $expectedTags ] ],
 			$this->requestRows( [
-				'abrqueue' => 'vandalism',
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
 				'abrprop' => 'tags',
 				'abrshowfalsepositives' => '1',
 				'abrrevid' => (string)self::$revIds[$fixture],
@@ -422,7 +428,10 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertSame(
 			[ $revision->getId() ],
 			array_column(
-				$this->requestRows( [ 'abrqueue' => 'personal-info', $filter => $filterValues[$filter] ] ),
+				$this->requestRows( [
+					'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+					$filter => $filterValues[$filter],
+				] ),
 				'revid'
 			),
 			'The filter narrows the queue to the row it matches'
@@ -443,14 +452,17 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		] ) );
 		$this->expectApiErrorCode( 'invalidtitle' );
 
-		$this->requestRows( [ 'abrqueue' => 'personal-info', 'abrpage' => 'otherwiki:' . self::TIED_PAGE ] );
+		$this->requestRows( [
+			'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+			'abrpage' => 'otherwiki:' . self::TIED_PAGE,
+		] );
 	}
 
 	public function testContinueReturnsTheOtherRowWithTheSameTimestamp(): void {
 		$params = [
 			'action' => 'query',
 			'list' => 'abusereview',
-			'abrqueue' => 'personal-info',
+			'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
 			'abrpage' => self::TIED_PAGE,
 			'abrlimit' => '1',
 		];
@@ -478,7 +490,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		[ $result ] = $this->doApiRequest( [
 			'action' => 'query',
 			'list' => 'abusereview',
-			'abrqueue' => 'personal-info',
+			'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
 			'abrpage' => self::TIED_PAGE,
 		], performer: $this->reviewer );
 
@@ -502,7 +514,10 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 				self::$revIds['tiedSecond'],
 				self::$revIds['recent'],
 			],
-			array_column( $this->requestRows( [ 'abrqueue' => 'personal-info', 'abrdir' => 'newer' ] ), 'revid' ),
+			array_column(
+				$this->requestRows( [ 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG, 'abrdir' => 'newer' ] ),
+				'revid'
+			),
 			'The queue lists its rows oldest first with abrdir=newer'
 		);
 	}
@@ -510,14 +525,14 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 	public function testRejectsMalformedContinue(): void {
 		$this->expectApiErrorCode( 'badcontinue' );
 
-		$this->requestRows( [ 'abrqueue' => 'personal-info', 'abrcontinue' => 'malformed' ] );
+		$this->requestRows( [ 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG, 'abrcontinue' => 'malformed' ] );
 	}
 
 	public function testGeneratorFillsThePageSetWithTheQueueRevisions(): void {
 		[ $result ] = $this->doApiRequest( [
 			'action' => 'query',
 			'generator' => 'abusereview',
-			'gabrqueue' => 'personal-info',
+			'gabrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
 			'prop' => 'revisions',
 			'rvprop' => 'ids',
 		], performer: $this->reviewer );
@@ -550,7 +565,10 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 				'title' => self::OLDEST_PAGE,
 				'timestamp' => '2026-01-01T00:01:00Z',
 			] ],
-			$this->requestRows( [ 'abrqueue' => 'personal-info', 'abrrevid' => (string)self::$revIds['oldest'] ] ),
+			$this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+				'abrrevid' => (string)self::$revIds['oldest'],
+			] ),
 			'A row without abrprop holds its IDs, title and timestamp only'
 		);
 	}
@@ -571,7 +589,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 			) );
 		$this->setService( 'GenderCache', $genderCache );
 
-		$this->requestRows( [ 'abrqueue' => 'personal-info', 'abrprop' => $prop ] );
+		$this->requestRows( [ 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG, 'abrprop' => $prop ] );
 	}
 
 	public static function provideGenderPreloads(): array {

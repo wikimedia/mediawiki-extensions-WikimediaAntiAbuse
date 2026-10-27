@@ -13,7 +13,6 @@ use MediaWiki\Cache\GenderCache;
 use MediaWiki\ChangeTags\ChangeTagsStore;
 use MediaWiki\CommentStore\CommentStore;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
-use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
@@ -36,11 +35,6 @@ use Wikimedia\Timestamp\TimestampFormat;
  * Lists the revisions of an AbuseReview queue, with the filters of Special:AbuseReview
  */
 class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
-
-	private const array TAGS_BY_QUEUE = [
-		'vandalism' => ChangeTagsHandler::VANDALISM_TAG,
-		'personal-info' => ChangeTagsHandler::PERSONAL_INFO_TAG,
-	];
 
 	public function __construct(
 		ApiQuery $query,
@@ -68,7 +62,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 
 	private function run( ?ApiPageSet $resultPageSet = null ): void {
 		$params = $this->extractRequestParams();
-		$abuseReviewTag = self::TAGS_BY_QUEUE[$params['queue']];
+		$abuseReviewTag = $params['queue'];
 		$this->assertCanViewQueue( $abuseReviewTag );
 
 		$rows = iterator_to_array( $this->fetchRows( $abuseReviewTag, $params ) );
@@ -279,10 +273,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 	protected function getAllowedParams(): array {
 		return [
 			'queue' => [
-				ParamValidator::PARAM_TYPE => array_keys( array_intersect(
-					self::TAGS_BY_QUEUE,
-					$this->abuseReviewEnabledTagsProvider->getEnabledReviewableTags()
-				) ),
+				ParamValidator::PARAM_TYPE => $this->abuseReviewEnabledTagsProvider->getEnabledReviewableTags(),
 				ParamValidator::PARAM_REQUIRED => true,
 				ApiBase::PARAM_HELP_MSG_PER_VALUE => [],
 			],
@@ -342,12 +333,13 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 	 */
 	protected function getExamplesMessages(): array {
 		return [
-			'action=query&list=abusereview&abrqueue=vandalism'
+			'action=query&list=abusereview&abrqueue=mw-private-vandalism'
 				=> 'apihelp-query+abusereview-example-vandalism',
-			'action=query&list=abusereview&abrqueue=vandalism&abrshowhandled=1&abrshowfalsepositives=1'
+			'action=query&list=abusereview&abrqueue=mw-private-vandalism&abrshowhandled=1&abrshowfalsepositives=1'
 				. '&abrshowrecent=1&abrprop=ids|title|timestamp|user|comment|status'
 				=> 'apihelp-query+abusereview-example-all',
-			'action=query&generator=abusereview&gabrqueue=vandalism&prop=revisions&rvprop=content&rvslots=main'
+			'action=query&generator=abusereview&gabrqueue=mw-private-vandalism'
+				. '&prop=revisions&rvprop=content&rvslots=main'
 				=> 'apihelp-query+abusereview-example-generator',
 		];
 	}
