@@ -351,10 +351,10 @@ class SpecialAbuseReview extends SpecialPage {
 
 		$selectedTabSummary = '';
 		if ( $this->selectedTab ) {
-			if (
-				$this->selectedTab === 'mw-private-vandalism' &&
-				$this->getConfig()->get( 'WikimediaAntiAbuseVandalismTagInAlphaTest' )
-			) {
+			if ( $this->isSelectedTabInAlphaTest() ) {
+				// Uses:
+				// * wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism
+				// * wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-link-spam
 				$selectedTabSummary .= ( new Codex( new MediaWikiLocalization( $this->getContext() ) ) )
 					->message()
 					->setType( 'warning' )
@@ -362,7 +362,8 @@ class SpecialAbuseReview extends SpecialPage {
 						'class' => 'mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning',
 					] )
 					->setContent( $this->msg(
-						'wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism'
+						'wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-'
+							. $this->selectedTab
 					)->text() )
 					->getHtml();
 			}
@@ -394,6 +395,14 @@ class SpecialAbuseReview extends SpecialPage {
 		}
 
 		return $tabsBuilder->getHtml() . $selectedTabSummary;
+	}
+
+	private function isSelectedTabInAlphaTest(): bool {
+		return match ( $this->selectedTab ) {
+			'mw-private-vandalism' => (bool)$this->getConfig()->get( 'WikimediaAntiAbuseVandalismTagInAlphaTest' ),
+			'mw-private-link-spam' => (bool)$this->getConfig()->get( 'WikimediaAntiAbuseLinkSpamTagInAlphaTest' ),
+			default => false,
+		};
 	}
 
 	/**

@@ -47,6 +47,10 @@
 			"value": true,
 			"description": "If the mw-private-vandalism tag is in alpha test mode. Does nothing if $wgWikimediaAntiAbuseEnableVandalismTag is not enabled."
 		},
+		"WikimediaAntiAbuseLinkSpamTagInAlphaTest": {
+			"value": true,
+			"description": "If the mw-private-link-spam tag is in alpha test mode. Does nothing if $wgWikimediaAntiAbuseEnableLinkSpamTag is not enabled."
+		},
 		"WikimediaAntiAbuseCoPEModelConfig": {
 			"value": {
 				"url": "",

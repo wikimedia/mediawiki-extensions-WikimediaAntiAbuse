@@ -148,6 +148,46 @@ class SpecialAbuseReviewTest extends SpecialAbuseReviewTestBase {
 		);
 	}
 
+	/** @dataProvider provideLinkSpamTabAlphaTestWarning */
+	public function testLinkSpamTabAlphaTestWarning( bool $inAlphaTest ): void {
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableLinkSpamTag' => true,
+			'WikimediaAntiAbuseLinkSpamTagInAlphaTest' => $inAlphaTest,
+		] );
+		$this->setGroupPermissions(
+			[ 'link-spam-reviewer' => [ 'abusereview-vandalism-alpha-tester' => true ] ]
+		);
+		$testUser = $this->getTestUser( [ 'link-spam-reviewer' ] )->getUser();
+
+		[ $html ] = $this->executeSpecialPage(
+			'',
+			new FauxRequest( [ 'tab' => ChangeTagsHandler::LINK_SPAM_TAG ] ),
+			null,
+			$testUser
+		);
+
+		$warning = DOMCompat::querySelector(
+			DOMUtils::parseHTML( $html ),
+			'.mw-wikimediaantiabuse-abuse-review-tab-summary-alpha-test-warning'
+		);
+		if ( !$inAlphaTest ) {
+			$this->assertNull( $warning );
+			return;
+		}
+		$this->assertNotNull( $warning );
+		$this->assertStringContainsString(
+			'(wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-link-spam)',
+			DOMCompat::getInnerHTML( $warning )
+		);
+	}
+
+	public static function provideLinkSpamTabAlphaTestWarning(): array {
+		return [
+			'In alpha test' => [ 'inAlphaTest' => true ],
+			'Out of alpha test' => [ 'inAlphaTest' => false ],
+		];
+	}
+
 	/**
 	 * An edit that changed no lines still gets its link out to the full diff, the preview
 	 * having nothing to show.
