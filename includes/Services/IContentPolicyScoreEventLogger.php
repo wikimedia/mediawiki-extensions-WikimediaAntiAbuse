@@ -8,7 +8,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\ModelCheck\ContentPolicyEvaluationRes
 use MediaWiki\Revision\RevisionRecord;
 
 /**
- * Emits one EventLogging event per edit capturing each content policy's CoPE confidence scores.
+ * Emits one EventLogging event per model-check job capturing each content policy's CoPE confidence scores.
  */
 interface IContentPolicyScoreEventLogger {
 

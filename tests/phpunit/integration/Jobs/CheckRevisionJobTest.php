@@ -470,6 +470,61 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	/** @dataProvider provideExternalLinkPolicyFiltering */
+	public function testRunsOnlyTheContentPoliciesForThisJob(
+		bool $onlyExternalLinkPolicies,
+		array $expectedPolicyNames
+	): void {
+		$revisionId = $this->createRevisionId();
+
+		$this->overrideConfigValues( [
+			'WikimediaAntiAbuseEnableModelChecks' => true,
+			'WikimediaAntiAbuseExternalLinkContentPolicies' => [ 'test-link-spam-policy' ],
+		] );
+		$this->setTemporaryHook(
+			'WikimediaAntiAbuseGetModelsToRun',
+			static function ( RevisionRecord $revisionRecord, array &$modelsToRun ): void {
+				$modelsToRun[] = new ModelToRun(
+					'test-vandalism-policy', 'Test policy text', 'test content', 'test-vandalism-model'
+				);
+				$modelsToRun[] = new ModelToRun(
+					'test-link-spam-policy', 'Test policy text', 'test content', 'test-link-spam-model'
+				);
+			}
+		);
+
+		$evaluatedPolicyNames = [];
+		$evaluator = $this->createMock( ContentPolicyEvaluator::class );
+		$evaluator->method( 'evaluateCoPEModel' )
+			->willReturnCallback(
+				static function ( string $policyText, string $policyName ) use ( &$evaluatedPolicyNames ): null {
+					$evaluatedPolicyNames[] = $policyName;
+
+					return null;
+				}
+			);
+
+		$spec = $onlyExternalLinkPolicies
+			? CheckRevisionJob::newExternalLinkSpec( $revisionId )
+			: CheckRevisionJob::newSpec( $revisionId );
+		$this->newJob( $revisionId, $evaluator, extraParams: $spec->getParams() )->run();
+
+		$this->assertSame( $expectedPolicyNames, $evaluatedPolicyNames );
+	}
+
+	public static function provideExternalLinkPolicyFiltering(): array {
+		return [
+			'Job queued for every edit' => [
+				'onlyExternalLinkPolicies' => false,
+				'expectedPolicyNames' => [ 'test-vandalism-policy' ],
+			],
+			'Job queued for an edit that added an external link' => [
+				'onlyExternalLinkPolicies' => true,
+				'expectedPolicyNames' => [ 'test-link-spam-policy' ],
+			],
+		];
+	}
+
 	private function createRevisionId(): int {
 		return $this->editPage( 'WikimediaAntiAbuse test page', 'test content' )
 			->getNewRevision()
@@ -536,12 +591,13 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		?PersonalInfoFlagNotifier $notifier = null,
 		?IContentPolicyScoreEventLogger $eventLogger = null,
 		?ArchivedRevisionLookup $archivedRevisionLookup = null,
-		?IAbuseReviewInstrumentationClient $instrumentationClient = null
+		?IAbuseReviewInstrumentationClient $instrumentationClient = null,
+		array $extraParams = []
 	): CheckRevisionJob {
 		$services = $this->getServiceContainer();
 
 		return new CheckRevisionJob(
-			[ 'revisionId' => $revisionId ],
+			[ 'revisionId' => $revisionId ] + $extraParams,
 			$services->getMainConfig(),
 			$revisionLookup ?? $services->getRevisionLookup(),
 			$archivedRevisionLookup ?? $services->getArchivedRevisionLookup(),

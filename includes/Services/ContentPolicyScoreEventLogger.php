@@ -11,7 +11,7 @@ use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\WikiMap\WikiMap;
 
 /**
- * Emits one EventLogging event per edit capturing each content policy's CoPE confidence scores.
+ * Emits one EventLogging event per model-check job capturing each content policy's CoPE confidence scores.
  */
 class ContentPolicyScoreEventLogger implements IContentPolicyScoreEventLogger {
 

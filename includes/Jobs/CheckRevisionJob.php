@@ -47,7 +47,20 @@ class CheckRevisionJob extends Job {
 	}
 
 	public static function newSpec( int $revisionId ): IJobSpecification {
-		return new JobSpecification( self::TYPE, [ 'revisionId' => $revisionId ] );
+		return new JobSpecification( self::TYPE, [
+			'revisionId' => $revisionId,
+			'onlyExternalLinkPolicies' => false,
+		] );
+	}
+
+	/**
+	 * Extra checks for an edit that adds at least one external link.
+	 */
+	public static function newExternalLinkSpec( int $revisionId ): IJobSpecification {
+		return new JobSpecification( self::TYPE, [
+			'revisionId' => $revisionId,
+			'onlyExternalLinkPolicies' => true,
+		] );
 	}
 
 	/** @inheritDoc */
@@ -69,6 +82,7 @@ class CheckRevisionJob extends Job {
 
 		$modelsToRun = [];
 		$this->hookRunner->onWikimediaAntiAbuseGetModelsToRun( $revisionRecord, $modelsToRun );
+		$modelsToRun = $this->filterModelsForThisJob( $modelsToRun );
 		if ( !$modelsToRun ) {
 			return true;
 		}
@@ -94,6 +108,24 @@ class CheckRevisionJob extends Job {
 		}
 
 		return true;
+	}
+
+	/**
+	 * @param ModelToRun[] $modelsToRun
+	 * @return ModelToRun[]
+	 */
+	private function filterModelsForThisJob( array $modelsToRun ): array {
+		$externalLinkPolicies = $this->config->get( 'WikimediaAntiAbuseExternalLinkContentPolicies' );
+		$wantsExternalLinkPolicies = (bool)( $this->params['onlyExternalLinkPolicies'] ?? false );
+
+		return array_values( array_filter(
+			$modelsToRun,
+			static fn ( ModelToRun $modelToRun ): bool => in_array(
+				$modelToRun->getContentPolicyName(),
+				$externalLinkPolicies,
+				true
+			) === $wantsExternalLinkPolicies
+		) );
 	}
 
 	private function loadRevision( int $revisionId ): ?RevisionRecord {

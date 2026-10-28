@@ -68,6 +68,10 @@
 			"value": false,
 			"description": "Enables the revision model-check pipeline."
 		},
+		"WikimediaAntiAbuseExternalLinkContentPolicies": {
+			"value": [],
+			"description": "The names of the content policies that are only evaluated for an edit which adds at least one external link."
+		},
 		"WikimediaAntiAbuseAbuseReviewDelayMinutes": {
 			"value": {
 				"mw-private-personal-info": 0,
@@ -152,6 +156,7 @@
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
 		"GetPreferences": [ "NotificationPreferencesHandler", "AbuseReviewPreferencesHandler" ],
+		"LinksUpdateComplete": "PageSaveCompleteHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
 		"UserGetRights": "VandalismAlphaTesterHandler",
