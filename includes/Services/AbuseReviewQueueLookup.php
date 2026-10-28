@@ -111,17 +111,17 @@ class AbuseReviewQueueLookup {
 	}
 
 	/**
-	 * Returns the tables to read the revisions of this queue from, mapped to their revision ID field. The vandalism
-	 * queue skips the archive table unless handled revisions are included, because every revision of a deleted
-	 * page counts as handled there.
+	 * Returns the tables to read the revisions of this queue from, mapped to their revision ID field. A queue that
+	 * counts a deleted edit as handled skips the archive table unless handled revisions are included, because every
+	 * revision in there belongs to a deleted page and so is handled.
 	 *
 	 * @return array<string,string>
 	 */
 	public function getTablesToQuery( AbuseReviewQueueFilters $filters, Authority $authority ): array {
 		$tablesToQuery = [ 'revision' => 'rev_id' ];
-		if ( ( $filters->includeHandledRevisions || $filters->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG )
-			&& $authority->isAllowed( 'deletedhistory' )
-		) {
+		$showArchiveRows = $filters->includeHandledRevisions
+			|| !$this->isHandledWhenRevertedOrNotPubliclyVisible( $filters->abuseReviewTag );
+		if ( $showArchiveRows && $authority->isAllowed( 'deletedhistory' ) ) {
 			$tablesToQuery['archive'] = 'ar_rev_id';
 		}
 
@@ -277,7 +277,7 @@ class AbuseReviewQueueLookup {
 						) . ' = 0' ),
 				] ) );
 			}
-			if ( $filters->abuseReviewTag === ChangeTagsHandler::VANDALISM_TAG ) {
+			if ( $this->isHandledWhenRevertedOrNotPubliclyVisible( $filters->abuseReviewTag ) ) {
 				$queryBuilder->where( new RawSQLExpression(
 					$dbr->bitAnd( $deletedField, RevisionRecord::DELETED_TEXT ) . ' = 0'
 				) );
@@ -416,9 +416,22 @@ class AbuseReviewQueueLookup {
 	}
 
 	/**
+	 * Whether the queue of this tag counts an edit as handled once it has been reverted or is no longer publicly
+	 * visible. The personal info queue does not, since content may still need to be suppressed.
+	 */
+	private function isHandledWhenRevertedOrNotPubliclyVisible( string $abuseReviewTag ): bool {
+		return in_array(
+			$abuseReviewTag,
+			[ ChangeTagsHandler::VANDALISM_TAG, ChangeTagsHandler::LINK_SPAM_TAG ],
+			true
+		);
+	}
+
+	/**
 	 * Returns the reason why the revision on this row has been handled outside AbuseReview, as a HANDLED_REASON_*
 	 * constant, or null if it has not. For the personal info tag this is if the content is suppressed, and for the
-	 * vandalism tag if the page is deleted, the text is deleted or suppressed, or the edit has been reverted.
+	 * vandalism and link spam tags if the page is deleted, the text is deleted or suppressed, or the edit has been
+	 * reverted.
 	 *
 	 * This should match the checks in {@link self::getQueryInfo} and {@link self::getTablesToQuery} that exclude
 	 * handled rows based on these checks. If updating this method, make sure to update there too.
@@ -430,6 +443,10 @@ class AbuseReviewQueueLookup {
 				&& ( $deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0;
 
 			return $isTextSuppressed ? self::HANDLED_REASON_SUPPRESSED : null;
+		}
+
+		if ( !$this->isHandledWhenRevertedOrNotPubliclyVisible( $abuseReviewTag ) ) {
+			return null;
 		}
 
 		if ( $this->isArchivedRow( $row ) ) {

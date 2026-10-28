@@ -23,7 +23,7 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
 class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	use HtmlAssertionHelperTrait;
 
-	private const array VANDALISM_ROW = [
+	private const array FLAGGED_ROW = [
 		'namespace' => NS_MAIN,
 		'title' => 'AbuseReviewPagerTest',
 		'user' => 0,
@@ -70,7 +70,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 
 	/** @dataProvider provideUndoLink */
 	public function testUndoLink( array $rowOverrides, bool $expectUndoLink ): void {
-		$row = (object)array_merge( self::VANDALISM_ROW, $rowOverrides );
+		$row = (object)array_merge( self::FLAGGED_ROW, $rowOverrides );
 
 		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
 
@@ -94,10 +94,14 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/** @dataProvider provideHandledOutsideAbuseReviewMessage */
-	public function testHandledOutsideAbuseReviewMessage( array $rowOverrides, ?string $expectedMessage ): void {
-		$row = (object)array_merge( self::VANDALISM_ROW, $rowOverrides );
+	public function testHandledOutsideAbuseReviewMessage(
+		string $abuseReviewTag,
+		array $rowOverrides,
+		?string $expectedMessage
+	): void {
+		$row = (object)array_merge( self::FLAGGED_ROW, [ 'ts_tags' => $abuseReviewTag ], $rowOverrides );
 
-		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
+		$html = $this->getObjectUnderTest( $abuseReviewTag )->formatRow( $row );
 
 		$mountPoint = $this->assertSelectorMatchesOneElementInNode(
 			DOMUtils::parseHTML( $html ),
@@ -114,48 +118,69 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public static function provideHandledOutsideAbuseReviewMessage(): array {
-		return [
-			'Not handled' => [ 'rowOverrides' => [], 'expectedMessage' => null ],
-			'Edit is reverted' => [
-				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
+		$cases = [];
+		// Vandalism and link spam have the same rules for what is considered handled
+		foreach ( [ 'mw-private-vandalism', 'mw-private-link-spam' ] as $tag ) {
+			$cases["Not handled ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [],
+				'expectedMessage' => null,
+			];
+			$cases["Edit is reverted ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [ 'ts_tags' => "$tag,mw-reverted" ],
 				'expectedMessage' => self::REVERTED_MESSAGE,
-			],
-			'Text is hidden' => [
+			];
+			$cases["Text is hidden ($tag)"] = [
+				'abuseReviewTag' => $tag,
 				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT ],
 				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
-			],
-			'Text is suppressed' => [
-				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED ],
-				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
-			],
-			'Only the summary is hidden' => [
-				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_COMMENT ],
-				'expectedMessage' => null,
-			],
-			'Only the username is suppressed, as a hide-user block does' => [
-				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED ],
-				'expectedMessage' => null,
-			],
-			'Page is deleted' => [
-				'rowOverrides' => [ 'is_archive' => '1' ],
-				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
-			],
-			'Page is deleted and the edit reverted' => [
-				'rowOverrides' => [ 'is_archive' => '1', 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
-				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
-			],
-			'Page is deleted and the text hidden' => [
-				'rowOverrides' => [ 'is_archive' => '1', 'deleted' => RevisionRecord::DELETED_TEXT ],
-				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
-			],
-			'Text is hidden and the edit reverted' => [
+			];
+			$cases["Text is suppressed ($tag)"] = [
+				'abuseReviewTag' => $tag,
 				'rowOverrides' => [
-					'deleted' => RevisionRecord::DELETED_TEXT,
-					'ts_tags' => 'mw-private-vandalism,mw-reverted',
+					'deleted' => RevisionRecord::DELETED_TEXT | RevisionRecord::DELETED_RESTRICTED,
 				],
 				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
-			],
-		];
+			];
+			$cases["Only the summary is hidden ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_COMMENT ],
+				'expectedMessage' => null,
+			];
+			$cases["Only the username is suppressed, as a hide-user block does ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [
+					'deleted' => RevisionRecord::DELETED_USER | RevisionRecord::DELETED_RESTRICTED,
+				],
+				'expectedMessage' => null,
+			];
+			$cases["Page is deleted ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [ 'is_archive' => '1' ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			];
+			$cases["Page is deleted and the edit reverted ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [ 'is_archive' => '1', 'ts_tags' => "$tag,mw-reverted" ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			];
+			$cases["Page is deleted and the text hidden ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [ 'is_archive' => '1', 'deleted' => RevisionRecord::DELETED_TEXT ],
+				'expectedMessage' => self::PAGE_DELETED_MESSAGE,
+			];
+			$cases["Text is hidden and the edit reverted ($tag)"] = [
+				'abuseReviewTag' => $tag,
+				'rowOverrides' => [
+					'deleted' => RevisionRecord::DELETED_TEXT,
+					'ts_tags' => "$tag,mw-reverted",
+				],
+				'expectedMessage' => self::REVISION_DELETED_MESSAGE,
+			];
+		}
+
+		return $cases;
 	}
 
 	/** @dataProvider provideRollbackLink */
