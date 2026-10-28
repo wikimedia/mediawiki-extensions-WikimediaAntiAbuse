@@ -49,6 +49,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "قم بإزالة الحكم الحالي وأعد إرسال هذه المراجعة التي تم وضع علامة عليها للمراجعة.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "تم بالفعل إلغاء هذا التعديل.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "تم التراجع عن هذا التعديل بالفعل.",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "تم حذف هذه النسخة بالفعل.",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "تم حذف هذه النسخة المعدلة مع صفحتها بالفعل.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "تم التسجيل {{GENDER:$1|بواسطة}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "تمت إعادته للمراجعة {{GENDER:$1|بواسطة}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "معلومات شخصية محتملة",

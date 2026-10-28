@@ -55,6 +55,8 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "移除当前判定，并将此已标记的修订版本送回审核。",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "此修订已被监督。",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "此修订已被回退。",
+	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "此修订已被删除。",
+	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "此修订及其页面已被删除。",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "{{GENDER:$1|由}}$2记录",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "{{GENDER:$1|由}}$2送回审核",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "疑似个人信息",
