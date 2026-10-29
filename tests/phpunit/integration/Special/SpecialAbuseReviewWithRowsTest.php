@@ -32,8 +32,8 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 
 	private const string PERSONAL_INFO_SUPPRESSED_MESSAGE =
 		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info';
-	private const string VANDALISM_REVERTED_MESSAGE =
-		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
+	private const string REVERTED_MESSAGE =
+		'wikimediaantiabuse-special-abuse-review-handled-reverted';
 	private const string REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
 	private const string PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
 
@@ -243,7 +243,7 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 				static::$suppressedFalsePositiveRevId => self::PERSONAL_INFO_SUPPRESSED_MESSAGE,
 			],
 			'mw-private-vandalism' => [
-				static::$revertedVandalismRevId => self::VANDALISM_REVERTED_MESSAGE,
+				static::$revertedVandalismRevId => self::REVERTED_MESSAGE,
 				static::$taggedContentRevId => self::REVISION_DELETED_MESSAGE,
 				static::$suppressedContentRevId => self::REVISION_DELETED_MESSAGE,
 				static::$deletedTaggedContentRevId => self::PAGE_DELETED_MESSAGE,

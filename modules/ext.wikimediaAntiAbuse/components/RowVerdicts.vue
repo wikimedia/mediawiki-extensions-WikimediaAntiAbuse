@@ -146,7 +146,7 @@ module.exports = exports = defineComponent( {
 			if ( handledOutsideAbuseReviewBlocksMark.value ) {
 				// Uses:
 				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info
-				// * wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism
+				// * wikimediaantiabuse-special-abuse-review-handled-reverted
 				// * wikimediaantiabuse-special-abuse-review-handled-revision-deleted
 				// * wikimediaantiabuse-special-abuse-review-handled-page-deleted
 				return mw.msg( props.handledOutsideAbuseReviewMessage );

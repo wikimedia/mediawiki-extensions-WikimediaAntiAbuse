@@ -56,7 +56,7 @@ class AbuseReviewPager extends CodexTablePager {
 		AbuseReviewQueueLookup::HANDLED_REASON_REVISION_DELETED =>
 			'wikimediaantiabuse-special-abuse-review-handled-revision-deleted',
 		AbuseReviewQueueLookup::HANDLED_REASON_REVERTED =>
-			'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism',
+			'wikimediaantiabuse-special-abuse-review-handled-reverted',
 	];
 
 	/** @var bool Whether a row has been rendered yet; used to make first row expanded by default */

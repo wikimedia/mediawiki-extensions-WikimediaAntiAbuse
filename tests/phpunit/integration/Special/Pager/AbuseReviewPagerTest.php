@@ -37,8 +37,8 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 		'page_latest' => 2,
 	];
 
-	private const string VANDALISM_REVERTED_MESSAGE =
-		'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism';
+	private const string REVERTED_MESSAGE =
+		'wikimediaantiabuse-special-abuse-review-handled-reverted';
 	private const string REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
 	private const string PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
 
@@ -118,7 +118,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'Not handled' => [ 'rowOverrides' => [], 'expectedMessage' => null ],
 			'Edit is reverted' => [
 				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
-				'expectedMessage' => self::VANDALISM_REVERTED_MESSAGE,
+				'expectedMessage' => self::REVERTED_MESSAGE,
 			],
 			'Text is hidden' => [
 				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT ],
