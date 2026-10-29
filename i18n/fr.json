@@ -15,6 +15,7 @@
 	"wikimediaantiabuse-special-abuse-review-summary": "Cette page contient des modifications automatiquement marquées pour relecture. Les indicateurs expliquent pourquoi une modification a été ajoutée à la boîte de réception.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-personal-info": "Les modifications dans cette boîte de réception contiennent probablement des informations personnelles et doivent être vérifiées. Les utilisateurs ayant le droit de voir le contenu supprimé peuvent consulter les indicateurs d'informations personnelles.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism": "Les modifications dans cette boîte de réception incluent probablement du vandalisme et doivent être vérifiées. Les utilisateurs inclus dans le test alpha de cette boîte de réception peuvent voir les signalements de vandalisme.",
+	"wikimediaantiabuse-special-abuse-review-tab-summary-mw-private-vandalism-rollback": "Les modifications dans cette boîte de réception contiennent probablement du vandalisme et doivent être vérifiées. Les révocateurs peuvent consulter les signalements de vandalisme.",
 	"wikimediaantiabuse-special-abuse-review-tab-summary-alpha-test-warning-mw-private-vandalism": "Cette fonctionnalité de détection du vandalisme est actuellement en phase de test alpha et fait encore l'objet de développements actifs. Elle est accessible à un nombre limité d'utilisateurs afin d'évaluer ses performances et de recueillir leurs commentaires avant un éventuel déploiement plus large.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner": "Affichage de $1 {{PLURAL:$1|révision signalée|révisions signalées}} à partir d'une notification. Il y a $2 {{PLURAL:$2|information personnelle susceptible d'être modifiée|informations personnelles susceptibles d'être modifiées}} en attente de révision. $3.",
 	"wikimediaantiabuse-special-abuse-review-echo-notification-banner-link": "Afficher toutes les modifications possibles d'informations personnelles",
@@ -57,6 +58,8 @@
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Cette révision a déjà été révoquée.",
 	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Cette révision a déjà été supprimée.",
 	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Cette révision a déjà été supprimée, ainsi que sa page.",
+	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Enregistré {{GENDER:$1| par}} $2",
+	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Retourné pour examen {{GENDER:$1| par}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Informations probablement personnelles",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-vandalism": "Vandalisme probable",
 	"wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive": "Marqué comme faux positif",
@@ -80,5 +83,7 @@
 	"echo-pref-tooltip-personal-info-learn-more": "[[mw:Special:MyLanguage/Product Safety and Integrity/Detecting abusive content|En savoir plus sur cette notification]]",
 	"notification-header-personal-info-flagged": "Une modification apportée à l'article <strong>$1</strong> est susceptible de contenir des informations personnelles.",
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|modification est susceptible|modifications sont susceptibles}} de contenir des informations personnelles.",
-	"notification-link-text-personal-info-flagged": "Voir {{PLURAL:$1|la modification signalée|les modifications signalées}}"
+	"notification-link-text-personal-info-flagged": "Voir {{PLURAL:$1|la modification signalée|les modifications signalées}}",
+	"right-abusereview-vandalism-alpha-tester": "Accédez à la version alpha du détecteur de vandalisme d'AbuseReview",
+	"action-abusereview-vandalism-alpha-tester": "accéder à la version alpha du détecteur de vandalisme d'AbuseReview"
 }
