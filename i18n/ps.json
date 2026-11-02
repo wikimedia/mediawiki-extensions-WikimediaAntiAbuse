@@ -38,7 +38,7 @@
 	"wikimediaantiabuse-special-abuse-review-action-mark-no-further-action": "نورو چارو ته اړتيا نشته",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "بېرته يې بياکتنې ته ولېږئ",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "دا بياليدنې لادمخه پټه شوې ده.",
-	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "دا بياليدنې لادمخه په څټ گرځول شوې ده.",
+	"wikimediaantiabuse-special-abuse-review-handled-reverted": "دا بياليدنې لادمخه په څټ گرځول شوې ده.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "د $2 {{GENDER:$1|له‌خوا}} ثبت‌شوی",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "د $2 {{GENDER:$1|له‌خوا}} بياکتنې ته راگرځول‌شوی",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "شونې ځانواله مالومات",

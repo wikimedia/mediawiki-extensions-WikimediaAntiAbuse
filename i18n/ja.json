@@ -51,7 +51,7 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "再レビューを行う",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "判定を取り消して、レビュー対象に戻します。",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "この版はすでに秘匿済",
-	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "この版はすでに差し戻し済",
+	"wikimediaantiabuse-special-abuse-review-handled-reverted": "この版はすでに差し戻し済",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "{{GENDER:$1|レビュー者}} $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "{{GENDER:$1|返却者}} $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "個人情報の可能性",

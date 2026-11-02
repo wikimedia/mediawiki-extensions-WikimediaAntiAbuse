@@ -53,7 +53,7 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "Enviar de vuelta a revisión",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Eliminar el dictamen actual y enviar esta edición marcada de vuelta a revisión.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Esta revisión ya fue suprimida.",
-	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Esta revisión ya fue revertida.",
+	"wikimediaantiabuse-special-abuse-review-handled-reverted": "Esta revisión ya fue revertida.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Registrado por $2",
 	"wikimediaantiabuse-special-abuse-review-verdict-returned-attribution": "Devuelto a revisión por $2",
 	"wikimediaantiabuse-special-abuse-review-flag-chip-mw-private-personal-info": "Probable información personal",

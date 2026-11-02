@@ -55,7 +55,7 @@
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review": "Terugsturen voor beoordeling",
 	"wikimediaantiabuse-special-abuse-review-action-send-back-for-review-tooltip": "Het huidige oordeel verwijderen en deze gemarkeerde versie terugsturen voor beoordeling.",
 	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info": "Deze versie is al onzichtbaar gemaakt.",
-	"wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-vandalism": "Deze versie is al teruggedraaid.",
+	"wikimediaantiabuse-special-abuse-review-handled-reverted": "Deze versie is al teruggedraaid.",
 	"wikimediaantiabuse-special-abuse-review-handled-revision-deleted": "Deze versie is al verwijderd.",
 	"wikimediaantiabuse-special-abuse-review-handled-page-deleted": "Deze versie is al verwijderd samen met de bijbehorende pagina.",
 	"wikimediaantiabuse-special-abuse-review-verdict-attribution": "Vastgelegd {{GENDER:$1|door}} $2",
@@ -84,6 +84,6 @@
 	"notification-header-personal-info-flagged": "Een bewerking van <strong>$1</strong> kan persoonlijke gegevens bevatten.",
 	"notification-bundle-header-personal-info-flagged": "{{PLURAL:$1|Één bewerking kan|$1 bewerkingen kunnen}} persoonlijke gegevens bevatten.",
 	"notification-link-text-personal-info-flagged": "Gemarkeerde {{PLURAL:$1|bewerking|bewerkingen}} bekijken",
-	"right-abusereview-vandalism-alpha-tester": "De alfatest van de AbuseReview-vandalismedetector inzien",
-	"action-abusereview-vandalism-alpha-tester": "de alfatest van de AbuseReview-vandalismedetector inzien"
+	"right-abusereview-vandalism-alpha-tester": "De alfatests van AbuseReview inzien",
+	"action-abusereview-vandalism-alpha-tester": "de alfatests van AbuseReview in te zien"
 }
