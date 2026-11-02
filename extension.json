@@ -147,6 +147,9 @@
 			"services": [
 				"MainConfig"
 			]
+		},
+		"SchemaChangesHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\SchemaChangesHandler"
 		}
 	},
 	"Hooks": {
@@ -160,7 +163,8 @@
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
 		"UserGetRights": "VandalismAlphaTesterHandler",
-		"UserGroupsChanged": "UserRightsNotificationHandler"
+		"UserGroupsChanged": "UserRightsNotificationHandler",
+		"LoadExtensionSchemaUpdates": "SchemaChangesHandler"
 	},
 	"DomainEventIngresses": [
 		{

@@ -1,0 +1,132 @@
+[
+	{
+		"name": "abuse_review_case",
+		"comment": "One row per account per AbuseReview queue, shown as one row in that queue.",
+		"columns": [
+			{
+				"name": "arc_id",
+				"comment": "Primary key.",
+				"type": "integer",
+				"options": {
+					"unsigned": true,
+					"notnull": true,
+					"autoincrement": true
+				}
+			},
+			{
+				"name": "arc_actor",
+				"comment": "The account the case is about. Key to actor.actor_id.",
+				"type": "bigint",
+				"options": {
+					"unsigned": true,
+					"notnull": true
+				}
+			},
+			{
+				"name": "arc_tag_id",
+				"comment": "The change tag of the queue. Key to change_tag_def.ctd_id.",
+				"type": "integer",
+				"options": {
+					"unsigned": true,
+					"notnull": true
+				}
+			},
+			{
+				"name": "arc_state",
+				"comment": "0 for open, 1 for handled.",
+				"type": "mwtinyint",
+				"options": {
+					"unsigned": true,
+					"notnull": true,
+					"default": 0
+				}
+			},
+			{
+				"name": "arc_updated_timestamp",
+				"comment": "When the case last changed: a new flag, a decision, or a reopen. The list sorts on it.",
+				"type": "mwtimestamp",
+				"options": {
+					"notnull": true
+				}
+			},
+			{
+				"name": "arc_handled_by_actor",
+				"comment": "The admin who marked the case as handled. Key to actor.actor_id. 0 while the case is open.",
+				"type": "bigint",
+				"options": {
+					"unsigned": true,
+					"notnull": true,
+					"default": 0
+				}
+			}
+		],
+		"indexes": [
+			{
+				"name": "arc_actor_tag_id",
+				"columns": [
+					"arc_actor",
+					"arc_tag_id"
+				],
+				"unique": true
+			},
+			{
+				"name": "arc_tag_id_state_timestamp",
+				"columns": [
+					"arc_tag_id",
+					"arc_state",
+					"arc_updated_timestamp"
+				],
+				"unique": false
+			}
+		],
+		"pk": [
+			"arc_id"
+		]
+	},
+	{
+		"name": "abuse_review_case_property",
+		"comment": "One integer property per AbuseReview case, such as the flag count.",
+		"columns": [
+			{
+				"name": "arcp_case_id",
+				"comment": "The case. Key to abuse_review_case.arc_id.",
+				"type": "integer",
+				"options": {
+					"unsigned": true,
+					"notnull": true
+				}
+			},
+			{
+				"name": "arcp_name",
+				"comment": "Name of the property, such as flag_count.",
+				"type": "binary",
+				"options": {
+					"length": 64,
+					"notnull": true
+				}
+			},
+			{
+				"name": "arcp_value",
+				"comment": "Value of the property.",
+				"type": "bigint",
+				"options": {
+					"notnull": true
+				}
+			}
+		],
+		"indexes": [
+			{
+				"name": "arcp_name_value",
+				"columns": [
+					"arcp_name",
+					"arcp_value"
+				],
+				"unique": false
+			}
+		],
+		"pk": [
+			"arcp_case_id",
+			"arcp_name"
+		]
+	}
+]
