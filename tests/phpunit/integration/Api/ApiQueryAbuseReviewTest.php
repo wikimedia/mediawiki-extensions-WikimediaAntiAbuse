@@ -44,6 +44,7 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->overrideConfigValues( [
 			'WikimediaAntiAbuseEnablePersonalInfoTag' => true,
 			'WikimediaAntiAbuseEnableVandalismTag' => true,
+			'WikimediaAntiAbuseEnableLinkSpamTag' => true,
 		] );
 		$this->setGroupPermissions( [
 			'vandalism-queue-viewer' => [ 'abusereview-vandalism-alpha-tester' => true ],
@@ -151,6 +152,14 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => ChangeTagsHandler::VANDALISM_TAG ],
 				'viewerGroups' => [],
 			],
+			'link spam list' => [
+				'params' => [ 'list' => 'abusereview', 'abrqueue' => ChangeTagsHandler::LINK_SPAM_TAG ],
+				'viewerGroups' => [],
+			],
+			'link spam generator' => [
+				'params' => [ 'generator' => 'abusereview', 'gabrqueue' => ChangeTagsHandler::LINK_SPAM_TAG ],
+				'viewerGroups' => [],
+			],
 			'personal info list, viewer of the vandalism queue only' => [
 				'params' => [ 'list' => 'abusereview', 'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG ],
 				'viewerGroups' => [ 'vandalism-queue-viewer' ],
@@ -175,6 +184,10 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 			'vandalism' => [
 				'enableConfig' => 'WikimediaAntiAbuseEnableVandalismTag',
 				'queue' => ChangeTagsHandler::VANDALISM_TAG,
+			],
+			'link spam' => [
+				'enableConfig' => 'WikimediaAntiAbuseEnableLinkSpamTag',
+				'queue' => ChangeTagsHandler::LINK_SPAM_TAG,
 			],
 		];
 	}

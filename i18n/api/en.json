@@ -16,6 +16,7 @@
 	"apihelp-query+abusereview-param-queue": "Which tab of [[{{#special:AbuseReview}}]] to list.",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-vandalism": "The Vandalism tab: edits that are likely vandalism.",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-personal-info": "The Personal information tab: edits that likely contain personal information.",
+	"apihelp-query+abusereview-paramvalue-queue-mw-private-link-spam": "The Link spam tab: edits that likely add link spam.",
 	"apihelp-query+abusereview-param-showhandled": "Also list edits that no longer need a review: edits marked \"no further action\", and edits that were reverted, deleted or suppressed. Same as \"{{int:wikimediaantiabuse-special-abuse-review-show-handled-revisions}}\" on [[{{#special:AbuseReview}}]].",
 	"apihelp-query+abusereview-param-showfalsepositives": "Also list edits marked as false positives. Same as \"{{int:wikimediaantiabuse-special-abuse-review-show-false-positives}}\" on [[{{#special:AbuseReview}}]].",
 	"apihelp-query+abusereview-param-showrecent": "Also list edits from the last few minutes, which some tabs hide for a while. Same as the \"{{int:wikimediaantiabuse-special-abuse-review-filter-recent-edits-header}}\" filter on [[{{#special:AbuseReview}}]]. The delay never applies to edits asked for with <var>$1revid</var>.",

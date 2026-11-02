@@ -16,6 +16,7 @@
 	"apihelp-query+abusereview-param-queue": "{{doc-apihelp-param|query+abusereview|queue}}",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-vandalism": "{{doc-apihelp-paramvalue|query+abusereview|queue|mw-private-vandalism}}",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-personal-info": "{{doc-apihelp-paramvalue|query+abusereview|queue|mw-private-personal-info}}",
+	"apihelp-query+abusereview-paramvalue-queue-mw-private-link-spam": "{{doc-apihelp-paramvalue|query+abusereview|queue|mw-private-link-spam}}",
 	"apihelp-query+abusereview-param-showhandled": "{{doc-apihelp-param|query+abusereview|showhandled}}",
 	"apihelp-query+abusereview-param-showfalsepositives": "{{doc-apihelp-param|query+abusereview|showfalsepositives}}",
 	"apihelp-query+abusereview-param-showrecent": "{{doc-apihelp-param|query+abusereview|showrecent}}",
