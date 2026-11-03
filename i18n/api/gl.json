@@ -18,6 +18,7 @@
 	"apihelp-query+abusereview-param-queue": "Que lapela listar de «[[{{#special:AbuseReview}}]]».",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-vandalism": "A lapela «Vandalismo»: edicións que probablemente sexan vandálicas.",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-personal-info": "A lapela «Información persoal»: edicións que probablemente conteñan información persoal.",
+	"apihelp-query+abusereview-paramvalue-queue-mw-private-link-spam": "A lapela «Ligazóns de spam»: edicións que probablemente engadan ligazóns de spam.",
 	"apihelp-query+abusereview-param-showhandled": "Tamén lista as edicións que xa non necesitan revisión: as edicións marcadas como «non se necesita ningunha acción» e as edicións que foron revertidas, eliminadas ou suprimidas. O mesmo que «{{int:wikimediaantiabuse-special-abuse-review-show-handled-revisions}}» en «[[{{#special:AbuseReview}}]]».",
 	"apihelp-query+abusereview-param-showfalsepositives": "Tamén listar as edicións marcadas como falsos positivos. O mesmo que «{{int:wikimediaantiabuse-special-abuse-review-show-false-positives}}» en «[[{{#special:AbuseReview}}]]».",
 	"apihelp-query+abusereview-param-showrecent": "Tamén listar as edicións dos últimos minutos, que algunhas lapelas agochan durante un tempo. O mesmo que o filtro «{{int:wikimediaantiabuse-special-abuse-review-filter-recent-edits-header}}» en «[[{{#special:AbuseReview}}]]». O atraso nunca se aplica ás edicións solicitadas con <var>$1revid</var>.",

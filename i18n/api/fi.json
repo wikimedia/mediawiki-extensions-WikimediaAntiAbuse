@@ -9,6 +9,7 @@
 	"apihelp-query+abusereview-param-queue": "Mitkä sivun [[{{#special:AbuseReview}}]] välilehdet näytetään luettelossa.",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-vandalism": "Vandalismivälilehti: muokkaukset, jotka ovat todennäköisesti vandalismia.",
 	"apihelp-query+abusereview-paramvalue-queue-mw-private-personal-info": "Henkilötietovälilehti: muokkaukset, joissa on todennäköisesti henkilötietoja.",
+	"apihelp-query+abusereview-paramvalue-queue-mw-private-link-spam": "Linkkiroskaposti-välilehti: linkkiroskapostia todennäköisesti sisältävät muokkaukset.",
 	"apihelp-query+abusereview-param-user": "Näyttää vain näiden käyttäjien tekemät muutokset.",
 	"apihelp-query+abusereview-param-page": "Näytä vain näiden sivujen muokkaukset.",
 	"apihelp-query+abusereview-param-revid": "Listaa vain nämä muutokset.",
