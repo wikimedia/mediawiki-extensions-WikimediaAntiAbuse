@@ -15,15 +15,16 @@ use Wikimedia\Rdbms\IReadableDatabase;
 use Wikimedia\Rdbms\IResultWrapper;
 use Wikimedia\Rdbms\SelectQueryBuilder;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
+use Wikimedia\Timestamp\TimestampFormat;
 
 /**
- * Counts the recent edits of a user that have abuse review flags.
+ * Counts the edits of a user that have abuse review flags.
  */
 class FlaggedEditCounter {
 
 	public const int MAX_AGE_DAYS = 90;
 
-	/** Without a limit, the query reads every recent edit of the user, which is slow for accounts with many edits. */
+	/** Without a limit, the query reads every edit of the user, which is slow for accounts with many edits. */
 	private const int REVISION_LIMIT = 500;
 
 	public function __construct(
@@ -34,7 +35,8 @@ class FlaggedEditCounter {
 	}
 
 	/**
-	 * Counts the recent edits of the user that have each flag, but not the false positive verdict of that flag.
+	 * Counts the edits of the user in the last MAX_AGE_DAYS days that have each flag, but not the false positive
+	 * verdict of that flag.
 	 *
 	 * @param Authority $authority
 	 * @param UserIdentity $user
@@ -42,6 +44,29 @@ class FlaggedEditCounter {
 	 * @return array<string,int> The count for each flag
 	 */
 	public function getFlaggedEditCounts( Authority $authority, UserIdentity $user, array $flags ): array {
+		$cutoff = ConvertibleTimestamp::convert(
+			TimestampFormat::MW,
+			ConvertibleTimestamp::time() - self::MAX_AGE_DAYS * 86400
+		);
+
+		return $this->getFlaggedEditCountsSince( $authority, $user, $flags, $cutoff );
+	}
+
+	/**
+	 * Counts the edits of the user that have each flag, but not the false positive verdict of that flag.
+	 *
+	 * @param Authority $authority
+	 * @param UserIdentity $user
+	 * @param string[] $flags
+	 * @param ?string $since TS_MW timestamp of the oldest edits to count, or null for no time limit
+	 * @return array<string,int> The count for each flag
+	 */
+	public function getFlaggedEditCountsSince(
+		Authority $authority,
+		UserIdentity $user,
+		array $flags,
+		?string $since
+	): array {
 		$counts = array_fill_keys( $flags, 0 );
 		$falsePositiveTags = [];
 		foreach ( $flags as $flag ) {
@@ -69,7 +94,8 @@ class FlaggedEditCounter {
 		$tagNamesById = array_flip( $tagIds );
 		$tagsByRevision = [];
 		foreach ( $tables as $table => $fields ) {
-			foreach ( $this->getTaggedRevisions( $dbr, $authority, $table, $fields, $actorId, $tagIds ) as $row ) {
+			$rows = $this->getTaggedRevisions( $dbr, $authority, $table, $fields, $actorId, $tagIds, $since );
+			foreach ( $rows as $row ) {
 				$tagsByRevision[$row->rev_id][] = $tagNamesById[$row->ct_tag_id];
 			}
 		}
@@ -82,6 +108,7 @@ class FlaggedEditCounter {
 				}
 			}
 		}
+
 		return $counts;
 	}
 
@@ -92,22 +119,29 @@ class FlaggedEditCounter {
 	 * @param string[] $fields The revision ID, actor, timestamp and deleted fields of $table
 	 * @param int $actorId
 	 * @param int[] $tagIds
+	 * @param ?string $since
 	 * @return IResultWrapper Rows with the rev_id and ct_tag_id fields
 	 */
 	private function getTaggedRevisions(
-		IReadableDatabase $dbr, Authority $authority, string $table, array $fields, int $actorId, array $tagIds
+		IReadableDatabase $dbr,
+		Authority $authority,
+		string $table,
+		array $fields,
+		int $actorId,
+		array $tagIds,
+		?string $since
 	): IResultWrapper {
 		[ $revIdField, $actorField, $timestampField, $deletedField ] = $fields;
-		$cutoff = ConvertibleTimestamp::time() - self::MAX_AGE_DAYS * 86400;
 		$latestRevisions = $dbr->newSelectQueryBuilder()
 			->select( [ 'rev_id' => $revIdField ] )
 			->from( $table )
-			->where( [
-				$actorField => $actorId,
-				$dbr->expr( $timestampField, '>=', $dbr->timestamp( $cutoff ) ),
-			] )
+			->where( [ $actorField => $actorId ] )
 			->orderBy( $timestampField, SelectQueryBuilder::SORT_DESC )
 			->limit( self::REVISION_LIMIT );
+
+		if ( $since !== null ) {
+			$latestRevisions->where( $dbr->expr( $timestampField, '>=', $dbr->timestamp( $since ) ) );
+		}
 
 		// Do not count an edit if the authority cannot see that the user made it.
 		if ( !$authority->isAllowed( 'deletedhistory' ) ) {

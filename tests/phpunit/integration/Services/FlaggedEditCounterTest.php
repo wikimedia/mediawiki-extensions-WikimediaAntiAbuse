@@ -174,6 +174,58 @@ class FlaggedEditCounterTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
+	/**
+	 * @dataProvider provideGetFlaggedEditCountsSince
+	 */
+	public function testGetFlaggedEditCountsSince( array $edit, string|null $since, array $expectedCounts ): void {
+		$user = $this->getMutableTestUser()->getUser();
+		$this->makeEdit( $user, $edit );
+		ConvertibleTimestamp::setFakeTime( self::NOW );
+
+		$this->assertSame(
+			$expectedCounts,
+			$this->getCounter()->getFlaggedEditCountsSince(
+				$this->mockRegisteredAuthorityWithPermissions( [ 'deletedhistory' ] ),
+				$user,
+				self::FLAGS,
+				$since
+			)
+		);
+	}
+
+	public static function provideGetFlaggedEditCountsSince(): array {
+		$oldEdit = [ 'tags' => [ self::VANDALISM ], 'daysAgo' => FlaggedEditCounter::MAX_AGE_DAYS + 1 ];
+		$oldEditOnDeletedPage = [ ...$oldEdit, 'pageDeleted' => true ];
+
+		return [
+			'Counts edits older than the maximum age without a since timestamp' => [
+				'edit' => $oldEdit,
+				'since' => null,
+				'expectedCounts' => [ self::PERSONAL_INFO => 0, self::VANDALISM => 1 ],
+			],
+			'Counts edits at the since timestamp' => [
+				'edit' => $oldEdit,
+				'since' => '20260708000000',
+				'expectedCounts' => [ self::PERSONAL_INFO => 0, self::VANDALISM => 1 ],
+			],
+			'Does not count edits before the since timestamp' => [
+				'edit' => $oldEdit,
+				'since' => '20260708000001',
+				'expectedCounts' => [ self::PERSONAL_INFO => 0, self::VANDALISM => 0 ],
+			],
+			'Counts edits on deleted pages at the since timestamp' => [
+				'edit' => $oldEditOnDeletedPage,
+				'since' => '20260708000000',
+				'expectedCounts' => [ self::PERSONAL_INFO => 0, self::VANDALISM => 1 ],
+			],
+			'Does not count edits on deleted pages before the since timestamp' => [
+				'edit' => $oldEditOnDeletedPage,
+				'since' => '20260708000001',
+				'expectedCounts' => [ self::PERSONAL_INFO => 0, self::VANDALISM => 0 ],
+			],
+		];
+	}
+
 	private function makeEdit( User $user, array $edit ): void {
 		ConvertibleTimestamp::setFakeTime(
 			ConvertibleTimestamp::convert( TS_UNIX, self::NOW ) - ( $edit['daysAgo'] ?? 0 ) * 86400
