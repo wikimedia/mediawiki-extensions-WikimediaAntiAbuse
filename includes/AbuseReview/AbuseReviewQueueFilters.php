@@ -23,6 +23,10 @@ readonly class AbuseReviewQueueFilters {
 		public array $revisionIds = [],
 		/** @var Title[] */
 		public array $pages = [],
+		/** The oldest timestamp to include, in TS_MW format */
+		public ?string $oldestTimestamp = null,
+		/** The newest timestamp to include, in TS_MW format */
+		public ?string $newestTimestamp = null,
 	) {
 	}
 }

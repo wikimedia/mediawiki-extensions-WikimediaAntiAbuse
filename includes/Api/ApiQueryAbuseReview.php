@@ -64,6 +64,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 		$params = $this->extractRequestParams();
 		$abuseReviewTag = $params['queue'];
 		$this->assertCanViewQueue( $abuseReviewTag );
+		$this->warnIfRangeIsImpossible( $params );
 
 		$rows = iterator_to_array( $this->fetchRows( $abuseReviewTag, $params ) );
 		$pageRows = array_slice( $rows, 0, $params['limit'] );
@@ -82,6 +83,17 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 	private function assertCanViewQueue( string $abuseReviewTag ): void {
 		if ( !$this->changeTagsStore->filterViewableTags( [ $abuseReviewTag ], $this->getAuthority() ) ) {
 			$this->dieWithError( 'apierror-wikimediaantiabuse-abusereview-permissiondenied', 'permissiondenied' );
+		}
+	}
+
+	private function warnIfRangeIsImpossible( array $params ): void {
+		if ( $params['start'] === null || $params['end'] === null ) {
+			return;
+		}
+		$isDirNewer = $params['dir'] === 'newer';
+		if ( $isDirNewer ? $params['start'] > $params['end'] : $params['start'] < $params['end'] ) {
+			$operator = $isDirNewer ? '<' : '>';
+			$this->addWarning( [ 'apiwarn-invalidrange', "{$params['start']} $operator {$params['end']}" ] );
 		}
 	}
 
@@ -139,6 +151,8 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 	}
 
 	private function newQueueFilters( string $abuseReviewTag, array $params ): AbuseReviewQueueFilters {
+		$isDirNewer = $params['dir'] === 'newer';
+
 		return new AbuseReviewQueueFilters(
 			$abuseReviewTag,
 			includeFalsePositives: $params['showfalsepositives'],
@@ -146,7 +160,9 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 			includeRecentEdits: $params['showrecent'],
 			usernames: $params['user'] ?? [],
 			revisionIds: $params['revid'] ?? [],
-			pages: array_map( $this->newLocalTitle( ... ), $params['page'] ?? [] )
+			pages: array_map( $this->newLocalTitle( ... ), $params['page'] ?? [] ),
+			oldestTimestamp: $isDirNewer ? $params['start'] : $params['end'],
+			newestTimestamp: $isDirNewer ? $params['end'] : $params['start']
 		);
 	}
 
@@ -292,6 +308,12 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 			'revid' => [
 				ParamValidator::PARAM_TYPE => 'integer',
 				ParamValidator::PARAM_ISMULTI => true,
+			],
+			'start' => [
+				ParamValidator::PARAM_TYPE => 'timestamp',
+			],
+			'end' => [
+				ParamValidator::PARAM_TYPE => 'timestamp',
 			],
 			'dir' => [
 				ParamValidator::PARAM_DEFAULT => 'older',

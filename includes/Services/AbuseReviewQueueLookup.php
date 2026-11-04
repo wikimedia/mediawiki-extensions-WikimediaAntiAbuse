@@ -338,9 +338,16 @@ class AbuseReviewQueueLookup {
 			) ) );
 		}
 
+		$timestampField = $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp';
+		if ( $filters->oldestTimestamp !== null ) {
+			$queryBuilder->where( $dbr->expr( $timestampField, '>=', $dbr->timestamp( $filters->oldestTimestamp ) ) );
+		}
+		if ( $filters->newestTimestamp !== null ) {
+			$queryBuilder->where( $dbr->expr( $timestampField, '<=', $dbr->timestamp( $filters->newestTimestamp ) ) );
+		}
+
 		$delayMinutes = $filters->includeRecentEdits ? 0 : $this->getDelayMinutes( $filters->abuseReviewTag );
 		if ( $delayMinutes > 0 && !$filters->revisionIds ) {
-			$timestampField = $table === 'revision' ? 'rev_timestamp' : 'ar_timestamp';
 			$cutoff = $dbr->timestamp(
 				ConvertibleTimestamp::time() - $delayMinutes * 60
 			);

@@ -20,6 +20,7 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Api\ApiQueryAbuseReview
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
  * @group API
  * @group Database
  */
@@ -533,6 +534,117 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 			),
 			'The queue lists its rows oldest first with abrdir=newer'
 		);
+	}
+
+	public function testStartAndEndLimitTheListedRows(): void {
+		$this->assertSame(
+			[ self::$revIds['tiedSecond'], self::$revIds['tiedFirst'], self::$revIds['oldest'] ],
+			array_column( $this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+				'abrstart' => '20260101000200',
+				'abrend' => '20260101000100',
+			] ), 'revid' ),
+			'Newest first, the queue lists the edits from start back to end'
+		);
+		$this->assertSame(
+			[ self::$revIds['tiedFirst'], self::$revIds['tiedSecond'], self::$revIds['recent'] ],
+			array_column( $this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+				'abrdir' => 'newer',
+				'abrstart' => '20260101000200',
+				'abrend' => '20260101010000',
+			] ), 'revid' ),
+			'Oldest first, the queue lists the edits from start up to end'
+		);
+	}
+
+	public function testListsTheEditOfADeletedPageWhenStartAndEndAreAtItsTime(): void {
+		$this->assertSame(
+			[ self::$revIds['pageDeleted'] ],
+			array_column( $this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
+				'abrshowhandled' => '1',
+				'abrstart' => '20260101000700',
+				'abrend' => '20260101000700',
+			] ), 'revid' ),
+			'The queue lists the edit of a deleted page when the start and end are at its time'
+		);
+	}
+
+	public function testStartAndEndLeaveOutTheEditOfADeletedPageOutsideTheRange(): void {
+		$this->assertSame(
+			[ self::$revIds['temporaryAccountEdit'], self::$revIds['ipEdit'] ],
+			array_column( $this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
+				'abrshowhandled' => '1',
+				'abrstart' => '20260101000900',
+				'abrend' => '20260101000800',
+			] ), 'revid' ),
+			'The queue does not list the edit of a deleted page when it is older than the time range'
+		);
+		$this->assertSame(
+			[ self::$revIds['userHidden'], self::$revIds['suppressed'] ],
+			array_column( $this->requestRows( [
+				'abrqueue' => ChangeTagsHandler::VANDALISM_TAG,
+				'abrshowhandled' => '1',
+				'abrdir' => 'newer',
+				'abrstart' => '20260101000500',
+				'abrend' => '20260101000600',
+			] ), 'revid' ),
+			'The queue does not list the edit of a deleted page when it is newer than the time range'
+		);
+	}
+
+	/** @dataProvider provideTimeRangesInTheWrongOrder */
+	public function testWarnsAndListsNoRowsWhenStartAndEndAreInTheWrongOrder(
+		string $dir,
+		string $start,
+		string $end,
+		string $expectedRange
+	): void {
+		[ $result ] = $this->doApiRequest( [
+			'action' => 'query',
+			'list' => 'abusereview',
+			'abrqueue' => ChangeTagsHandler::PERSONAL_INFO_TAG,
+			'abrdir' => $dir,
+			'abrstart' => $start,
+			'abrend' => $end,
+			'errorformat' => 'raw',
+		], performer: $this->reviewer );
+
+		$expectedWarning = [
+			'code' => 'invalidrange',
+			'key' => 'apiwarn-invalidrange',
+			'params' => [ $expectedRange ],
+			'module' => 'query+abusereview',
+		];
+		$this->assertSame(
+			[ $expectedWarning ],
+			$result['warnings'],
+			'A time range in the wrong order for abrdir adds the invalid range warning'
+		);
+		$this->assertSame(
+			[],
+			$result['query']['abusereview'],
+			'The queue lists no rows for a time range in the wrong order for abrdir'
+		);
+	}
+
+	public static function provideTimeRangesInTheWrongOrder(): array {
+		return [
+			'start older than end, newest first' => [
+				'dir' => 'older',
+				'start' => '20260101000100',
+				'end' => '20260101010000',
+				'expectedRange' => '20260101000100 > 20260101010000',
+			],
+			'start newer than end, oldest first' => [
+				'dir' => 'newer',
+				'start' => '20260101010000',
+				'end' => '20260101000100',
+				'expectedRange' => '20260101010000 < 20260101000100',
+			],
+		];
 	}
 
 	public function testRejectsMalformedContinue(): void {

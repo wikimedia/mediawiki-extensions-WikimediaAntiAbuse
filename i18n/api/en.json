@@ -23,6 +23,8 @@
 	"apihelp-query+abusereview-param-user": "Only list edits by these users.",
 	"apihelp-query+abusereview-param-page": "Only list edits to these pages.",
 	"apihelp-query+abusereview-param-revid": "Only list these revisions.",
+	"apihelp-query+abusereview-param-start": "The timestamp to start listing from.",
+	"apihelp-query+abusereview-param-end": "The timestamp to stop listing at.",
 	"apihelp-query+abusereview-paramvalue-dir-newer": "List oldest first.",
 	"apihelp-query+abusereview-paramvalue-dir-older": "List newest first (default).",
 	"apihelp-query+abusereview-param-limit": "How many edits to list.",
