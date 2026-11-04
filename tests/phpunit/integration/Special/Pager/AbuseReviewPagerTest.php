@@ -69,25 +69,54 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/** @dataProvider provideUndoLink */
-	public function testUndoLink( array $rowOverrides, bool $expectUndoLink ): void {
-		$row = (object)array_merge( self::FLAGGED_ROW, $rowOverrides );
+	public function testUndoLink( string $abuseReviewTag, array $rowOverrides, bool $expectUndoLink ): void {
+		$row = (object)array_merge( self::FLAGGED_ROW, [ 'ts_tags' => $abuseReviewTag ], $rowOverrides );
 
-		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
+		$html = $this->getObjectUnderTest( $abuseReviewTag )->formatRow( $row );
 
 		$this->assertSame( $expectUndoLink, str_contains( $html, 'undo=2' ) );
 	}
 
 	public static function provideUndoLink(): array {
 		return [
-			'Undoable edit' => [ 'rowOverrides' => [], 'expectUndoLink' => true ],
-			'Page is deleted' => [ 'rowOverrides' => [ 'is_archive' => '1' ], 'expectUndoLink' => false ],
-			'Edit created the page' => [ 'rowOverrides' => [ 'parent_id' => 0 ], 'expectUndoLink' => false ],
+			'Undoable edit' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
+				'rowOverrides' => [],
+				'expectUndoLink' => true,
+			],
+			'Page is deleted' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
+				'rowOverrides' => [ 'is_archive' => '1' ],
+				'expectUndoLink' => false,
+			],
+			'Edit created the page' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
+				'rowOverrides' => [ 'parent_id' => 0 ],
+				'expectUndoLink' => false,
+			],
 			'Edit is reverted' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
 				'expectUndoLink' => false,
 			],
 			'Text is hidden' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'deleted' => RevisionRecord::DELETED_TEXT ],
+				'expectUndoLink' => false,
+			],
+			'Undoable edit on the link spam queue' => [
+				'abuseReviewTag' => 'mw-private-link-spam',
+				'rowOverrides' => [],
+				'expectUndoLink' => true,
+			],
+			'Undoable edit on the personal info queue' => [
+				'abuseReviewTag' => 'mw-private-personal-info',
+				'rowOverrides' => [],
+				'expectUndoLink' => true,
+			],
+			'Reverted edit on the personal info queue does not include undo link' => [
+				'abuseReviewTag' => 'mw-private-personal-info',
+				'rowOverrides' => [ 'ts_tags' => 'mw-private-personal-info,mw-reverted' ],
 				'expectUndoLink' => false,
 			],
 		];
@@ -184,7 +213,12 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	/** @dataProvider provideRollbackLink */
-	public function testRollbackLink( array $rowOverrides, bool $viewerCanRollback, bool $expectRollbackLink ): void {
+	public function testRollbackLink(
+		string $abuseReviewTag,
+		array $rowOverrides,
+		bool $viewerCanRollback,
+		bool $expectRollbackLink
+	): void {
 		$page = $this->getNonexistingTestPage();
 		$this->editPage( $page, 'First', '', NS_MAIN, $this->getTestUser()->getUser() );
 		$revision = $this->editPage( $page, 'Second', '', NS_MAIN, $this->getTestSysop()->getUser() )
@@ -201,43 +235,65 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'rev_id' => $revision->getId(),
 			'parent_id' => $revision->getParentId(),
 			'timestamp' => $revision->getTimestamp(),
-			'ts_tags' => 'mw-private-vandalism',
+			'ts_tags' => $abuseReviewTag,
 			'is_archive' => '0',
 			'page_latest' => $revision->getId(),
 		], $rowOverrides );
 
-		$html = $this->getObjectUnderTest( 'mw-private-vandalism' )->formatRow( $row );
+		$html = $this->getObjectUnderTest( $abuseReviewTag )->formatRow( $row );
 
 		$this->assertSame( $expectRollbackLink, str_contains( $html, 'action=rollback' ) );
 	}
 
 	public static function provideRollbackLink(): array {
 		return [
-			'Latest edit' => [ 'rowOverrides' => [], 'viewerCanRollback' => true, 'expectRollbackLink' => true ],
+			'Latest edit' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
+				'rowOverrides' => [],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => true,
+			],
 			'Viewer cannot roll back' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [],
 				'viewerCanRollback' => false,
 				'expectRollbackLink' => false,
 			],
 			'Edit is not the latest' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'page_latest' => 0 ],
 				'viewerCanRollback' => true,
 				'expectRollbackLink' => false,
 			],
 			'Edit created the page' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'parent_id' => 0 ],
 				'viewerCanRollback' => true,
 				'expectRollbackLink' => false,
 			],
 			'Edit is reverted' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'ts_tags' => 'mw-private-vandalism,mw-reverted' ],
 				'viewerCanRollback' => true,
 				'expectRollbackLink' => false,
 			],
 			'Revision cannot be loaded' => [
+				'abuseReviewTag' => 'mw-private-vandalism',
 				'rowOverrides' => [ 'rev_id' => 999999999, 'page_latest' => 999999999 ],
 				'viewerCanRollback' => true,
 				'expectRollbackLink' => false,
+			],
+			'Latest edit on the link spam queue' => [
+				'abuseReviewTag' => 'mw-private-link-spam',
+				'rowOverrides' => [],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => true,
+			],
+			'Latest edit on the personal info queue' => [
+				'abuseReviewTag' => 'mw-private-personal-info',
+				'rowOverrides' => [],
+				'viewerCanRollback' => true,
+				'expectRollbackLink' => true,
 			],
 		];
 	}

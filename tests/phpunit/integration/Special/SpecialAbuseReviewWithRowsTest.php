@@ -474,11 +474,10 @@ class SpecialAbuseReviewWithRowsTest extends SpecialAbuseReviewTestBase {
 					AbuseReviewLinkClickHandler::TAG_PARAM => $expectedFlag,
 				] );
 			}
-			if ( $expectedFlag === 'mw-private-vandalism'
-				&& !$isArchivedRevision
+			if ( !$isArchivedRevision
 				&& $actualRevision->getParentId()
 				&& !$isRowHandledOutsideAbuseReview
-				&& $canSeeRevisionText
+				&& !$actualRevision->isDeleted( RevisionRecord::DELETED_TEXT )
 			) {
 				$expectedToolLinkHrefs[] = $pageTitle->getLocalURL( [
 					'action' => 'edit',
