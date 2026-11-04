@@ -415,6 +415,11 @@ class AbuseReviewQueueLookup {
 		return (int)$row->is_archive !== 0;
 	}
 
+	/** Whether the edit on this row has already been reverted. */
+	public function isRevertedRow( stdClass $row ): bool {
+		return in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true );
+	}
+
 	/**
 	 * Whether the queue of this tag counts an edit as handled once it has been reverted or is no longer publicly
 	 * visible. The personal info queue does not, since content may still need to be suppressed.
@@ -455,7 +460,7 @@ class AbuseReviewQueueLookup {
 		if ( ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0 ) {
 			return self::HANDLED_REASON_REVISION_DELETED;
 		}
-		if ( in_array( ChangeTags::TAG_REVERTED, $this->splitTags( $row->ts_tags ), true ) ) {
+		if ( $this->isRevertedRow( $row ) ) {
 			return self::HANDLED_REASON_REVERTED;
 		}
 

@@ -417,8 +417,7 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildRollbackLink( Title $title, stdClass $row ): ?string {
-		if ( $this->filters->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
-			|| !$this->isCurrentRevision( $row )
+		if ( !$this->isCurrentRevision( $row )
 			|| !(int)$row->parent_id
 			|| $this->isHandledOutsideAbuseReview( $row )
 			|| !$this->getAuthority()->probablyCan( 'edit', $title )
@@ -438,10 +437,10 @@ class AbuseReviewPager extends CodexTablePager {
 	}
 
 	private function buildUndoLink( Title $title, stdClass $row ): ?string {
-		if ( $this->filters->abuseReviewTag !== ChangeTagsHandler::VANDALISM_TAG
-			|| $this->queueLookup->isArchivedRow( $row )
+		if ( $this->queueLookup->isArchivedRow( $row )
 			|| !(int)$row->parent_id
 			|| $this->isHandledOutsideAbuseReview( $row )
+			|| $this->queueLookup->isRevertedRow( $row )
 			|| ( (int)$row->deleted & RevisionRecord::DELETED_TEXT ) !== 0
 			|| !$this->getAuthority()->probablyCan( 'edit', $title )
 		) {
