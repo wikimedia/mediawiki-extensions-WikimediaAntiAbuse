@@ -473,7 +473,8 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 	/** @dataProvider provideExternalLinkPolicyFiltering */
 	public function testRunsOnlyTheContentPoliciesForThisJob(
 		bool $onlyExternalLinkPolicies,
-		array $expectedPolicyNames
+		array $expectedPolicyNames,
+		float $expectedMinimumSeconds = 0.0
 	): void {
 		$revisionId = $this->createRevisionId();
 
@@ -507,9 +508,11 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 		$spec = $onlyExternalLinkPolicies
 			? CheckRevisionJob::newExternalLinkSpec( $revisionId )
 			: CheckRevisionJob::newSpec( $revisionId );
+		$start = microtime( true );
 		$this->newJob( $revisionId, $evaluator, extraParams: $spec->getParams() )->run();
 
 		$this->assertSame( $expectedPolicyNames, $evaluatedPolicyNames );
+		$this->assertGreaterThanOrEqual( $expectedMinimumSeconds, microtime( true ) - $start );
 	}
 
 	public static function provideExternalLinkPolicyFiltering(): array {
@@ -521,6 +524,7 @@ class CheckRevisionJobTest extends MediaWikiIntegrationTestCase {
 			'Job queued for an edit that added an external link' => [
 				'onlyExternalLinkPolicies' => true,
 				'expectedPolicyNames' => [ 'test-link-spam-policy' ],
+				'expectedMinimumSeconds' => 0.5,
 			],
 		];
 	}
