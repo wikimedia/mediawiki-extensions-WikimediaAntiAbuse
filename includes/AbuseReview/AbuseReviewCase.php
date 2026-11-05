@@ -11,11 +11,13 @@ readonly class AbuseReviewCase {
 
 	/**
 	 * @param int $id
+	 * @param int $actorId
 	 * @param AbuseReviewCaseState $state
 	 * @param string $updatedTimestamp In the TS_MW format
 	 */
 	public function __construct(
 		public int $id,
+		public int $actorId,
 		public AbuseReviewCaseState $state,
 		public string $updatedTimestamp,
 	) {

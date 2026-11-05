@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewAccountQueue;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCase;
+use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseOffset;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseState;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseManager;
@@ -17,6 +18,7 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseLookup
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewAccountQueue
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCase
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseOffset
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseState
  * @group Database
  */
@@ -35,6 +37,11 @@ class AbuseReviewAccountCaseLookupTest extends MediaWikiIntegrationTestCase {
 		$services = $this->getServiceContainer();
 		$this->caseLookup = $services->get( 'WikimediaAntiAbuseAbuseReviewAccountCaseLookup' );
 		$this->caseManager = $services->get( 'WikimediaAntiAbuseAbuseReviewAccountCaseManager' );
+		// Makes the actor IDs differ from the user IDs and the case IDs.
+		$services->getActorNormalization()->acquireActorId(
+			UserIdentityValue::newExternal( 'imported', 'Offset' ),
+			$this->getDb()
+		);
 	}
 
 	public function testGetCaseForUserWithoutActor(): void {
@@ -75,9 +82,9 @@ class AbuseReviewAccountCaseLookupTest extends MediaWikiIntegrationTestCase {
 			->execute();
 
 		$this->assertEquals(
-			new AbuseReviewCase( $caseId, $state, self::NOW ),
+			new AbuseReviewCase( $caseId, $user->getActorId(), $state, self::NOW ),
 			$this->caseLookup->getCase( $user, self::QUEUE ),
-			'The case has the ID, state and last update time of its row'
+			'The case has the ID, actor, state and last update time of its row'
 		);
 	}
 
@@ -85,6 +92,64 @@ class AbuseReviewAccountCaseLookupTest extends MediaWikiIntegrationTestCase {
 		return [
 			'Open case' => [ 'state' => AbuseReviewCaseState::OPEN ],
 			'Handled case' => [ 'state' => AbuseReviewCaseState::HANDLED ],
+		];
+	}
+
+	/** @dataProvider provideGetCases */
+	public function testGetCases(
+		AbuseReviewCaseState $state,
+		int $limit,
+		string|null $offsetFixture,
+		array $expectedFixtures
+	): void {
+		$cases = [
+			'tiedFirst' => $this->openCaseAt( '20261102000000' ),
+			'tiedSecond' => $this->openCaseAt( '20261102000000' ),
+			'oldest' => $this->openCaseAt( '20261101000000' ),
+			'handled' => $this->openCaseAt( '20261103000000', AbuseReviewCaseState::HANDLED ),
+		];
+		$otherQueueCase = $this->openCaseAt( '20261103000000' );
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'abuse_review_case' )
+			->set( [ 'arc_queue_id' => self::OTHER_QUEUE_ID ] )
+			->where( [ 'arc_id' => $otherQueueCase->id ] )
+			->caller( __METHOD__ )
+			->execute();
+		$offset = $offsetFixture === null
+			? null
+			: new AbuseReviewCaseOffset( $cases[$offsetFixture]->updatedTimestamp, $cases[$offsetFixture]->id );
+		$expectedCases = [];
+		foreach ( $expectedFixtures as $fixture ) {
+			$expectedCases[] = $cases[$fixture];
+		}
+
+		$this->assertEquals(
+			$expectedCases,
+			$this->caseLookup->getCases( self::QUEUE, $state, $limit, $offset ),
+			'The lookup returns the cases of the queue in the state, most recently updated first, from the offset'
+		);
+	}
+
+	public static function provideGetCases(): array {
+		return [
+			'Handled cases' => [
+				'state' => AbuseReviewCaseState::HANDLED,
+				'limit' => 10,
+				'offsetFixture' => null,
+				'expectedFixtures' => [ 'handled' ],
+			],
+			'Open cases up to the limit' => [
+				'state' => AbuseReviewCaseState::OPEN,
+				'limit' => 2,
+				'offsetFixture' => null,
+				'expectedFixtures' => [ 'tiedSecond', 'tiedFirst' ],
+			],
+			'Open cases from an offset that has the time of another case' => [
+				'state' => AbuseReviewCaseState::OPEN,
+				'limit' => 10,
+				'offsetFixture' => 'tiedFirst',
+				'expectedFixtures' => [ 'tiedFirst', 'oldest' ],
+			],
 		];
 	}
 
@@ -106,11 +171,52 @@ class AbuseReviewAccountCaseLookupTest extends MediaWikiIntegrationTestCase {
 		$this->assertContainsOnly( 'int', $properties, message: 'Each property value is an integer' );
 	}
 
+	public function testGetPropertiesOfCases(): void {
+		$firstCaseId = $this->openCaseAt( self::NOW, properties: [ 'flagged_edit_count' => 3, 'edit_count' => 0 ] )->id;
+		$secondCaseId = $this->openCaseAt( self::NOW, properties: [ 'flagged_edit_count' => 4 ] )->id;
+		$caseIdWithoutProperties = $this->openCaseAt( self::NOW )->id;
+		$this->openCaseAt( self::NOW, properties: [ 'flagged_edit_count' => 5 ] );
+
+		$this->assertArrayEquals(
+			[
+				$firstCaseId => [ 'flagged_edit_count' => 3, 'edit_count' => 0 ],
+				$secondCaseId => [ 'flagged_edit_count' => 4 ],
+			],
+			$this->caseLookup->getPropertiesOfCases( [ $firstCaseId, $secondCaseId, $caseIdWithoutProperties ] ),
+			named: true,
+			message: 'The lookup returns the properties of each given case that has properties, keyed by case ID'
+		);
+	}
+
 	private function getCaseId(): int {
 		return (int)$this->newSelectQueryBuilder()
 			->select( 'arc_id' )
 			->from( 'abuse_review_case' )
 			->caller( __METHOD__ )
 			->fetchField();
+	}
+
+	private function openCaseAt(
+		string $timestamp,
+		AbuseReviewCaseState $state = AbuseReviewCaseState::OPEN,
+		array $properties = []
+	): AbuseReviewCase {
+		ConvertibleTimestamp::setFakeTime( $timestamp );
+		$user = $this->getMutableTestUser()->getUser();
+		$this->caseManager->openCase( $user, self::QUEUE, $properties );
+		$caseId = (int)$this->newSelectQueryBuilder()
+			->select( 'arc_id' )
+			->from( 'abuse_review_case' )
+			->where( [ 'arc_actor' => $user->getActorId() ] )
+			->caller( __METHOD__ )
+			->fetchField();
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'abuse_review_case' )
+			->set( [ 'arc_state' => $state->value ] )
+			->where( [ 'arc_id' => $caseId ] )
+			->caller( __METHOD__ )
+			->execute();
+
+		return new AbuseReviewCase( $caseId, $user->getActorId(), $state, $timestamp );
 	}
 }
