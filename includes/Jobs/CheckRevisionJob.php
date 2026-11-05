@@ -30,6 +30,8 @@ class CheckRevisionJob extends Job {
 
 	public const string TYPE = 'wikimediaAntiAbuseCheckRevision';
 
+	private const int EXTERNAL_LINK_JOB_DELAY_MICROSECONDS = 500_000;
+
 	public function __construct(
 		array $params,
 		private readonly Config $config,
@@ -85,6 +87,14 @@ class CheckRevisionJob extends Job {
 		$modelsToRun = $this->filterModelsForThisJob( $modelsToRun );
 		if ( !$modelsToRun ) {
 			return true;
+		}
+
+		if ( $this->params['onlyExternalLinkPolicies'] ?? false ) {
+			// Since the link spam check runs first in its job and commonly adds a tag, we
+			// observe it hitting a race condition between applying the tag and saving the
+			// recent changes row with higher frequency than the other checks.
+			// Add a delay to avoid this.
+			usleep( self::EXTERNAL_LINK_JOB_DELAY_MICROSECONDS );
 		}
 
 		$this->logger->info(
