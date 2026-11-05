@@ -8,6 +8,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\EchoPersonalInfoFlagNot
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\NullPersonalInfoFlagNotificationDeleter;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagNotifier;
 use MediaWiki\Extension\WikimediaAntiAbuse\Notifications\PersonalInfoFlagUserLocator;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountBlockLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
@@ -38,6 +39,21 @@ use MediaWiki\Registration\ExtensionRegistry;
 
 /** @phpcs-require-sorted-array */
 return [
+	'WikimediaAntiAbuseAbuseReviewAccountBlockLookup' => static function (
+		MediaWikiServices $services
+	): AbuseReviewAccountBlockLookup {
+		$globalBlockLookup = null;
+		if ( $services->getExtensionRegistry()->isLoaded( 'GlobalBlocking' ) ) {
+			$globalBlockLookup = $services->getService( 'GlobalBlocking.GlobalBlockLookup' );
+		}
+
+		return new AbuseReviewAccountBlockLookup(
+			$services->getDatabaseBlockStore(),
+			$services->getCentralIdLookup(),
+			$globalBlockLookup
+		);
+	},
+
 	'WikimediaAntiAbuseAbuseReviewAccountCaseLookup' => static fn (
 		MediaWikiServices $services
 	) => new AbuseReviewAccountCaseLookup(
