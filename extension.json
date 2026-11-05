@@ -36,6 +36,10 @@
 			"value": false,
 			"description": "Enables the mw-private-link-spam tag."
 		},
+		"WikimediaAntiAbuseEnableFlaggedAccountsQueue": {
+			"value": false,
+			"description": "Enables the Flagged accounts queue."
+		},
 		"WikimediaAntiAbuseEnablePersonalInfoFlagNotifications": {
 			"value": false,
 			"description": "Enables Echo notifications, sent to opted-in users with the viewsuppressed or suppressrevision right, when the mw-private-personal-info tag is applied to a revision. Requires the Echo extension."
