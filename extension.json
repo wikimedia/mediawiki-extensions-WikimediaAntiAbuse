@@ -112,6 +112,14 @@
 				"MainConfig"
 			]
 		},
+		"AccountCaseTagsHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AccountCaseTagsHandler",
+			"services": [
+				"MainConfig",
+				"JobQueueGroup",
+				"ConnectionProvider"
+			]
+		},
 		"PageSaveCompleteHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\PageSaveCompleteHandler",
 			"services": [
@@ -171,6 +179,7 @@
 		"AbuseFilterCanViewProtectedVariables": "AbuseFilterHandler",
 		"AbuseFilterCustomProtectedVariables": "AbuseFilterHandler",
 		"BeforeInitialize": "AbuseReviewLinkClickHandler",
+		"ChangeTagsAfterUpdateTags": "AccountCaseTagsHandler",
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
@@ -377,6 +386,20 @@
 				"WikimediaAntiAbuseLogger",
 				"WikimediaAntiAbuseContentPolicyScoreEventLogger",
 				"WikimediaAntiAbuseAbuseReviewInstrumentationClient"
+			],
+			"needsPage": false
+		},
+		"wikimediaAntiAbuseRecountFlaggedEdits": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Jobs\\RecountFlaggedEditsJob",
+			"services": [
+				"MainConfig",
+				"RevisionLookup",
+				"ArchivedRevisionLookup",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider",
+				"WikimediaAntiAbuseFlaggedEditCounter",
+				"WikimediaAntiAbuseAbuseReviewAccountCaseLookup",
+				"WikimediaAntiAbuseAbuseReviewAccountCaseManager",
+				"DBLoadBalancerFactory"
 			],
 			"needsPage": false
 		}

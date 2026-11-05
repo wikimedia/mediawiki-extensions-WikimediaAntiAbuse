@@ -88,6 +88,24 @@ class AbuseReviewAccountCaseLookupTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	public function testGetCaseProperties(): void {
+		$this->caseManager->openCase(
+			$this->getTestUser()->getUser(),
+			self::QUEUE,
+			[ 'flagged_edit_count' => 3, 'edit_count' => 0, 'last_decision_timestamp' => (int)self::NOW ]
+		);
+
+		$properties = $this->caseLookup->getCaseProperties( $this->getCaseId() );
+
+		$this->assertArrayEquals(
+			[ 'flagged_edit_count' => 3, 'edit_count' => 0, 'last_decision_timestamp' => (int)self::NOW ],
+			$properties,
+			named: true,
+			message: 'The lookup returns the value of each property of the case, keyed by property name'
+		);
+		$this->assertContainsOnly( 'int', $properties, message: 'Each property value is an integer' );
+	}
+
 	private function getCaseId(): int {
 		return (int)$this->newSelectQueryBuilder()
 			->select( 'arc_id' )

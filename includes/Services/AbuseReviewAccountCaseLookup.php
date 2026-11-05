@@ -66,4 +66,25 @@ class AbuseReviewAccountCaseLookup {
 
 		return $cases;
 	}
+
+	/**
+	 * Returns the properties of the case, or an empty array if the case has no properties.
+	 *
+	 * @return array<string,int> The value of each property, keyed by property name
+	 */
+	public function getCaseProperties( int $caseId ): array {
+		$result = $this->dbProvider->getReplicaDatabase( self::VIRTUAL_DB_DOMAIN )->newSelectQueryBuilder()
+			->select( [ 'arcp_name', 'arcp_value' ] )
+			->from( 'abuse_review_case_property' )
+			->where( [ 'arcp_case_id' => $caseId ] )
+			->caller( __METHOD__ )
+			->fetchResultSet();
+
+		$properties = [];
+		foreach ( $result as $row ) {
+			$properties[$row->arcp_name] = (int)$row->arcp_value;
+		}
+
+		return $properties;
+	}
 }
