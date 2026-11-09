@@ -830,7 +830,20 @@ class AbuseReviewPager extends CodexTablePager {
 			return '';
 		}
 
+		$body = self::makeMovedParagraphAnchorsUnique( $body, (int)$revision->getId() );
+
 		return $differenceEngine->addHeader( $body, '', '' );
+	}
+
+	/**
+	 * Make moved paragraph anchors unique across multiple diffs on one page.
+	 * wikidiff2 numbers move anchors per diff, causing collisions (T437285).
+	 */
+	private static function makeMovedParagraphAnchorsUnique( string $diffBody, int $revId ): string {
+		return strtr( $diffBody, [
+			'name="movedpara_' => 'name="movedpara_' . $revId . '_',
+			'href="#movedpara_' => 'href="#movedpara_' . $revId . '_',
+		] );
 	}
 
 	/** @inheritDoc */

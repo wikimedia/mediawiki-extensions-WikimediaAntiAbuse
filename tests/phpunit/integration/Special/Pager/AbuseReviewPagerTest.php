@@ -14,6 +14,7 @@ use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
 use MediaWikiIntegrationTestCase;
 use Wikimedia\Parsoid\Core\DOMCompat;
 use Wikimedia\Parsoid\Ext\DOMUtils;
+use Wikimedia\TestingAccessWrapper;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
@@ -296,5 +297,53 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 				'expectRollbackLink' => true,
 			],
 		];
+	}
+
+	public function testMovedParagraphAnchorsAreUniquePerDiff(): void {
+		// Real wikidiff2 inline output for one moved paragraph (wikidiff2 tests/001.phpt)
+		$diff = '<div class="mw-diff-inline-moved mw-diff-inline-moved-source mw-diff-inline-moved-downwards">' .
+			'<a name="movedpara_5_0_lhs"></a>---line---<a class="mw-diff-movedpara-left" data-title-tag="old" ' .
+			'href="#movedpara_7_0_rhs">&#9660;</a></div>' . "\n" .
+			'<div class="mw-diff-inline-moved mw-diff-inline-moved-destination mw-diff-inline-moved-upwards">' .
+			'<a name="movedpara_7_0_rhs"></a><a class="mw-diff-movedpara-right" data-title-tag="new" ' .
+			'href="#movedpara_5_0_lhs">&#9650;</a>---line---</div>';
+
+		$pager = TestingAccessWrapper::newFromClass( AbuseReviewPager::class );
+
+		$diffRevision5 = $pager->makeMovedParagraphAnchorsUnique( $diff, 5 );
+		$diffRevision9 = $pager->makeMovedParagraphAnchorsUnique( $diff, 9 );
+
+		// Collect anchor names from both diffs.
+		preg_match_all( '/name="(movedpara_[^"]+)"/', $diffRevision5, $m );
+		$all = $m[1];
+
+		preg_match_all( '/name="(movedpara_[^"]+)"/', $diffRevision9, $m );
+		$all = array_merge( $all, $m[1] );
+
+		// Assert there are no duplicate anchor names across diffs.
+		$this->assertSame(
+			[],
+			array_keys( array_filter( array_count_values( $all ), static fn ( $n ) => $n > 1 ) )
+		);
+
+		// Verify every href target exists in its own diff.
+		foreach ( [ $diffRevision5, $diffRevision9 ] as $rowDiff ) {
+			preg_match_all( '/name="(movedpara_[^"]+)"/', $rowDiff, $m );
+			$names = $m[1];
+
+			preg_match_all( '/href="#(movedpara_[^"]+)"/', $rowDiff, $m );
+			foreach ( $m[1] as $href ) {
+				$this->assertContains( $href, $names );
+			}
+		}
+	}
+
+	public function testMovedParagraphTextOutsideAnchorsIsUnchanged(): void {
+		$pager = TestingAccessWrapper::newFromClass( AbuseReviewPager::class );
+		$text = '<div class="mw-diff-inline-added"><ins>see movedpara_5_0_lhs</ins></div>';
+
+		$result = $pager->makeMovedParagraphAnchorsUnique( $text, 5 );
+
+		$this->assertSame( $text, $result );
 	}
 }
