@@ -208,7 +208,8 @@
 				"TitleFactory",
 				"UserNameUtils",
 				"GenderCache",
-				"ContentLanguage"
+				"ContentLanguage",
+				"WikimediaAntiAbuseAbuseReviewVerdictBylineLookup"
 			]
 		}
 	},

@@ -9,6 +9,8 @@ const MARK_NO_FURTHER_ACTION_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-mark-no-further-action)';
 const SEND_BACK_BUTTON_LABEL =
 	'(wikimediaantiabuse-special-abuse-review-action-send-back-for-review)';
+const FIRST_REVIEWER_ATTRIBUTION =
+	'Recorded by <a href="/wiki/User:FirstReviewer">FirstReviewer</a>';
 
 QUnit.module( 'ext.wikimediaAntiAbuse.mountRowVerdicts', QUnit.newMwEnvironment() );
 
@@ -239,7 +241,7 @@ QUnit.test( 'a verdict skips a row the poll reports as handled', async function 
 	assert.true( isOpen( waiting ), 'the next row waiting for review is opened' );
 } );
 
-QUnit.test( 'a mark refused as a conflicting verdict shows the server verdict on that row', async function ( assert ) {
+QUnit.test( 'a mark refused as a conflicting verdict shows the server verdict and its byline on that row', async function ( assert ) {
 	// The poll is turned off, so only the refusal sends a request.
 	mw.config.set( 'wgWikimediaAntiAbuseRowStatus', {
 		queue: 'mw-private-personal-info',
@@ -247,7 +249,7 @@ QUnit.test( 'a mark refused as a conflicting verdict shows the server verdict on
 		handledReasonMessages: {}
 	} );
 	const get = this.sandbox.stub( mw.Api.prototype, 'get' ).resolves( { query: { abusereview: [
-		{ revid: 2, status: 'false-positive' }
+		{ revid: 2, status: 'false-positive', attribution: FIRST_REVIEWER_ATTRIBUTION }
 	] } } );
 	this.sandbox.stub( mw.Rest.prototype, 'post' ).returns( {
 		then: ( onSuccess, onFailure ) => onFailure( 'http', { xhr: { responseJSON: {
@@ -273,14 +275,20 @@ QUnit.test( 'a mark refused as a conflicting verdict shows the server verdict on
 		abrrevid: [ 2 ],
 		abrshowhandled: true,
 		abrshowfalsepositives: true,
-		abrprop: [ 'ids', 'status' ],
+		abrprop: [ 'ids', 'status', 'attribution' ],
 		abrlimit: 50,
+		uselang: 'qqx',
 		formatversion: 2
 	}, 'the status request asks the queue about the refused row only' );
 	assert.strictEqual(
 		refused.querySelector( '.cdx-info-chip__text' ).textContent.trim(),
 		'(wikimediaantiabuse-special-abuse-review-verdict-chip-false-positive)',
 		'the refused row shows the verdict the server holds'
+	);
+	assert.strictEqual(
+		refused.querySelector( '.mw-wikimediaantiabuse-abuse-review-verdict-performer' ).innerHTML,
+		FIRST_REVIEWER_ATTRIBUTION,
+		'the refused row names the reviewer who recorded the verdict first'
 	);
 } );
 

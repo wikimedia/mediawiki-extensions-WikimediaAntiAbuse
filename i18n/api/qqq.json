@@ -37,6 +37,7 @@
 	"apihelp-query+abusereview-paramvalue-prop-comment": "{{doc-apihelp-paramvalue|query+abusereview|prop|comment}}",
 	"apihelp-query+abusereview-paramvalue-prop-tags": "{{doc-apihelp-paramvalue|query+abusereview|prop|tags}}",
 	"apihelp-query+abusereview-paramvalue-prop-status": "{{doc-apihelp-paramvalue|query+abusereview|prop|status}}",
+	"apihelp-query+abusereview-paramvalue-prop-attribution": "{{doc-apihelp-paramvalue|query+abusereview|prop|attribution}}",
 	"apihelp-query+abusereview-example-vandalism": "{{doc-apihelp-example|query+abusereview}}",
 	"apihelp-query+abusereview-example-all": "{{doc-apihelp-example|query+abusereview}}",
 	"apihelp-query+abusereview-example-generator": "{{doc-apihelp-example|query+abusereview}}",

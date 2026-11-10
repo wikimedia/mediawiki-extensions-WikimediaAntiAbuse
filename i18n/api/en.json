@@ -37,6 +37,7 @@
 	"apihelp-query+abusereview-paramvalue-prop-comment": "Adds the edit summary. If the edit summary is hidden, adds <samp>commenthidden</samp>. If it is hidden by suppression, also adds <samp>suppressed</samp>.",
 	"apihelp-query+abusereview-paramvalue-prop-tags": "Adds the tags of the edit.",
 	"apihelp-query+abusereview-paramvalue-prop-status": "Adds why the edit is listed: <samp>unhandled</samp> (it needs a review), <samp>false-positive</samp> or <samp>no-further-action</samp> (a reviewer gave this verdict), or <samp>handled</samp> (it was dealt with in another way). For <samp>handled</samp>, <samp>handledreason</samp> tells how: <samp>reverted</samp>, <samp>revisiondeleted</samp>, <samp>pagedeleted</samp> or <samp>suppressed</samp>.",
+	"apihelp-query+abusereview-paramvalue-prop-attribution": "Adds <samp>attribution</samp>: an HTML line that names the reviewer who recorded the verdict of the edit, or who last returned it to review. Left out if no reviewer can be named.",
 	"apihelp-query+abusereview-example-vandalism": "List the edits in the Vandalism tab that need a review.",
 	"apihelp-query+abusereview-example-all": "List all edits in the Vandalism tab, with who made them, the edit summary and why each edit is listed.",
 	"apihelp-query+abusereview-example-generator": "Get the text of the edits in the Vandalism tab that need a review.",

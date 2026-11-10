@@ -28,8 +28,9 @@ async function fetchStatuses( queue, revIds ) {
 			abrrevid: revIds.slice( i, i + BATCH_SIZE ),
 			abrshowhandled: true,
 			abrshowfalsepositives: true,
-			abrprop: [ 'ids', 'status' ],
+			abrprop: [ 'ids', 'status', 'attribution' ],
 			abrlimit: BATCH_SIZE,
+			uselang: mw.config.get( 'wgUserLanguage' ),
 			formatversion: 2
 		} );
 		statuses.push( ...response.query.abusereview );
@@ -56,7 +57,8 @@ async function refreshRows( rows, revIds ) {
 		if ( status ) {
 			row.applyStatus( {
 				verdict: VERDICTS[ status.status ] || null,
-				handledMessage: config.handledReasonMessages[ status.handledreason ] || null
+				handledMessage: config.handledReasonMessages[ status.handledreason ] || null,
+				attribution: status.attribution || null
 			}, requestedAt );
 		} else {
 			// Revisions of deleted pages are missing for viewers who cannot see deleted history.

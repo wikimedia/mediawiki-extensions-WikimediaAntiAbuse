@@ -14,6 +14,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewTagService;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttribution;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributionFormatter;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictBylineLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictRequestLogger;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\ContentPolicyEvaluator;
@@ -88,6 +89,14 @@ return [
 	) => new AbuseReviewVerdictAttributionFormatter(
 		$services->getLinkRenderer(),
 		$services->getTitleFactory()
+	),
+
+	'WikimediaAntiAbuseAbuseReviewVerdictBylineLookup' => static fn (
+		MediaWikiServices $services
+	) => new AbuseReviewVerdictBylineLookup(
+		$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' ),
+		$services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter' ),
+		$services->getLinkBatchFactory()
 	),
 
 	'WikimediaAntiAbuseAbuseReviewVerdictPerformerLookup' => static fn (

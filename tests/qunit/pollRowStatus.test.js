@@ -5,6 +5,7 @@ const { pollRowStatus } = require( 'ext.wikimediaAntiAbuse/pollRowStatus.js' );
 const SUPPRESSED_MESSAGE =
 	'wikimediaantiabuse-special-abuse-review-handled-outside-abuse-review-mw-private-personal-info';
 const PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
+const ATTRIBUTION = 'Recorded by <a href="/wiki/User:OtherReviewer">OtherReviewer</a>';
 const ROW_STATUS = {
 	queue: 'mw-private-personal-info',
 	pollSeconds: 30,
@@ -28,10 +29,11 @@ QUnit.module( 'ext.wikimediaAntiAbuse.pollRowStatus', QUnit.newMwEnvironment( {
 
 QUnit.test( 'each row is given the status the server holds once an interval has passed', async function ( assert ) {
 	mw.config.set( 'wgWikimediaAntiAbuseRowStatus', ROW_STATUS );
+	mw.config.set( 'wgUserLanguage', 'en' );
 	// Answer 1 second later, to check that rows get the time of the request, not of the answer.
 	this.get.callsFake( () => new Promise( ( resolve ) => {
 		setTimeout( resolve, 1000, { query: { abusereview: [
-			{ revid: 1, status: 'false-positive' },
+			{ revid: 1, status: 'false-positive', attribution: ATTRIBUTION },
 			{ revid: 2, status: 'no-further-action' },
 			{ revid: 3, status: 'handled', handledreason: 'suppressed' },
 			{ revid: 4, status: 'unhandled' }
@@ -50,17 +52,21 @@ QUnit.test( 'each row is given the status the server holds once an interval has 
 		abrrevid: [ 1, 2, 3, 4, 5 ],
 		abrshowhandled: true,
 		abrshowfalsepositives: true,
-		abrprop: [ 'ids', 'status' ],
+		abrprop: [ 'ids', 'status', 'attribution' ],
 		abrlimit: 50,
+		uselang: 'en',
 		formatversion: 2
 	}, 'the request asks the queue for the status of every row' );
 	assert.deepEqual(
 		[ 1, 2, 3, 4 ].map( ( revId ) => rows.get( revId ).applyStatus.args ),
 		[
-			[ [ { verdict: 'falsePositive', handledMessage: null }, INTERVAL ] ],
-			[ [ { verdict: 'noFurtherAction', handledMessage: null }, INTERVAL ] ],
-			[ [ { verdict: null, handledMessage: SUPPRESSED_MESSAGE }, INTERVAL ] ],
-			[ [ { verdict: null, handledMessage: null }, INTERVAL ] ]
+			[ [ { verdict: 'falsePositive', handledMessage: null, attribution: ATTRIBUTION }, INTERVAL ] ],
+			[ [ { verdict: 'noFurtherAction', handledMessage: null, attribution: null }, INTERVAL ] ],
+			[ [
+				{ verdict: null, handledMessage: SUPPRESSED_MESSAGE, attribution: null },
+				INTERVAL
+			] ],
+			[ [ { verdict: null, handledMessage: null, attribution: null }, INTERVAL ] ]
 		],
 		'each answered row is given its status, stamped with the time the request was sent'
 	);

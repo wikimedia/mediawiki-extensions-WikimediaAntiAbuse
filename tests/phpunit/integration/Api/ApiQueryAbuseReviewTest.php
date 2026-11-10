@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Api;
 
 use MediaWiki\Cache\GenderCache;
 use MediaWiki\ChangeTags\ChangeTags;
+use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\Hooks\Handlers\ChangeTagsHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\AbuseReviewRevisionTestTrait;
 use MediaWiki\Interwiki\ClassicInterwikiLookup;
@@ -16,11 +17,13 @@ use MediaWiki\Tests\Api\ApiTestCase;
 use MediaWiki\Tests\User\TempUser\TempUserTestTrait;
 use MediaWiki\Title\TitleValue;
 use MediaWiki\User\User;
+use MediaWiki\User\UserIdentity;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Api\ApiQueryAbuseReview
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictBylineLookup
  * @group API
  * @group Database
  */
@@ -36,6 +39,9 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 
 	/** @var array<string,int> */
 	private static array $revIds = [];
+
+	/** @var array<string,UserIdentity> */
+	private static array $reviewers = [];
 
 	private Authority $reviewer;
 
@@ -82,6 +88,14 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 			ChangeTagsHandler::VANDALISM_NO_FURTHER_ACTION_TAG,
 			ChangeTags::TAG_REVERTED,
 		] );
+
+		// Only these rows use the link spam queue, which keeps them out of the listings of the other tests
+		$linkSpamTags = [ ChangeTagsHandler::LINK_SPAM_TAG ];
+		self::$revIds['unreviewed'] = $this->createFlaggedRevisionId( $linkSpamTags );
+		self::$revIds['judged'] = $this->createFlaggedRevisionId( $linkSpamTags );
+		$this->addTagNamingNewReviewer( 'judged', ChangeTagsHandler::LINK_SPAM_NO_FURTHER_ACTION_TAG, 'recorder' );
+		self::$revIds['sentBack'] = $this->createFlaggedRevisionId( [] );
+		$this->addTagNamingNewReviewer( 'sentBack', ChangeTagsHandler::LINK_SPAM_TAG, 'sender' );
 
 		$this->createRevision(
 			'userHidden', $vandalismPage, '20260101000500', $vandalismTags, self::HIDDEN_SUMMARY, $sysop
@@ -729,6 +743,73 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		];
 	}
 
+	/** @dataProvider provideBylines */
+	public function testAttributionPropNamesTheReviewerWhoLastActedOnTheRow(
+		string $fixture,
+		string|null $reviewer,
+		bool $holdsVerdict
+	): void {
+		$context = new RequestContext();
+		$context->setLanguage( 'qqx' );
+		$formatter = $this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttributionFormatter' );
+
+		$rowsByRevId = array_column( $this->requestRows( [
+			'abrqueue' => ChangeTagsHandler::LINK_SPAM_TAG,
+			'abrprop' => 'ids|attribution',
+			'abrshowhandled' => '1',
+			'abrrevid' => implode( '|', [
+				self::$revIds['sentBack'],
+				self::$revIds['judged'],
+				self::$revIds['unreviewed'],
+			] ),
+			'uselang' => 'qqx',
+		] ), null, 'revid' );
+
+		$this->assertArrayHasKey(
+			self::$revIds[$fixture],
+			$rowsByRevId,
+			'The queue lists the row when handled rows are asked for'
+		);
+		$this->assertSame(
+			$reviewer === null ? [] : [
+				'attribution' => $formatter->format( $context, self::$reviewers[$reviewer], $holdsVerdict ),
+			],
+			array_diff_key( $rowsByRevId[self::$revIds[$fixture]], [ 'revid' => true, 'parentid' => true ] ),
+			'The row carries the byline of the reviewer who last acted on its flag, if the flag names one'
+		);
+	}
+
+	public static function provideBylines(): array {
+		return [
+			'a row holding a verdict' => [ 'fixture' => 'judged', 'reviewer' => 'recorder', 'holdsVerdict' => true ],
+			'a row sent back to review' => [ 'fixture' => 'sentBack', 'reviewer' => 'sender', 'holdsVerdict' => false ],
+			'a row whose flag names no reviewer' => [
+				'fixture' => 'unreviewed',
+				'reviewer' => null,
+				'holdsVerdict' => false,
+			],
+		];
+	}
+
+	public function testRowsCarryNoBylineWithoutTheAttributionProp(): void {
+		$rows = $this->requestRows( [
+			'abrqueue' => ChangeTagsHandler::LINK_SPAM_TAG,
+			'abrprop' => 'ids',
+			'abrshowhandled' => '1',
+		] );
+
+		$this->assertSame(
+			[ self::$revIds['sentBack'], self::$revIds['judged'], self::$revIds['unreviewed'] ],
+			array_column( $rows, 'revid' ),
+			'The queue lists its rows when handled rows are asked for'
+		);
+		$this->assertSame(
+			[],
+			array_column( $rows, 'attribution' ),
+			'No row carries a byline unless the attribution prop is asked for'
+		);
+	}
+
 	private function requestRows( array $params, ?Authority $viewer = null ): array {
 		[ $result ] = $this->doApiRequest(
 			[ 'action' => 'query', 'list' => 'abusereview' ] + $params,
@@ -751,5 +832,16 @@ class ApiQueryAbuseReviewTest extends ApiTestCase {
 		$this->assertStatusGood( $editStatus );
 		self::$revIds[$fixture] = $editStatus->getNewRevision()->getId();
 		$this->getServiceContainer()->getChangeTagsStore()->addTags( $tags, rev_id: self::$revIds[$fixture] );
+	}
+
+	private function addTagNamingNewReviewer( string $fixture, string $tag, string $reviewer ): void {
+		$services = $this->getServiceContainer();
+		self::$reviewers[$reviewer] = $this->getMutableTestUser()->getUserIdentity();
+		$params = $services->get( 'WikimediaAntiAbuseAbuseReviewVerdictAttribution' )->encode(
+			$services->getActorNormalization()->acquireActorId( self::$reviewers[$reviewer], $this->getDb() ),
+			ConvertibleTimestamp::now()
+		);
+
+		$services->getChangeTagsStore()->addTags( [ $tag ], rev_id: self::$revIds[$fixture], params: $params );
 	}
 }

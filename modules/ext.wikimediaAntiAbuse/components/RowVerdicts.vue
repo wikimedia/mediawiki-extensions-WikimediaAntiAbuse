@@ -241,16 +241,15 @@ module.exports = exports = defineComponent( {
 		 * @param {Object} status
 		 * @param {string|null} status.verdict The verdict held, or null if there is none
 		 * @param {string|null} status.handledMessage Why the revision counts as handled, or null
+		 * @param {string|null} status.attribution HTML byline that names the reviewer, or null
 		 * @param {number} requestedAt When the status was requested, from Date.now()
 		 */
 		function applyStatus( status, requestedAt ) {
 			if ( busy.value || requestedAt < settledAt ) {
 				return;
 			}
-			if ( status.verdict !== verdict.value ) {
-				verdict.value = status.verdict;
-				attribution.value = null;
-			}
+			verdict.value = status.verdict;
+			attribution.value = status.attribution;
 			// The server sends a reason only for rows with no verdict.
 			if ( status.verdict === null ) {
 				handledMessage.value = status.handledMessage;
@@ -258,13 +257,16 @@ module.exports = exports = defineComponent( {
 		}
 
 		/**
-		 * Show that the page is deleted. Keep the verdict if the row has one.
+		 * Show that the page is deleted. Keep the verdict and byline if the row has them.
 		 *
 		 * @param {string} message Why the revision counts as handled
 		 * @param {number} requestedAt When the status was requested, from Date.now()
 		 */
 		function showPageDeleted( message, requestedAt ) {
-			applyStatus( { verdict: verdict.value, handledMessage: message }, requestedAt );
+			applyStatus(
+				{ verdict: verdict.value, handledMessage: message, attribution: attribution.value },
+				requestedAt
+			);
 		}
 
 		expose( { applyStatus, showPageDeleted } );

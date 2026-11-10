@@ -624,22 +624,29 @@ QUnit.test( 'sending a row back names who sent it back', async function ( assert
 	);
 } );
 
-QUnit.test( 'a verdict from the server replaces the buttons with its chip and clears the byline', async ( assert ) => {
+QUnit.test( 'a verdict from the server replaces the buttons with its chip and shows its byline', async ( assert ) => {
 	const wrapper = mountRow( { attributionHtml: RETURNED_ATTRIBUTION } );
 
-	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	wrapper.vm.applyStatus(
+		{ verdict: 'falsePositive', handledMessage: null, attribution: PRIOR_ATTRIBUTION },
+		Date.now()
+	);
 	await flushPromises();
 
 	assert.strictEqual( wrapper.find( CHIP_TEXT ).text(), CHIP_FALSE_POSITIVE, 'the chip names the verdict the server holds' );
 	assert.strictEqual( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ), undefined, 'the mark buttons give way to the chip' );
-	assert.false( wrapper.find( PERFORMER ).exists(), 'nobody is named, the reviewer behind the verdict being unknown' );
+	assert.strictEqual(
+		wrapper.find( PERFORMER ).element.innerHTML,
+		PRIOR_ATTRIBUTION,
+		'the byline the server sent names the reviewer behind the verdict'
+	);
 } );
 
 QUnit.test( 'a handled message from the server disables the buttons with its note, and null enables them', async ( assert ) => {
 	const wrapper = mountRow();
 
 	wrapper.vm.applyStatus(
-		{ verdict: null, handledMessage: REVISION_DELETED_MESSAGE },
+		{ verdict: null, handledMessage: REVISION_DELETED_MESSAGE, attribution: null },
 		Date.now()
 	);
 	await flushPromises();
@@ -655,7 +662,10 @@ QUnit.test( 'a handled message from the server disables the buttons with its not
 		'the wrapper is marked as handled, which is what the queue steps over'
 	);
 
-	wrapper.vm.applyStatus( { verdict: null, handledMessage: null }, Date.now() );
+	wrapper.vm.applyStatus(
+		{ verdict: null, handledMessage: null, attribution: null },
+		Date.now()
+	);
 	await flushPromises();
 	assert.false( buttonWithLabel( wrapper, MARK_FALSE_POSITIVE ).element.disabled, 'a revision no longer handled can be marked' );
 	assert.false( wrapper.find( DISABLED_NOTE ).exists(), 'no note is shown for a revision no longer handled' );
@@ -682,7 +692,7 @@ QUnit.test.each( 'a status that may predate the verdict given in the row is igno
 	const requestedAt = Date.now();
 	await clock.tickAsync( 1 );
 	await flushPromises();
-	wrapper.vm.applyStatus( { verdict: 'noFurtherAction', handledMessage: null }, requestedAt );
+	wrapper.vm.applyStatus( { verdict: 'noFurtherAction', handledMessage: null, attribution: null }, requestedAt );
 	await flushPromises();
 
 	assert.strictEqual(
@@ -700,7 +710,7 @@ QUnit.test( 'a status with the verdict held keeps the reason the revision is han
 		handledOutsideAbuseReviewMessage: REVISION_DELETED_MESSAGE
 	} );
 
-	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null, attribution: null }, Date.now() );
 	await sendBackButton( wrapper ).trigger( 'click' );
 	await flushPromises();
 
@@ -712,13 +722,46 @@ QUnit.test( 'a status with the verdict held keeps the reason the revision is han
 	);
 } );
 
-QUnit.test( 'a status repeating the verdict held keeps the byline', async ( assert ) => {
+QUnit.test.each( 'the byline the server sends replaces the one the row showed', {
+	'the verdict held, recorded by a different reviewer': {
+		status: { verdict: 'falsePositive', handledMessage: null, attribution: RECORDED_ATTRIBUTION },
+		expectedChips: [ CHIP_FALSE_POSITIVE ],
+		expectedBylines: [ RECORDED_ATTRIBUTION ],
+		expectedButtons: []
+	},
+	'the verdict sent back for review': {
+		status: { verdict: null, handledMessage: null, attribution: RETURNED_ATTRIBUTION },
+		expectedChips: [],
+		expectedBylines: [ RETURNED_ATTRIBUTION ],
+		expectedButtons: [ MARK_NO_FURTHER_ACTION, MARK_FALSE_POSITIVE ]
+	},
+	'the verdict held, with no byline': {
+		status: { verdict: 'falsePositive', handledMessage: null, attribution: null },
+		expectedChips: [ CHIP_FALSE_POSITIVE ],
+		expectedBylines: [],
+		expectedButtons: []
+	}
+}, async ( assert, data ) => {
 	const wrapper = mountRow( { isFalsePositive: true, attributionHtml: PRIOR_ATTRIBUTION } );
 
-	wrapper.vm.applyStatus( { verdict: 'falsePositive', handledMessage: null }, Date.now() );
+	wrapper.vm.applyStatus( data.status, Date.now() );
 	await flushPromises();
 
-	assert.true( wrapper.find( PERFORMER ).exists(), 'the reviewer who recorded the verdict is still named' );
+	assert.deepEqual(
+		wrapper.findAll( CHIP_TEXT ).map( ( chip ) => chip.text() ),
+		data.expectedChips,
+		'the row shows the chip of the verdict the server holds'
+	);
+	assert.deepEqual(
+		wrapper.findAll( PERFORMER ).map( ( performer ) => performer.element.innerHTML ),
+		data.expectedBylines,
+		'the row shows only the byline the server sent'
+	);
+	assert.deepEqual(
+		wrapper.findAll( 'button[aria-label]' ).map( ( button ) => button.attributes( 'aria-label' ) ),
+		data.expectedButtons,
+		'the row offers the mark buttons only when the server holds no verdict'
+	);
 } );
 
 QUnit.test.each( 'a deleted page keeps the verdict shown, and blocks marking a row holding none', {

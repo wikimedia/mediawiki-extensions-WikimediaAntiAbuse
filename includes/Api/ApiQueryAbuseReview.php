@@ -16,6 +16,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
 use MediaWiki\Extension\WikimediaAntiAbuse\Rest\Handler\ReviewVerdictHandler;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictBylineLookup;
 use MediaWiki\Language\Language;
 use MediaWiki\Pager\IndexPager;
 use MediaWiki\ParamValidator\TypeDef\UserDef;
@@ -47,6 +48,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 		private readonly UserNameUtils $userNameUtils,
 		private readonly GenderCache $genderCache,
 		private readonly Language $contentLanguage,
+		private readonly AbuseReviewVerdictBylineLookup $verdictBylineLookup,
 	) {
 		parent::__construct( $query, $moduleName, 'abr' );
 	}
@@ -112,11 +114,12 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 
 	private function addRowsToResult( array $rows, string $abuseReviewTag, array $prop ): void {
 		$this->preloadGenders( $rows, $prop );
+		$bylines = $this->lookUpVerdictBylines( $rows, $abuseReviewTag, $prop );
 
 		$result = $this->getResult();
 		$path = [ 'query', $this->getModuleName() ];
 		foreach ( $rows as $row ) {
-			if ( !$result->addValue( $path, null, $this->extractRowInfo( $row, $abuseReviewTag, $prop ) ) ) {
+			if ( !$result->addValue( $path, null, $this->extractRowInfo( $row, $abuseReviewTag, $prop, $bylines ) ) ) {
 				$this->setContinueEnumParameter( 'continue', "$row->timestamp|$row->rev_id" );
 				break;
 			}
@@ -131,6 +134,25 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 				$rows
 			) );
 		}
+	}
+
+	private function lookUpVerdictBylines( array $rows, string $abuseReviewTag, array $prop ): array {
+		if ( !isset( $prop['attribution'] ) ) {
+			return [];
+		}
+
+		$verdictHeldByRevisionId = [];
+		foreach ( $rows as $row ) {
+			$verdictHeldByRevisionId[(int)$row->rev_id] =
+				$this->queueLookup->getVerdict( $row, $abuseReviewTag ) !== null;
+		}
+
+		return $this->verdictBylineLookup->lookUpBylines(
+			$this,
+			$verdictHeldByRevisionId,
+			$abuseReviewTag,
+			$this->getAuthority()
+		);
 	}
 
 	/** Fetches one more row than the limit, so that the extra row tells where to continue. */
@@ -176,7 +198,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 		return $title;
 	}
 
-	private function extractRowInfo( stdClass $row, string $abuseReviewTag, array $prop ): array {
+	private function extractRowInfo( stdClass $row, string $abuseReviewTag, array $prop, array $bylines ): array {
 		$title = $this->titleFactory->makeTitle( (int)$row->namespace, $row->title );
 		$vals = [];
 		if ( isset( $prop['ids'] ) ) {
@@ -205,6 +227,9 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 		}
 		if ( isset( $prop['status'] ) ) {
 			$vals += $this->extractStatusInfo( $row, $abuseReviewTag );
+		}
+		if ( isset( $bylines[(int)$row->rev_id] ) ) {
+			$vals['attribution'] = $bylines[(int)$row->rev_id];
 		}
 		if ( ( isset( $vals['userhidden'] ) || isset( $vals['commenthidden'] ) )
 			&& ( (int)$row->deleted & RevisionRecord::DELETED_RESTRICTED ) !== 0
@@ -343,6 +368,7 @@ class ApiQueryAbuseReview extends ApiQueryGeneratorBase {
 					'comment',
 					'tags',
 					'status',
+					'attribution',
 				],
 				ApiBase::PARAM_HELP_MSG_PER_VALUE => [],
 			],
