@@ -34,8 +34,6 @@ class CloseBlockedAccountCaseJobTest extends MediaWikiIntegrationTestCase {
 		$this->caseManager->openCase( $this->user, self::QUEUE, [] );
 
 		$this->placeIndefiniteBlock();
-		$this->getServiceContainer()->getJobQueueGroup()
-			->push( CloseBlockedAccountCaseJob::newSpec( $this->user->getId(), false ) );
 		$this->runJobs( runOptions: [ 'type' => CloseBlockedAccountCaseJob::TYPE ] );
 
 		$this->newSelectQueryBuilder()
@@ -53,8 +51,6 @@ class CloseBlockedAccountCaseJobTest extends MediaWikiIntegrationTestCase {
 			->newUnblockUser( $this->user, $this->getTestSysop()->getAuthority(), 'Test unblock' )
 			->unblock();
 		$this->assertStatusGood( $unblockStatus );
-		$this->getServiceContainer()->getJobQueueGroup()
-			->push( CloseBlockedAccountCaseJob::newSpec( $this->user->getId(), false ) );
 
 		$this->runJobs( runOptions: [ 'type' => CloseBlockedAccountCaseJob::TYPE ] );
 

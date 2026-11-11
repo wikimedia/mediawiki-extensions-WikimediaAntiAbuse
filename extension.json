@@ -120,6 +120,14 @@
 				"ConnectionProvider"
 			]
 		},
+		"AccountCaseBlockHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AccountCaseBlockHandler",
+			"services": [
+				"MainConfig",
+				"JobQueueGroup",
+				"WikimediaAntiAbuseLogger"
+			]
+		},
 		"PageSaveCompleteHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\PageSaveCompleteHandler",
 			"services": [
@@ -179,6 +187,7 @@
 		"AbuseFilterCanViewProtectedVariables": "AbuseFilterHandler",
 		"AbuseFilterCustomProtectedVariables": "AbuseFilterHandler",
 		"BeforeInitialize": "AbuseReviewLinkClickHandler",
+		"BlockIpComplete": "AccountCaseBlockHandler",
 		"ChangeTagsAfterUpdateTags": "AccountCaseTagsHandler",
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",
