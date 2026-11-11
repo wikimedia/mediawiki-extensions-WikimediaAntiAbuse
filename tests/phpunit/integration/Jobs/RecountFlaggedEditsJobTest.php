@@ -256,6 +256,32 @@ class RecountFlaggedEditsJobTest extends MediaWikiIntegrationTestCase {
 		$this->assertNotNull( $this->fetchCase( $temporaryAccount ), 'A temporary account gets a case' );
 	}
 
+	public function testKeepsHandledCaseOfBlockedAccount(): void {
+		$user = $this->getTestUser()->getUser();
+		$this->caseManager->openCase( $user, AbuseReviewAccountQueue::FLAGGED_ACCOUNTS, [] );
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'abuse_review_case' )
+			->set( [ 'arc_state' => AbuseReviewCaseState::HANDLED->value ] )
+			->where( [ 'arc_actor' => $user->getActorId() ] )
+			->caller( __METHOD__ )
+			->execute();
+		$this->makeEdit( $user, self::ALL_FLAGS );
+		$this->getServiceContainer()->getDatabaseBlockStore()->insertBlockWithParams( [
+			'targetUser' => $user,
+			'by' => $this->getTestSysop()->getUser(),
+			'expiry' => 'infinity',
+		] );
+		$handledCase = $this->fetchCase( $user );
+
+		$this->runJobs( runOptions: [ 'type' => RecountFlaggedEditsJob::TYPE ] );
+
+		$this->assertSame(
+			$handledCase,
+			$this->fetchCase( $user ),
+			'New flags do not change the handled case of an indefinitely blocked account'
+		);
+	}
+
 	private function makeEdit( User $author, array $flags ): RevisionRecord {
 		$status = $this->editPage( $this->getNonexistingTestPage(), 'test content', performer: $author );
 		$this->assertStatusGood( $status );

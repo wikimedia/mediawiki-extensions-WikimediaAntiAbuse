@@ -404,7 +404,9 @@
 				"WikimediaAntiAbuseFlaggedEditCounter",
 				"WikimediaAntiAbuseAbuseReviewAccountCaseLookup",
 				"WikimediaAntiAbuseAbuseReviewAccountCaseManager",
-				"DBLoadBalancerFactory"
+				"WikimediaAntiAbuseAbuseReviewAccountBlockLookup",
+				"DBLoadBalancerFactory",
+				"WikimediaAntiAbuseLogger"
 			],
 			"needsPage": false
 		}

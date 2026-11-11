@@ -6,6 +6,7 @@ namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Unit\Jobs;
 
 use MediaWiki\Config\HashConfig;
 use MediaWiki\Extension\WikimediaAntiAbuse\Jobs\RecountFlaggedEditsJob;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountBlockLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
@@ -13,6 +14,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\FlaggedEditCounter;
 use MediaWiki\Revision\ArchivedRevisionLookup;
 use MediaWiki\Revision\RevisionLookup;
 use MediaWikiUnitTestCase;
+use Psr\Log\NullLogger;
 use Wikimedia\Rdbms\IDatabase;
 use Wikimedia\Rdbms\ILBFactory;
 use Wikimedia\Rdbms\ILoadBalancer;
@@ -78,7 +80,9 @@ class RecountFlaggedEditsJobTest extends MediaWikiUnitTestCase {
 			$this->createNoOpMock( FlaggedEditCounter::class ),
 			$this->createNoOpMock( AbuseReviewAccountCaseLookup::class ),
 			$this->createNoOpMock( AbuseReviewAccountCaseManager::class ),
-			$lbFactory
+			$this->createNoOpMock( AbuseReviewAccountBlockLookup::class ),
+			$lbFactory,
+			new NullLogger()
 		);
 
 		$this->assertFalse( $job->run(), 'The job fails if a replica does not catch up' );

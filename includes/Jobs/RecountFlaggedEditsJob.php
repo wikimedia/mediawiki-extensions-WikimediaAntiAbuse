@@ -9,6 +9,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewAccountQueue;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCase;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseState;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\FlaggedAccountCaseProperties;
+use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountBlockLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseManager;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewEnabledTagsProvider;
@@ -22,6 +23,7 @@ use MediaWiki\Revision\RevisionLookup;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\User\UserIdentity;
 use MediaWiki\User\UserIdentityValue;
+use Psr\Log\LoggerInterface;
 use Wikimedia\LightweightObjectStore\ExpirationAwareness;
 use Wikimedia\Rdbms\ILBFactory;
 use Wikimedia\Timestamp\ConvertibleTimestamp;
@@ -50,7 +52,9 @@ class RecountFlaggedEditsJob extends Job {
 		private readonly FlaggedEditCounter $flaggedEditCounter,
 		private readonly AbuseReviewAccountCaseLookup $caseLookup,
 		private readonly AbuseReviewAccountCaseManager $caseManager,
+		private readonly AbuseReviewAccountBlockLookup $blockLookup,
 		private readonly ILBFactory $lbFactory,
+		private readonly LoggerInterface $logger,
 	) {
 		parent::__construct( self::TYPE, $params );
 	}
@@ -92,10 +96,21 @@ class RecountFlaggedEditsJob extends Job {
 
 		$properties = $this->buildCountProperties( $counts );
 		// The write moves the case to the top of the queue, so write only when a count changed.
-		if ( array_diff_assoc( $properties, $storedProperties ) ) {
-			$properties[FlaggedAccountCaseProperties::COUNT_START_TIMESTAMP] = (int)$countStart;
-			$this->writeCase( $user, $case, $properties );
+		if ( array_diff_assoc( $properties, $storedProperties ) === [] ) {
+			return true;
 		}
+
+		if ( $this->blockLookup->isIndefinitelyBlocked( $user ) ) {
+			$this->logger->info(
+				'Not updating or creating the Flagged accounts case for user {userId}: indefinitely blocked',
+				[ 'userId' => $user->getId() ]
+			);
+
+			return true;
+		}
+
+		$properties[FlaggedAccountCaseProperties::COUNT_START_TIMESTAMP] = (int)$countStart;
+		$this->writeCase( $user, $case, $properties );
 
 		return true;
 	}

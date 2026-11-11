@@ -4,6 +4,8 @@ declare( strict_types=1 );
 
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Services;
 
+use Generator;
+use MediaWiki\Block\Block;
 use MediaWiki\Block\DatabaseBlockStore;
 use MediaWiki\Extension\GlobalBlocking\GlobalBlock;
 use MediaWiki\Extension\GlobalBlocking\Services\GlobalBlockLookup;
@@ -38,16 +40,8 @@ class AbuseReviewAccountBlockLookup {
 			return [];
 		}
 
-		$userIds = [];
-		foreach ( $users as $user ) {
-			$userIds[] = $user->getId();
-		}
-		$localBlocks = $this->blockStore->newListFromConds( [ 'bt_user' => $userIds ] );
-		$globalBlocks = $this->getGlobalBlocks( $users );
-		$blocks = array_merge( $localBlocks, $globalBlocks );
-
 		$blockedUserIds = [];
-		foreach ( $blocks as $block ) {
+		foreach ( $this->getBlocks( $users ) as $block ) {
 			$blockedUser = $block->getTargetUserIdentity();
 			if ( $blockedUser && $block->isSitewide() ) {
 				$blockedUserIds[] = $blockedUser->getId();
@@ -55,6 +49,35 @@ class AbuseReviewAccountBlockLookup {
 		}
 
 		return array_values( array_unique( $blockedUserIds ) );
+	}
+
+	/**
+	 * Returns whether the user has an active indefinite sitewide block, local or global.
+	 */
+	public function isIndefinitelyBlocked( UserIdentity $user ): bool {
+		foreach ( $this->getBlocks( [ $user ] ) as $block ) {
+			if ( $block->isSitewide() && $block->isIndefinite() ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Yields the local blocks of the users, then their global blocks, so a caller can stop before the global query.
+	 *
+	 * @param UserIdentity[] $users
+	 * @return Generator<Block>
+	 */
+	private function getBlocks( array $users ): Generator {
+		$userIds = [];
+		foreach ( $users as $user ) {
+			$userIds[] = $user->getId();
+		}
+
+		yield from $this->blockStore->newListFromConds( [ 'bt_user' => $userIds ] );
+		yield from $this->getGlobalBlocks( $users );
 	}
 
 	/**
