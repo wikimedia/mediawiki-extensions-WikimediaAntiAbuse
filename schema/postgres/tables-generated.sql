@@ -5,17 +5,17 @@
 CREATE TABLE abuse_review_case (
   arc_id SERIAL NOT NULL,
   arc_actor BIGINT NOT NULL,
-  arc_tag_id INT NOT NULL,
+  arc_queue_id SMALLINT NOT NULL,
   arc_state SMALLINT DEFAULT 0 NOT NULL,
   arc_updated_timestamp TIMESTAMPTZ NOT NULL,
   arc_handled_by_actor BIGINT DEFAULT 0 NOT NULL,
   PRIMARY KEY (arc_id)
 );
 
-CREATE UNIQUE INDEX arc_actor_tag_id ON abuse_review_case (arc_actor, arc_tag_id);
+CREATE UNIQUE INDEX arc_actor_queue_id ON abuse_review_case (arc_actor, arc_queue_id);
 
-CREATE INDEX arc_tag_id_state_timestamp ON abuse_review_case (
-  arc_tag_id, arc_state, arc_updated_timestamp
+CREATE INDEX arc_queue_id_state_timestamp ON abuse_review_case (
+  arc_queue_id, arc_state, arc_updated_timestamp
 );
 
 

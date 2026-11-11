@@ -20,5 +20,15 @@ class SchemaChangesHandler implements LoadExtensionSchemaUpdatesHook {
 		$updater->addExtensionUpdateOnVirtualDomain( [
 			'virtual-wikimediaantiabuse', 'addTable', 'abuse_review_case', "$base/$dbType/tables-generated.sql", true,
 		] );
+
+		// 1.48
+		$updater->addExtensionUpdateOnVirtualDomain( [
+			'virtual-wikimediaantiabuse', 'modifyField', 'abuse_review_case', 'arc_tag_id',
+			"$base/$dbType/patch-abuse_review_case-modify-arc_tag_id-tinyint.sql", true,
+		] );
+		$updater->addExtensionUpdateOnVirtualDomain( [
+			'virtual-wikimediaantiabuse', 'modifyField', 'abuse_review_case', 'arc_tag_id',
+			"$base/$dbType/patch-abuse_review_case-rename-arc_tag_id.sql", true,
+		] );
 	}
 }

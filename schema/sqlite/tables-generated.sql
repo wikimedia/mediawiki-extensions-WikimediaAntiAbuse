@@ -5,16 +5,16 @@
 CREATE TABLE /*_*/abuse_review_case (
   arc_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
   arc_actor BIGINT UNSIGNED NOT NULL,
-  arc_tag_id INTEGER UNSIGNED NOT NULL,
+  arc_queue_id SMALLINT UNSIGNED NOT NULL,
   arc_state SMALLINT UNSIGNED DEFAULT 0 NOT NULL,
   arc_updated_timestamp BLOB NOT NULL,
   arc_handled_by_actor BIGINT UNSIGNED DEFAULT 0 NOT NULL
 );
 
-CREATE UNIQUE INDEX arc_actor_tag_id ON /*_*/abuse_review_case (arc_actor, arc_tag_id);
+CREATE UNIQUE INDEX arc_actor_queue_id ON /*_*/abuse_review_case (arc_actor, arc_queue_id);
 
-CREATE INDEX arc_tag_id_state_timestamp ON /*_*/abuse_review_case (
-  arc_tag_id, arc_state, arc_updated_timestamp
+CREATE INDEX arc_queue_id_state_timestamp ON /*_*/abuse_review_case (
+  arc_queue_id, arc_state, arc_updated_timestamp
 );
 
 

@@ -23,9 +23,9 @@
 				}
 			},
 			{
-				"name": "arc_tag_id",
-				"comment": "The change tag of the queue. Key to change_tag_def.ctd_id.",
-				"type": "integer",
+				"name": "arc_queue_id",
+				"comment": "The queue of the case, as an ID that the code defines.",
+				"type": "mwtinyint",
 				"options": {
 					"unsigned": true,
 					"notnull": true
@@ -62,17 +62,17 @@
 		],
 		"indexes": [
 			{
-				"name": "arc_actor_tag_id",
+				"name": "arc_actor_queue_id",
 				"columns": [
 					"arc_actor",
-					"arc_tag_id"
+					"arc_queue_id"
 				],
 				"unique": true
 			},
 			{
-				"name": "arc_tag_id_state_timestamp",
+				"name": "arc_queue_id_state_timestamp",
 				"columns": [
-					"arc_tag_id",
+					"arc_queue_id",
 					"arc_state",
 					"arc_updated_timestamp"
 				],

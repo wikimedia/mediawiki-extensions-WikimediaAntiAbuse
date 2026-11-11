@@ -5,13 +5,13 @@
 CREATE TABLE /*_*/abuse_review_case (
   arc_id INT UNSIGNED AUTO_INCREMENT NOT NULL,
   arc_actor BIGINT UNSIGNED NOT NULL,
-  arc_tag_id INT UNSIGNED NOT NULL,
+  arc_queue_id TINYINT UNSIGNED NOT NULL,
   arc_state TINYINT UNSIGNED DEFAULT 0 NOT NULL,
   arc_updated_timestamp BINARY(14) NOT NULL,
   arc_handled_by_actor BIGINT UNSIGNED DEFAULT 0 NOT NULL,
-  UNIQUE INDEX arc_actor_tag_id (arc_actor, arc_tag_id),
-  INDEX arc_tag_id_state_timestamp (
-    arc_tag_id, arc_state, arc_updated_timestamp
+  UNIQUE INDEX arc_actor_queue_id (arc_actor, arc_queue_id),
+  INDEX arc_queue_id_state_timestamp (
+    arc_queue_id, arc_state, arc_updated_timestamp
   ),
   PRIMARY KEY (arc_id)
 ) /*$wgDBTableOptions*/;
