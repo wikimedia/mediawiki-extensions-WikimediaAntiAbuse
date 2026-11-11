@@ -25,6 +25,8 @@
 	"apihelp-query+abusereview-param-user": "Liiska wax ka beddellada ay sameeyeen isticmaaleyaashan oo keliya.",
 	"apihelp-query+abusereview-param-page": "Liiska wax ka beddellada lagu sameeyay bogaggan oo keliya.",
 	"apihelp-query+abusereview-param-revid": "Liiska dib u eegisyadan oo keliya.",
+	"apihelp-query+abusereview-param-start": "Waqtiga taariikhda iyo saacadda ee liiska laga bilaabayo.",
+	"apihelp-query+abusereview-param-end": "Waqtiga taariikhda iyo saacadda ee liiska lagu joojinayo.",
 	"apihelp-query+abusereview-paramvalue-dir-newer": "Liiska ugu da'da weyn marka hore.",
 	"apihelp-query+abusereview-paramvalue-dir-older": "Liiska ugu cusub marka hore (sida caadiga ah).",
 	"apihelp-query+abusereview-param-limit": "Imisa wax ka beddellada la liis gareynayo.",
