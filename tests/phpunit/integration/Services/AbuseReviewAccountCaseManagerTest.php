@@ -5,6 +5,7 @@ declare( strict_types=1 );
 namespace MediaWiki\Extension\WikimediaAntiAbuse\Tests\Integration\Services;
 
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewAccountQueue;
+use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCase;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewCaseState;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewAccountCaseManager;
 use MediaWiki\User\User;
@@ -20,6 +21,7 @@ class AbuseReviewAccountCaseManagerTest extends MediaWikiIntegrationTestCase {
 	private const AbuseReviewAccountQueue QUEUE = AbuseReviewAccountQueue::FLAGGED_ACCOUNTS;
 	private const int OTHER_QUEUE_ID = 2;
 	private const string NOW = '20260101000000';
+	private const string LATER = '20260102000000';
 
 	private AbuseReviewAccountCaseManager $caseManager;
 	private User $user;
@@ -211,6 +213,85 @@ class AbuseReviewAccountCaseManagerTest extends MediaWikiIntegrationTestCase {
 			$this->getProperties( $otherUser, self::QUEUE->getId() ),
 			'The case of another user keeps its properties'
 		);
+	}
+
+	public function testCloseCaseHandlesOpenCase(): void {
+		$this->caseManager->openCase( $this->user, self::QUEUE, [ 'flagged_edit_count' => 3 ] );
+		$case = $this->getCase();
+
+		ConvertibleTimestamp::setFakeTime( self::NOW );
+		$this->caseManager->closeCase( $case );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'arc_state', 'arc_updated_timestamp', 'arc_handled_by_actor' ] )
+			->from( 'abuse_review_case' )
+			->caller( __METHOD__ )
+			->assertRowValue(
+				[ AbuseReviewCaseState::HANDLED->value, $this->getDb()->timestamp( self::NOW ), 0 ],
+				'The case is handled without a reviewer and was updated now'
+			);
+		$this->assertSame(
+			[ 'flagged_edit_count' => 3 ],
+			$this->getProperties( $this->user, self::QUEUE->getId() ),
+			'Closing the case does not change its properties'
+		);
+	}
+
+	public function testCloseCaseDoesNotChangeHandledCase(): void {
+		$this->caseManager->openCase( $this->user, self::QUEUE, [] );
+		$case = $this->getCase();
+		$performer = $this->getTestSysop()->getUser();
+		$this->getDb()->newUpdateQueryBuilder()
+			->update( 'abuse_review_case' )
+			->set( [
+				'arc_state' => AbuseReviewCaseState::HANDLED->value,
+				'arc_updated_timestamp' => $this->getDb()->timestamp( self::NOW ),
+				'arc_handled_by_actor' => $performer->getActorId(),
+			] )
+			->where( [ 'arc_id' => $case->id ] )
+			->caller( __METHOD__ )
+			->execute();
+
+		ConvertibleTimestamp::setFakeTime( self::LATER );
+		$this->caseManager->closeCase( $case );
+
+		$this->newSelectQueryBuilder()
+			->select( [ 'arc_state', 'arc_updated_timestamp', 'arc_handled_by_actor' ] )
+			->from( 'abuse_review_case' )
+			->caller( __METHOD__ )
+			->assertRowValue(
+				[
+					AbuseReviewCaseState::HANDLED->value,
+					$this->getDb()->timestamp( self::NOW ),
+					$performer->getActorId(),
+				],
+				'Closing a case that a performer handled since it was read does not change it'
+			);
+	}
+
+	public function testCloseCaseLeavesOtherCasesAlone(): void {
+		$this->caseManager->openCase( $this->getTestSysop()->getUser(), self::QUEUE, [] );
+		$this->caseManager->openCase( $this->user, self::QUEUE, [] );
+		$case = $this->getCase();
+
+		$this->caseManager->closeCase( $case );
+
+		$this->assertEquals(
+			[ $case->id ],
+			$this->newSelectQueryBuilder()
+				->select( 'arc_id' )
+				->from( 'abuse_review_case' )
+				->where( [ 'arc_state' => AbuseReviewCaseState::HANDLED->value ] )
+				->caller( __METHOD__ )
+				->fetchFieldValues(),
+			'Only the given case is handled'
+		);
+	}
+
+	private function getCase(): AbuseReviewCase {
+		return $this->getServiceContainer()
+			->get( 'WikimediaAntiAbuseAbuseReviewAccountCaseLookup' )
+			->getCase( $this->user, self::QUEUE );
 	}
 
 	/** @return array<string,int> The value of each property, keyed by property name */

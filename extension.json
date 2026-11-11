@@ -409,6 +409,18 @@
 				"WikimediaAntiAbuseLogger"
 			],
 			"needsPage": false
+		},
+		"wikimediaAntiAbuseCloseBlockedAccountCase": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Jobs\\CloseBlockedAccountCaseJob",
+			"services": [
+				"MainConfig",
+				"UserIdentityLookup",
+				"WikimediaAntiAbuseAbuseReviewAccountCaseLookup",
+				"WikimediaAntiAbuseAbuseReviewAccountCaseManager",
+				"WikimediaAntiAbuseAbuseReviewAccountBlockLookup",
+				"WikimediaAntiAbuseLogger"
+			],
+			"needsPage": false
 		}
 	},
 	"RestRoutes": [

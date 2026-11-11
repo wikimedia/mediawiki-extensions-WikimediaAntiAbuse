@@ -86,6 +86,23 @@ class AbuseReviewAccountCaseManager {
 	}
 
 	/**
+	 * Marks the case as handled without a reviewer, if it is open.
+	 */
+	public function closeCase( AbuseReviewCase $case ): void {
+		$dbw = $this->dbProvider->getPrimaryDatabase( AbuseReviewAccountCaseLookup::VIRTUAL_DB_DOMAIN );
+		$dbw->newUpdateQueryBuilder()
+			->update( 'abuse_review_case' )
+			->set( [
+				'arc_state' => AbuseReviewCaseState::HANDLED->value,
+				'arc_updated_timestamp' => $dbw->timestamp(),
+				'arc_handled_by_actor' => 0,
+			] )
+			->where( [ 'arc_id' => $case->id, 'arc_state' => AbuseReviewCaseState::OPEN->value ] )
+			->caller( __METHOD__ )
+			->execute();
+	}
+
+	/**
 	 * Inserts each property of the case, or replaces its value if the property exists.
 	 */
 	private function upsertProperties( IDatabase $dbw, int $caseId, array $properties ): void {

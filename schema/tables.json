@@ -51,7 +51,7 @@
 			},
 			{
 				"name": "arc_handled_by_actor",
-				"comment": "The admin who marked the case as handled. Key to actor.actor_id. 0 while the case is open.",
+				"comment": "The admin who marked the case as handled. Key to actor.actor_id. 0 while open, or when the case was closed without a reviewer.",
 				"type": "bigint",
 				"options": {
 					"unsigned": true,
