@@ -67,7 +67,30 @@ class FlaggedEditCounter {
 		array $flags,
 		?string $since
 	): array {
-		$counts = array_fill_keys( $flags, 0 );
+		return array_map(
+			static fn ( array $stats ) => $stats['count'],
+			$this->getFlaggedEditStats( $authority, $user, $flags, $since )
+		);
+	}
+
+	/**
+	 * Counts the edits of the user per abuse review flag along with the timestamp of the latest edit that has
+	 * that flag, excluding edits that have the false positive verdict of that flag.
+	 *
+	 * @param Authority $authority
+	 * @param UserIdentity $user
+	 * @param string[] $flags
+	 * @param ?string $since TS_MW timestamp of the oldest edits to count, or null for no time limit
+	 * @return array<string,array{count:int,latestTimestamp:?string}> The stats for each flag. The
+	 *   timestamp is in MediaWiki timestamp format, or null if no recent edit has the flag.
+	 */
+	public function getFlaggedEditStats(
+		Authority $authority,
+		UserIdentity $user,
+		array $flags,
+		?string $since
+	): array {
+		$stats = array_fill_keys( $flags, [ 'count' => 0, 'latestTimestamp' => null ] );
 		$falsePositiveTags = [];
 		foreach ( $flags as $flag ) {
 			$falsePositiveTags[$flag] = ChangeTagsHandler::REVIEWABLE_TAGS[$flag]['falsePositive'];
@@ -76,14 +99,14 @@ class FlaggedEditCounter {
 		$tagIds = $this->changeTagsStore->getTagIdsFromNames(
 			array_merge( $flags, array_values( $falsePositiveTags ) )
 		);
-		if ( !array_intersect_key( $tagIds, $counts ) ) {
-			return $counts;
+		if ( !array_intersect_key( $tagIds, $stats ) ) {
+			return $stats;
 		}
 
 		$dbr = $this->dbProvider->getReplicaDatabase();
 		$actorId = $this->actorNormalization->findActorId( $user, $dbr );
 		if ( $actorId === null ) {
-			return $counts;
+			return $stats;
 		}
 
 		$tables = [ 'revision' => [ 'rev_id', 'rev_actor', 'rev_timestamp', 'rev_deleted' ] ];
@@ -92,24 +115,28 @@ class FlaggedEditCounter {
 		}
 
 		$tagNamesById = array_flip( $tagIds );
-		$tagsByRevision = [];
+		$revisions = [];
 		foreach ( $tables as $table => $fields ) {
 			$rows = $this->getTaggedRevisions( $dbr, $authority, $table, $fields, $actorId, $tagIds, $since );
 			foreach ( $rows as $row ) {
-				$tagsByRevision[$row->rev_id][] = $tagNamesById[$row->ct_tag_id];
+				$revisions[$row->rev_id]['timestamp'] = ConvertibleTimestamp::convert(
+					TimestampFormat::MW,
+					$row->rev_timestamp
+				);
+				$revisions[$row->rev_id]['tags'][] = $tagNamesById[$row->ct_tag_id];
 			}
 		}
 
 		// A false positive verdict removes the flag, but the model can add the flag again later.
-		foreach ( $tagsByRevision as $tags ) {
+		foreach ( $revisions as [ 'timestamp' => $timestamp, 'tags' => $tags ] ) {
 			foreach ( $flags as $flag ) {
 				if ( in_array( $flag, $tags, true ) && !in_array( $falsePositiveTags[$flag], $tags, true ) ) {
-					$counts[$flag]++;
+					$stats[$flag]['count']++;
+					$stats[$flag]['latestTimestamp'] = max( $stats[$flag]['latestTimestamp'] ?? '', $timestamp );
 				}
 			}
 		}
-
-		return $counts;
+		return $stats;
 	}
 
 	/**
@@ -120,7 +147,7 @@ class FlaggedEditCounter {
 	 * @param int $actorId
 	 * @param int[] $tagIds
 	 * @param ?string $since
-	 * @return IResultWrapper Rows with the rev_id and ct_tag_id fields
+	 * @return IResultWrapper Rows with the rev_id, rev_timestamp and ct_tag_id fields
 	 */
 	private function getTaggedRevisions(
 		IReadableDatabase $dbr,
@@ -133,7 +160,7 @@ class FlaggedEditCounter {
 	): IResultWrapper {
 		[ $revIdField, $actorField, $timestampField, $deletedField ] = $fields;
 		$latestRevisions = $dbr->newSelectQueryBuilder()
-			->select( [ 'rev_id' => $revIdField ] )
+			->select( [ 'rev_id' => $revIdField, 'rev_timestamp' => $timestampField ] )
 			->from( $table )
 			->where( [ $actorField => $actorId ] )
 			->orderBy( $timestampField, SelectQueryBuilder::SORT_DESC )
@@ -154,7 +181,11 @@ class FlaggedEditCounter {
 		}
 
 		return $dbr->newSelectQueryBuilder()
-			->select( [ 'rev_id' => 'latest_revisions.rev_id', 'ct_tag_id' ] )
+			->select( [
+				'rev_id' => 'latest_revisions.rev_id',
+				'rev_timestamp' => 'latest_revisions.rev_timestamp',
+				'ct_tag_id',
+			] )
 			->from( $latestRevisions, 'latest_revisions' )
 			->join( 'change_tag', null, [
 				'ct_rev_id = latest_revisions.rev_id',

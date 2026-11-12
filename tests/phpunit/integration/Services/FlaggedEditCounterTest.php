@@ -163,6 +163,28 @@ class FlaggedEditCounterTest extends MediaWikiIntegrationTestCase {
 		];
 	}
 
+	public function testGetFlaggedEditStats(): void {
+		$user = $this->getMutableTestUser()->getUser();
+		$this->makeEdit( $user, [ 'tags' => [ self::VANDALISM ], 'daysAgo' => 5 ] );
+		$this->makeEdit( $user, [ 'tags' => [ self::VANDALISM ], 'daysAgo' => 3, 'pageDeleted' => true ] );
+		$this->makeEdit( $user, [ 'tags' => [ self::VANDALISM, self::VANDALISM_FALSE_POSITIVE ], 'daysAgo' => 1 ] );
+		ConvertibleTimestamp::setFakeTime( self::NOW );
+
+		$this->assertSame(
+			[
+				self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+				self::VANDALISM => [ 'count' => 2, 'latestTimestamp' => '20261004000000' ],
+			],
+			$this->getCounter()->getFlaggedEditStats(
+				$this->mockRegisteredAuthorityWithPermissions( self::ALL_RIGHTS ),
+				$user,
+				self::FLAGS,
+				null
+			),
+			'Latest timestamp should use the latest counted edit, including edits on deleted pages'
+		);
+	}
+
 	public function testGetFlaggedEditCountsForUserWithNoActor(): void {
 		$this->assertSame(
 			[ self::PERSONAL_INFO => 0, self::VANDALISM => 0 ],
