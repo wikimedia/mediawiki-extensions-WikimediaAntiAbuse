@@ -1,0 +1,8 @@
+{
+	"@metadata": {
+		"authors": [
+			"MthulisiNcube"
+		]
+	},
+	"apihelp-query+abusereview-paramvalue-prop-attribution": "Adds <samp>attribution</samp>: an HTML line that names the reviewer who recorded the verdict of the edit, or who last returned it to review. Left out if no reviewer can be named."
+}
