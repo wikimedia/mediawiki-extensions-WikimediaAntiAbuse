@@ -15,3 +15,8 @@ $specialPageAliases = [];
 $specialPageAliases['en'] = [
 	'AbuseReview' => [ 'AbuseReview' ],
 ];
+
+/** Hebrew (עברית) */
+$specialPageAliases['he'] = [
+	'AbuseReview' => [ 'סקירת_שימוש_לרעה' ],
+];
