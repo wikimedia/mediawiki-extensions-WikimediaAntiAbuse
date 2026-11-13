@@ -86,6 +86,14 @@
 		}
 	},
 	"HookHandlers": {
+		"AbuseFilterHandler": {
+			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseFilterHandler",
+			"services": [
+				"WikimediaAntiAbuseFlaggedEditCounter",
+				"ChangeTagsStore",
+				"WikimediaAntiAbuseAbuseReviewEnabledTagsProvider"
+			]
+		},
 		"AbuseReviewLinkClickHandler": {
 			"class": "MediaWiki\\Extension\\WikimediaAntiAbuse\\Hooks\\Handlers\\AbuseReviewLinkClickHandler",
 			"services": [
@@ -153,6 +161,11 @@
 		}
 	},
 	"Hooks": {
+		"AbuseFilter-builder": "AbuseFilterHandler",
+		"AbuseFilter-generateUserVars": "AbuseFilterHandler",
+		"AbuseFilter-interceptVariable": "AbuseFilterHandler",
+		"AbuseFilterCanViewProtectedVariables": "AbuseFilterHandler",
+		"AbuseFilterCustomProtectedVariables": "AbuseFilterHandler",
 		"BeforeInitialize": "AbuseReviewLinkClickHandler",
 		"ChangeTagsListActive": "ChangeTagsHandler",
 		"ListDefinedTags": "ChangeTagsHandler",

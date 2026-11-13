@@ -103,5 +103,10 @@
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edit|edits}} may contain personal information.",
 	"notification-link-text-personal-info-flagged": "View flagged {{PLURAL:$1|edit|edits}}",
 	"right-abusereview-vandalism-alpha-tester": "Access AbuseReview alpha tests",
-	"action-abusereview-vandalism-alpha-tester": "access AbuseReview alpha tests"
+	"action-abusereview-vandalism-alpha-tester": "access AbuseReview alpha tests",
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Number of edits by the user flagged for vandalism in Abuse review ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "Number of edits by the user flagged for link spam in Abuse review ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Seconds since the user's last edit flagged for vandalism in Abuse review ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Seconds since the user's last edit flagged for link spam in Abuse review ($1)",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "You do not have permission to access the AbuseReview tags referenced in this filter."
 }
