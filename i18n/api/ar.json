@@ -19,6 +19,8 @@
 	"apihelp-query+abusereview-param-user": "لا يُسمح بتعديل القوائم إلا من قِبل هؤلاء المستخدمين.",
 	"apihelp-query+abusereview-param-page": "قم فقط بتعديل هذه الصفحات.",
 	"apihelp-query+abusereview-param-revid": "اذكر هذه التعديلات فقط.",
+	"apihelp-query+abusereview-param-start": "الخاتم الزمني للبدء في الإدراج",
+	"apihelp-query+abusereview-param-end": "الخاتم الزمني لوقف الإدراج",
 	"apihelp-query+abusereview-paramvalue-dir-newer": "رتب الأقدم أولاً.",
 	"apihelp-query+abusereview-paramvalue-dir-older": "يتم عرض الأحدث أولاً (افتراضياً).",
 	"apihelp-query+abusereview-param-limit": "كم عدد التعديلات التي يجب إدراجها؟",
