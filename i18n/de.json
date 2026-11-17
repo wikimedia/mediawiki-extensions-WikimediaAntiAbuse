@@ -95,5 +95,10 @@
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|Bearbeitung kann|Bearbeitungen können}} personenbezogene Daten enthalten.",
 	"notification-link-text-personal-info-flagged": "Markierte {{PLURAL:$1|Bearbeitung|Bearbeitungen}} anzeigen",
 	"right-abusereview-vandalism-alpha-tester": "Zugriff auf die Missbrauchsfilter-Alpha-Test",
-	"action-abusereview-vandalism-alpha-tester": "auf die Missbrauchsfilter-Alpha-Test zuzugreifen"
+	"action-abusereview-vandalism-alpha-tester": "auf die Missbrauchsfilter-Alpha-Test zuzugreifen",
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Anzahl der Bearbeitungen des Benutzers, die in der Missbrauchsprüfung wegen Vandalismus gemeldet wurden ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "Anzahl der Bearbeitungen des Benutzers, der wegen Link-Spam in der Missbrauchsprüfung gemeldet wurde ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Sekunden seit der letzten Bearbeitung des Benutzers, die im Rahmen der Missbrauchsprüfung wegen Vandalismus gemeldet wurde ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Sekunden seit der letzten Bearbeitung des Benutzers, die im Rahmen der Missbrauchsprüfung wegen Link-Spams gemeldet wurde ($1)",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "Du hast keine Berechtigung, auf die in diesem Filter referenzierten AbuseReview-Tags zuzugreifen."
 }

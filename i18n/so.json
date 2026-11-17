@@ -96,5 +96,10 @@
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|wax ka beddel|wax ka beddello}} waxaa laga yaabaa inuu ka kooban yahay xog shakhsiyeed.",
 	"notification-link-text-personal-info-flagged": "Eeg {{PLURAL:$1|tafatirka|tafatirada}} la calaamadeeyay",
 	"right-abusereview-vandalism-alpha-tester": "Helitaanka tijaabooyinka alfa ee AbuseReview",
-	"action-abusereview-vandalism-alpha-tester": "helitaanka tijaabooyinka alfa ee AbuseReview"
+	"action-abusereview-vandalism-alpha-tester": "helitaanka tijaabooyinka alfa ee AbuseReview",
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Tirada wax ka beddellada isticmaalaha ee lagu calaamadeeyay inay yihiin burburin ee dib u eegista Abuse ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "Tirada wax ka beddellada isticmaalaha ee lagu calaamadeeyay inay yihiin spam xiriiriye ah ee dib u eegista Abuse ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Ilbiriqsiyada ka soo wareegay wax ka beddelkii ugu dambeeyay ee isticmaalaha ee lagu calaamadeeyay burburin ee dib u eegista Abuse ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Ilbiriqsiyada ka soo wareegay wax ka beddelkii ugu dambeeyay ee isticmaalaha ee lagu calaamadeeyay spam xiriiriye ah ee dib u eegista Abuse ($1)",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "Ma lihid oggolaansho aad ku gasho calaamadaha AbuseReview ee shaandhahan tixraacayo."
 }

@@ -96,5 +96,10 @@
 	"notification-bundle-header-personal-info-flagged": "$1 {{PLURAL:$1|edición pode|edicións poden}} conter información persoal.",
 	"notification-link-text-personal-info-flagged": "Ver {{PLURAL:$1|a edición marcada|as edicións marcadas}}",
 	"right-abusereview-vandalism-alpha-tester": "Acceder ás probas alfa de AbuseReview",
-	"action-abusereview-vandalism-alpha-tester": "acceder ás probas alfa de AbuseReview"
+	"action-abusereview-vandalism-alpha-tester": "acceder ás probas alfa de AbuseReview",
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Número de edicións do usuario sinaladas como vandalismo na revisión de abusos ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "Número de edicións do usuario sinaladas como ligazóns de spam na revisión de abusos ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Segundos desde a última edición do usuario sinalada como vandalismo na revisión de abusos ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Segundos desde a última edición do usuario sinalada como ligazóns de spam na revisión de abusos ($1)",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "Non tes permiso para acceder ás etiquetas de AbuseReview ás que se fai referencia neste filtro."
 }

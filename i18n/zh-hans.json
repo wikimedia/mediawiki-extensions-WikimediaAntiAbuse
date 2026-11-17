@@ -97,5 +97,10 @@
 	"notification-bundle-header-personal-info-flagged": "$1次{{PLURAL:$1|编辑}}可能包含个人信息。",
 	"notification-link-text-personal-info-flagged": "查看已标记的{{PLURAL:$1|编辑}}",
 	"right-abusereview-vandalism-alpha-tester": "访问滥用审查alpha测试",
-	"action-abusereview-vandalism-alpha-tester": "访问滥用审查alpha测试"
+	"action-abusereview-vandalism-alpha-tester": "访问滥用审查alpha测试",
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "用户在滥用审查中因破坏而被标记的编辑次数（$1）",
+	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "用户在滥用审查中因垃圾链接而被标记的编辑次数（$1）",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "自用户在滥用审查中因破坏而被标记的最近一笔编辑以来经过的秒数（$1）",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "自用户在滥用审查中因垃圾链接而被标记的最近一笔编辑以来经过的秒数（$1）",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "您没有权限访问此过滤器中引用的滥用审查标签。"
 }
