@@ -426,7 +426,7 @@ class AbuseReviewPager extends CodexTablePager {
 			return null;
 		}
 
-		$revision = $this->revisionStore->getRevisionById( (int)$row->rev_id );
+		$revision = $this->getRevision( (int)$row->rev_id );
 		if ( $revision === null ) {
 			return null;
 		}
