@@ -9,7 +9,7 @@
 	"license-name": "GPL-2.0-or-later",
 	"type": "other",
 	"requires": {
-		"MediaWiki": ">= 1.47.0"
+		"MediaWiki": ">= 1.48.0"
 	},
 	"MessagesDirs": {
 		"WikimediaAntiAbuse": [
@@ -184,7 +184,10 @@
 		"ListDefinedTags": "ChangeTagsHandler",
 		"ListRestrictedTags": "ChangeTagsHandler",
 		"PageSaveComplete": "PageSaveCompleteHandler",
-		"GetPreferences": [ "NotificationPreferencesHandler", "AbuseReviewPreferencesHandler" ],
+		"GetPreferences": [
+			"NotificationPreferencesHandler",
+			"AbuseReviewPreferencesHandler"
+		],
 		"LinksUpdateComplete": "PageSaveCompleteHandler",
 		"BeforeCreateEchoEvent": "EchoHooksHandler",
 		"EchoGetBundleRules": "EchoHooksHandler",
@@ -202,7 +205,9 @@
 				"NamespaceInfo",
 				"TitleFactory"
 			],
-			"events": [ "PageHistoryVisibilityChanged" ]
+			"events": [
+				"PageHistoryVisibilityChanged"
+			]
 		}
 	],
 	"SpecialPages": {
