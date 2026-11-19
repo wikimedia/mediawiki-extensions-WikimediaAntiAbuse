@@ -1,0 +1,9 @@
+{
+	"@metadata": {
+		"authors": [
+			"Eleassar"
+		]
+	},
+	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Število urejanj uporabnika, označenega kot vandalizem v pregledu Abuse ($1)",
+	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Sekunde od zadnjega urejanja uporabnika, označenega kot vandalizem v pregledu Abuse ($1)"
+}
