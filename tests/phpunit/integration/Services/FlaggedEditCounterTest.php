@@ -185,6 +185,220 @@ class FlaggedEditCounterTest extends MediaWikiIntegrationTestCase {
 		);
 	}
 
+	/**
+	 * @dataProvider provideGetFlaggedEditStatsByUsers
+	 *
+	 * @param ?array{tags:string[],daysAgo:int} $edits
+	 * @param ?string $since
+	 * @param array<array<string,array{count:int,latestTimestamp:?string}>> $expectedStats
+	 */
+	public function testGetFlaggedEditStatsByUsers( array $edits, ?string $since, array $expectedStats ): void {
+		$expected = [];
+		$users = [];
+		foreach ( $edits as $i => $edit ) {
+			$user = $this->getMutableTestUser()->getUser();
+			$users[] = $user;
+			$expected[$user->getId()] = $expectedStats[$i];
+			if ( $edit === null ) {
+				continue;
+			}
+			$this->makeEdit( $user, $edit );
+		}
+		ConvertibleTimestamp::setFakeTime( self::NOW );
+
+		$this->assertSame(
+			$expected,
+			$this->getCounter()->getFlaggedEditStatsByUsers(
+				$this->mockRegisteredAuthorityWithPermissions( self::ALL_RIGHTS ),
+				$users,
+				self::FLAGS,
+				$since
+			)
+		);
+	}
+
+	public static function provideGetFlaggedEditStatsByUsers(): array {
+		$vandalisedEdit = [ 'tags' => [ self::VANDALISM ], 'daysAgo' => FlaggedEditCounter::MAX_AGE_DAYS + 1 ];
+		$falsePositiveEdit = [
+			'tags' => [ self::VANDALISM_FALSE_POSITIVE ],
+			'daysAgo' => FlaggedEditCounter::MAX_AGE_DAYS + 1
+		];
+		$oldVandalisedEditOnDeletedPage = [ ...$vandalisedEdit, 'pageDeleted' => true ];
+
+		return [
+			'One user with an edit' => [
+				'edits' => [
+					[ 'tags' => [ self::VANDALISM ], 'daysAgo' => 5 ],
+				],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20261002000000' ],
+					],
+				],
+			],
+			'One user with a deleted edit' => [
+				'edits' => [
+					[ 'tags' => [ self::VANDALISM ], 'daysAgo' => 3, 'pageDeleted' => true ],
+				],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20261004000000' ],
+					],
+				],
+			],
+			'One user with a false positive edit' => [
+				'edits' => [
+					[ 'tags' => [ self::VANDALISM_FALSE_POSITIVE ], 'daysAgo' => 1 ],
+				],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Multiple users with one edit each' => [
+				'edits' => [
+					[ 'tags' => [ self::VANDALISM ], 'daysAgo' => 5 ],
+					[ 'tags' => [ self::VANDALISM ], 'daysAgo' => 3, 'pageDeleted' => true ],
+					[ 'tags' => [ self::VANDALISM, self::VANDALISM_FALSE_POSITIVE ], 'daysAgo' => 1 ],
+				],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20261002000000' ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20261004000000' ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Counts edits older than the maximum age without a since timestamp' => [
+				'edits' => [ $vandalisedEdit, null ],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20260708000000' ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Counts edits at the since timestamp' => [
+				'edits' => [ null, $vandalisedEdit ],
+				'since' => '20260708000000',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20260708000000' ],
+					],
+				],
+			],
+			'Does not count edits before the since timestamp' => [
+				'edits' => [ $vandalisedEdit, null ],
+				'since' => '20260708000001',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Counts edits on deleted pages at the since timestamp' => [
+				'edits' => [ $oldVandalisedEditOnDeletedPage, null ],
+				'since' => '20260708000000',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20260708000000' ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Does not count edits on deleted pages before the since timestamp' => [
+				'edits' => [ null, $oldVandalisedEditOnDeletedPage ],
+				'since' => '20260708000001',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Does not count false positive edits without a since timestamp' => [
+				'edits' => [ $vandalisedEdit, $falsePositiveEdit ],
+				'since' => null,
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20260708000000' ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Does not count false positive edits before the since timestamp' => [
+				'edits' => [ $falsePositiveEdit, null ],
+				'since' => '20260708000001',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+				],
+			],
+			'Does not count false positive edits at the since timestamp' => [
+				'edits' => [ $falsePositiveEdit, $vandalisedEdit ],
+				'since' => '20260708000000',
+				'expectedStats' => [
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 0, 'latestTimestamp' => null ],
+					],
+					[
+						self::PERSONAL_INFO => [ 'count' => 0, 'latestTimestamp' => null ],
+						self::VANDALISM => [ 'count' => 1, 'latestTimestamp' => '20260708000000' ],
+					],
+				],
+			],
+		];
+	}
+
 	public function testGetFlaggedEditCountsForUserWithNoActor(): void {
 		$this->assertSame(
 			[ self::PERSONAL_INFO => 0, self::VANDALISM => 0 ],

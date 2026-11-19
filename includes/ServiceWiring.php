@@ -176,8 +176,8 @@ return [
 		MediaWikiServices $services
 	) => new FlaggedEditCounter(
 		$services->getConnectionProvider(),
-		$services->getActorNormalization(),
-		$services->getChangeTagsStore()
+		$services->getChangeTagsStore(),
+		$services->getUserIdentityLookup()
 	),
 
 	'WikimediaAntiAbuseHookRunner' => static fn (
