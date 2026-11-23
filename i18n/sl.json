@@ -7,5 +7,6 @@
 	"abusefilter-edit-builder-vars-abuse-review-user-vandalism-flagged-count": "Število urejanj uporabnika, označenega kot vandalizem v pregledu Abuse ($1)",
 	"abusefilter-edit-builder-vars-abuse-review-user-link-spam-flagged-count": "Število urejanj uporabnika, v pregledu Abuse označenih kot smetenje s povezavami ($1)",
 	"abusefilter-edit-builder-vars-abuse-review-user-last-vandalism-flagged-age": "Sekunde od zadnjega urejanja uporabnika, označenega kot vandalizem v pregledu Abuse ($1)",
-	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Sekunde od zadnjega urejanja uporabnika, v pregledu Abuse označenega kot smetenje s povezavami ($1)"
+	"abusefilter-edit-builder-vars-abuse-review-user-last-link-spam-flagged-age": "Sekunde od zadnjega urejanja uporabnika, v pregledu Abuse označenega kot smetenje s povezavami ($1)",
+	"wikimediaantiabuse-abusefilter-protected-variables-access-denied": "Nimate dovoljenja za dostop do oznak AbuseReview, na katere se sklicuje ta filter."
 }
