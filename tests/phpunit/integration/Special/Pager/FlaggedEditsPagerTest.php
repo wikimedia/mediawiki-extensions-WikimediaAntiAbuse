@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use MediaWiki\Context\RequestContext;
 use MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters;
-use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\FlaggedEditsPager;
 use MediaWiki\Revision\RevisionRecord;
 use MediaWiki\Tests\Unit\HtmlAssertionHelperTrait;
 use MediaWikiIntegrationTestCase;
@@ -17,16 +17,16 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
 use Wikimedia\TestingAccessWrapper;
 
 /**
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\FlaggedEditsPager
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
  * @group Database
  */
-class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
+class FlaggedEditsPagerTest extends MediaWikiIntegrationTestCase {
 	use HtmlAssertionHelperTrait;
 
 	private const array FLAGGED_ROW = [
 		'namespace' => NS_MAIN,
-		'title' => 'AbuseReviewPagerTest',
+		'title' => 'FlaggedEditsPagerTest',
 		'user' => 0,
 		'user_text' => '127.0.0.1',
 		'deleted' => 0,
@@ -43,8 +43,8 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	private const string REVISION_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-revision-deleted';
 	private const string PAGE_DELETED_MESSAGE = 'wikimediaantiabuse-special-abuse-review-handled-page-deleted';
 
-	private function getObjectUnderTest( string $abuseReviewTag ): AbuseReviewPager {
-		return new AbuseReviewPager(
+	private function getObjectUnderTest( string $abuseReviewTag ): FlaggedEditsPager {
+		return new FlaggedEditsPager(
 			RequestContext::getMain(),
 			$this->getServiceContainer()->getLinkRenderer(),
 			$this->getServiceContainer()->get( 'WikimediaAntiAbuseAbuseReviewQueueLookup' ),
@@ -308,7 +308,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 			'<a name="movedpara_7_0_rhs"></a><a class="mw-diff-movedpara-right" data-title-tag="new" ' .
 			'href="#movedpara_5_0_lhs">&#9650;</a>---line---</div>';
 
-		$pager = TestingAccessWrapper::newFromClass( AbuseReviewPager::class );
+		$pager = TestingAccessWrapper::newFromClass( FlaggedEditsPager::class );
 
 		$diffRevision5 = $pager->makeMovedParagraphAnchorsUnique( $diff, 5 );
 		$diffRevision9 = $pager->makeMovedParagraphAnchorsUnique( $diff, 9 );
@@ -339,7 +339,7 @@ class AbuseReviewPagerTest extends MediaWikiIntegrationTestCase {
 	}
 
 	public function testMovedParagraphTextOutsideAnchorsIsUnchanged(): void {
-		$pager = TestingAccessWrapper::newFromClass( AbuseReviewPager::class );
+		$pager = TestingAccessWrapper::newFromClass( FlaggedEditsPager::class );
 		$text = '<div class="mw-diff-inline-added"><ins>see movedpara_5_0_lhs</ins></div>';
 
 		$result = $pager->makeMovedParagraphAnchorsUnique( $text, 5 );

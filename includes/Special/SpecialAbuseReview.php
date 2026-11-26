@@ -14,7 +14,7 @@ use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictAttributio
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewVerdictPerformerLookup;
 use MediaWiki\Extension\WikimediaAntiAbuse\Services\IAbuseReviewInstrumentationClient;
 use MediaWiki\Extension\WikimediaAntiAbuse\Special\Navigation\AbuseReviewTabsBuilder;
-use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager;
+use MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\FlaggedEditsPager;
 use MediaWiki\Html\Html;
 use MediaWiki\Message\Message;
 use MediaWiki\Page\LinkBatchFactory;
@@ -107,7 +107,7 @@ class SpecialAbuseReview extends SpecialPage {
 			$this->getOutput()->addJsConfigVars( 'wgWikimediaAntiAbuseRowStatus', [
 				'queue' => $this->abuseReviewTag,
 				'pollSeconds' => max( 0, (int)$this->getConfig()->get( 'WikimediaAntiAbuseAbuseReviewPollSeconds' ) ),
-				'handledReasonMessages' => AbuseReviewPager::HANDLED_REASON_MESSAGES,
+				'handledReasonMessages' => FlaggedEditsPager::HANDLED_REASON_MESSAGES,
 			] );
 		}
 
@@ -237,9 +237,9 @@ class SpecialAbuseReview extends SpecialPage {
 	}
 
 	/**
-	 * Displays the abuse review pager, returning the instance of the pager for use in instrumentation.
+	 * Displays the flagged edits pager, returning the instance of the pager for use in instrumentation.
 	 */
-	private function displayPager(): AbuseReviewPager {
+	private function displayPager(): FlaggedEditsPager {
 		// If user is viewing revisions from a notification, then show a banner linking them back to the main view
 		if (
 			$this->getRequest()->getVal( 'referrer' ) === 'echo_notification' &&
@@ -328,10 +328,10 @@ class SpecialAbuseReview extends SpecialPage {
 	}
 
 	/**
-	 * Constructs an instance of the {@link AbuseReviewPager} with the provided filters applied.
+	 * Constructs an instance of the {@link FlaggedEditsPager} with the provided filters applied.
 	 */
-	private function getPager( AbuseReviewQueueFilters $queueFilters, int $numberOfFiltersApplied ): AbuseReviewPager {
-		return new AbuseReviewPager(
+	private function getPager( AbuseReviewQueueFilters $queueFilters, int $numberOfFiltersApplied ): FlaggedEditsPager {
+		return new FlaggedEditsPager(
 			$this->getContext(),
 			$this->getLinkRenderer(),
 			$this->queueLookup,

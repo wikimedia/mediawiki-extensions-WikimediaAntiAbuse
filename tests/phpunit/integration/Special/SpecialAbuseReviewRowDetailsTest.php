@@ -17,7 +17,7 @@ use Wikimedia\Parsoid\Ext\DOMUtils;
  * on how many rows the pager returned.
  *
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\FlaggedEditsPager
  * @group Database
  */
 class SpecialAbuseReviewRowDetailsTest extends SpecialAbuseReviewTestBase {

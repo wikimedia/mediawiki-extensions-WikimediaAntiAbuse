@@ -38,7 +38,7 @@ use Wikimedia\Codex\Localization\MediaWikiLocalization;
 use Wikimedia\Codex\Utility\Codex;
 use Wikimedia\Rdbms\IResultWrapper;
 
-class AbuseReviewPager extends CodexTablePager {
+class FlaggedEditsPager extends CodexTablePager {
 
 	private const string TARGET_FIELD = 'target';
 	private const string FLAGS_FIELD = 'flags';

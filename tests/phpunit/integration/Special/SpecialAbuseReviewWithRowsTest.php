@@ -20,7 +20,7 @@ use Wikimedia\Timestamp\ConvertibleTimestamp;
 
 /**
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\SpecialAbuseReview
- * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\AbuseReviewPager
+ * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Special\Pager\FlaggedEditsPager
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\Services\AbuseReviewQueueLookup
  * @covers \MediaWiki\Extension\WikimediaAntiAbuse\AbuseReview\AbuseReviewQueueFilters
  * @group Database
